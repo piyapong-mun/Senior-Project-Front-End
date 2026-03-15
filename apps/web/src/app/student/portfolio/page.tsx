@@ -1,33 +1,40 @@
 import StudentSidebar from "@/components/shared/student/StudentSidebar";
-import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/routes";
+import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/student/routes";
+import PortfolioPage from "./PortfolioPage";
 
-export default function StudentPortfolioPage() {
+export default function StudentPortfolioRoute() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f3eee8",
-        padding: 28,
-        display: "grid",
-        gridTemplateColumns: "96px 1fr",
-        gap: 24,
-      }}
-    >
-      <StudentSidebar items={STUDENT_SIDEBAR_ITEMS} style={{ height: "calc(100vh - 80px)" }} />
-      <main
+    <div style={{ background: "#F3EEE8", minHeight: "100vh", padding: 18, boxSizing: "border-box" }}>
+      <div
         style={{
-          background: "#fff",
-          borderRadius: 12,
-          border: "1px solid #e0d6cd",
-          padding: 24,
-          boxShadow: "0 16px 26px rgba(0, 0, 0, 0.08)",
+          height: "calc(100vh - 36px)",
+          display: "grid",
+          gridTemplateColumns: "96px 1fr",
+          gap: 24,
         }}
       >
-        <h1 style={{ margin: 0, fontSize: 24 }}>Portfolio</h1>
-        <p style={{ marginTop: 8, color: "#5a5149" }}>
-          This page is ready for portfolio content. Add projects, badges, and certificates here.
-        </p>
-      </main>
+        <div style={{ position: "sticky", top: 18, height: "calc(100vh - 36px)" }}>
+          <StudentSidebar items={STUDENT_SIDEBAR_ITEMS} style={{ height: "100%" }} />
+        </div>
+
+        <main
+          style={{
+            height: "calc(100vh - 36px)",
+            overflow: "auto",
+            background: "#FFFFFF",
+            borderRadius: 10,
+            padding: 24,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: 1380 }}>
+            <PortfolioPage />
+          </div>
+        </main>
+
+      </div>
     </div>
   );
 }

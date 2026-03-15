@@ -56,7 +56,6 @@ body {
 /* =========================================================
    2) TOP ROW
    - รูปโปรไฟล์ + bio/profile card
-   - ปรับให้สมส่วนขึ้นจากของเดิม
 ========================================================= */
 .topGrid {
   display: grid;
@@ -603,6 +602,7 @@ body {
   display: flex;
   flex-direction: column;
 }
+
 .skillHead {
   display: flex;
   align-items: center;
@@ -631,8 +631,10 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 4px 2px 10px;
-  scrollbar-width: thin;               /* Firefox */
-  scrollbar-color: #8a8a8a #efefef;    /* Firefox */
+  scrollbar-width: thin;
+  /* Firefox */
+  scrollbar-color: #8a8a8a #efefef;
+  /* Firefox */
 }
 
 /* Chrome / Edge / Safari */
@@ -726,258 +728,896 @@ body {
    4.1 Activity | Mission
 ------------------------- */
 .splitCard {
-  padding: 16px;
-  border: 1.4px solid rgba(0, 0, 0, 0.14);
-  border-radius: 5px;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
-  display: grid;
-  grid-template-columns: 1fr 1px 420px;
-  gap: 18px;
-  align-items: start;
+  position: relative;
+  height: 174px;
+  min-height: 185px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #efefef;
+  background: #fefefe;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.splitVR {
+
+.splitCardBg {
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid #efefef;
+  border-right: 1px solid #efefef;
+  border-left: 1px solid #efefef;
+  border-bottom: 0;
+  border-radius: 2px;
+  background: #fefefe;
+}
+
+.splitDivider {
+  position: absolute;
+  top: 24px;
+  left: 62%;
   width: 1px;
-  background: rgba(0, 0, 0, 0.18);
-  align-self: stretch;
-  margin: 4px 0 10px;
+  height: calc(100% - 32px);
+  background: #000;
+  opacity: 0.8;
 }
 
-.activityCards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  align-items: stretch;
-}
-
-.activityItem {
-  border-radius: 5px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(248, 245, 242, 0.75);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
-  padding: 12px;
-  min-height: 110px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.activityTitle {
-  font-size: 11px;
-  font-weight: 900;
-  color: rgba(0, 0, 0, 0.76);
-}
-
-.activitySub {
-  font-size: 10px;
-  color: rgba(0, 0, 0, 0.55);
-  margin-top: 4px;
-}
-
-.activityBottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.activityXp {
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.star {
-  font-size: 14px;
-}
-
-.viewAll {
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: #fff;
-  border-radius: 5px;
-  padding: 6px 12px;
-  font-size: 11px;
-  cursor: pointer;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* Mission list */
-.missionList {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.missionItem {
-  border-radius: 5px;
-  border: 1px solid rgba(120, 90, 160, 0.25);
-  background: rgba(170, 140, 210, 0.18);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
-  padding: 12px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-}
-
-/* -------------------------
-   4.2 Completion | XP
-------------------------- */
-.splitCardBottom {
-  padding: 20px 20px 18px;
-  border: 1.4px solid rgba(0, 0, 0, 0.14);
-  border-radius: 5px;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr;
-  gap: 18px;
-  align-items: start;
+.activityPane {
+  position: relative;
+  width: 62%;
+  height: 174px;
+  min-height: 174px;
+  padding: 22px 18px 6px 22px;
   box-sizing: border-box;
 }
 
-.completionPane,
-.splitLeft {
-  padding-right: 22px;
-  box-sizing: border-box;
-  min-width: 0;
-}
-
-.xpPane,
-.splitRight {
-  padding-left: 22px;
-  box-sizing: border-box;
-  min-width: 0;
-}
-
-.completionBody {
+.activityPaneHead {
   display: flex;
-  gap: 18px;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.donut {
-  width: 128px;
-  height: 128px;
-  border-radius: 999px;
-  background: conic-gradient(
-    rgba(120, 190, 140, 0.85) 0 55%,
-    rgba(240, 190, 90, 0.9) 55% 75%,
-    rgba(230, 90, 90, 0.9) 75% 100%
-  );
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.donutCenter {
-  width: 78px;
-  height: 78px;
-  border-radius: 999px;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-}
-
-.legend {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.7);
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  display: inline-block;
-  margin-right: 8px;
-}
-
-.dotGreen {
-  background: rgba(120, 190, 140, 0.9);
-}
-
-.dotYellow {
-  background: rgba(240, 190, 90, 0.95);
-}
-
-.dotRed {
-  background: rgba(230, 90, 90, 0.95);
-}
-
-.periodToggle {
-  display: flex;
-  gap: 6px;
-}
-
-.pill {
-  border-radius: 5px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: #fff;
-  padding: 6px 12px;
-  font-size: 11px;
-  cursor: pointer;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
-}
-
-.pillOn {
-  background: rgba(255, 210, 120, 0.65);
-}
-
-.barChart {
-  height: 150px;
-  display: flex;
+  justify-content: space-between;
   align-items: flex-end;
-  gap: 12px;
-  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.activityOverviewTitle {
+  font-size: 16px;
+  font-weight: 500;
+  font-family: Inter, Arial, sans-serif;
+  color: #000;
+  line-height: 1;
+}
+
+.activityIconWrap {
+  position: absolute;
+  top: 10px;
+  left: 150px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.activityIconImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transform: rotate(-12deg);
+}
+
+.viewAllBtn {
+  width: 58px;
+  height: 18px;
+  border: 0.5px solid rgba(42, 42, 42, 0.45);
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  font-weight: 300;
+  color: #2a2a2a;
+  cursor: pointer;
+  padding: 0;
+}
+
+.viewAllBtn span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.activityScrollArea {
+  width: 100%;
+  height: 122px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #717171 #efefef;
   padding-bottom: 10px;
   box-sizing: border-box;
 }
 
-.barCol {
-  flex: 1;
+.activityScrollArea::-webkit-scrollbar {
+  height: 10px;
+}
+
+.activityScrollArea::-webkit-scrollbar-track {
+  background: #efefef;
+  border: 0.2px solid #000;
+  border-radius: 2px;
+}
+
+.activityScrollArea::-webkit-scrollbar-thumb {
+  background: #717171;
+  border: 0.2px solid #000;
+  border-radius: 2px;
+}
+
+.activityRow {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 21px;
+  width: max-content;
+  min-width: 100%;
+  padding: 1px 0 14px;
 }
 
-.bar {
-  width: 18px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(130, 150, 210, 0.55);
+.activityCard {
+  position: relative;
+  width: 111.2px;
+  min-width: 111.2px;
+  flex: 0 0 auto;
+  height: 104px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
 }
 
-.barLabel {
+.activityCardBg {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(176, 222, 255, 0.75) 0 22%, transparent 23%),
+    radial-gradient(circle at 78% 18%, rgba(255, 228, 181, 0.72) 0 24%, transparent 25%),
+    radial-gradient(circle at 66% 62%, rgba(255, 210, 245, 0.72) 0 20%, transparent 21%),
+    radial-gradient(circle at 30% 70%, rgba(210, 235, 210, 0.7) 0 22%, transparent 23%),
+    #f6f1ec;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-sizing: border-box;
+}
+
+.activityCardText {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 10px;
+}
+
+.activityCardTitle {
+  font-size: 10px;
+  line-height: 1.18;
+  color: #000;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.activityCardSub {
+  margin-top: 6px;
   font-size: 10px;
   color: rgba(0, 0, 0, 0.55);
 }
 
-/* =========================================================
-   5) RIGHT COLUMN
-   - avatar card
-   - calendar card
-========================================================= */
+.activityRewardIcon {
+  position: absolute;
+  right: 6px;
+  bottom: 8px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.activityRewardText {
+  position: absolute;
+  left: 16px;
+  bottom: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #000;
+}
+
+.missionPane {
+  position: absolute;
+  top: 23px;
+  right: 18px;
+  width: calc(38% - 34px);
+  min-width: 220px;
+  box-sizing: border-box;
+}
+
+.missionPaneTitle {
+  font-size: 16px;
+  font-weight: 500;
+  font-family: Inter, Arial, sans-serif;
+  color: #000;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.missionPaneList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.missionPaneItem {
+  position: relative;
+  width: 100%;
+  min-height: 31px;
+  padding: 6px 12px;
+  border-radius: 2px;
+  background: #e6d3f2;
+  border: 0.5px solid rgba(42, 42, 42, 0.5);
+  box-shadow: inset 2px 2px 1px #cdb4db;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.missionPaneText {
+  font-size: 11px;
+  color: #000;
+  line-height: 1.2;
+}
+
+.missionPaneXp {
+  font-size: 11px;
+  color: #000;
+  line-height: 1.2;
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .splitCard {
+    min-height: unset;
+  }
+
+  .splitDivider {
+    display: none;
+  }
+
+  .activityPane,
+  .missionPane {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    right: auto;
+    top: auto;
+  }
+
+  .activityPane {
+    padding: 22px 18px 8px 22px;
+  }
+
+  .missionPane {
+    padding: 0 18px 18px 22px;
+  }
+
+  .activityFakeScroll {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .activityRow {
+    gap: 12px;
+  }
+
+  .activityCard {
+    width: 120px;
+    min-width: 120px;
+  }
+}
 
 /* -------------------------
-   5.1 Avatar
+   5) Bottom split: Completion | XP chart
+------------------------- */
+.splitCardBottom {
+  position: relative;
+  min-height: 330px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #efefef;
+  background: #fefefe;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.bottomSplitDivider {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  width: 1px;
+  height: 270px;
+  background: #000;
+}
+
+.completionPane {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  width: 44%;
+  height: 205px;
+  font-family: "Rounded Mplus 1c", Arial, sans-serif;
+}
+
+.completionTitle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #111;
+}
+
+.completionContentFigure {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.completionDonutCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.donutFigureWrap {
+  width: 230px;
+  height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  cursor: default;
+}
+
+.donutFigureSvg {
+  width: 210px;
+  height: 210px;
+  overflow: visible;
+}
+
+.donutFigureGroup {
+  cursor: pointer;
+  outline: none;
+}
+
+.donutFigureStroke {
+  transition: transform 0.18s ease, filter 0.18s ease, opacity 0.18s ease;
+}
+
+.donutFigureStrokeNeutral {
+  opacity: 1;
+}
+
+.donutFigureStrokeActive {
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.12));
+}
+
+.donutFigureStrokeDim {
+  opacity: 0.82;
+}
+
+.donutFigureCenter {
+  font-size: 22px;
+  font-weight: 600;
+  fill: #1f1a16;
+}
+
+.donutFigureNumber {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #1f1a16;
+  dominant-baseline: middle;
+  alignment-baseline: middle;
+}
+
+.donutFigureBigNumber {
+  font-size: 12px;
+  font-weight: 700;
+  fill: #1f1a16;
+  dominant-baseline: middle;
+  alignment-baseline: middle;
+}
+
+.donutFigureSideLabel {
+  font-size: 11px;
+  font-weight: 500;
+  fill: #3f3831;
+}
+
+.completionLegendGrid {
+  width: 192px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.completionLegendButton {
+  min-height: 20px;
+  border: 0;
+  border-radius: 2px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  color: #1f1a16;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.completionLegendButton:hover {
+  transform: translateY(-1px);
+}
+
+.completionLegendButtonActive {
+  box-shadow: 0 0 0 1.5px rgba(36, 31, 27, 0.18), 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.completionLegendButtonText {
+  line-height: 1;
+}
+
+.completionLegendButtonCount {
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.completionLegendAllButton {
+  background: #ece8e1;
+}
+
+.completionInfoCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+
+.completionBadgeAll {
+  background: #ece8e1;
+}
+
+.completionInfoListScrollable {
+  height: 122px;
+  overflow-y: auto;
+  padding-right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #8a8a8a #efefef;
+}
+
+.completionInfoListScrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.completionInfoListScrollable::-webkit-scrollbar-track {
+  background: #efefef;
+  border-radius: 999px;
+}
+
+.completionInfoListScrollable::-webkit-scrollbar-thumb {
+  background: #8a8a8a;
+  border-radius: 999px;
+}
+
+.completionInfoCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.completionBadgeFigure {
+  min-height: 32px;
+  border: none;
+  border-radius: 2px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1f1a16;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.completionBadgeAll {
+  background: #ece8e1;
+}
+
+.completionInfoListScrollable {
+  height: 190px;
+  overflow-y: auto;
+  padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #9a9a9a #efefef;
+}
+
+.completionInfoItem {
+  font-size: 10px;
+  line-height: 1.4;
+  color: #2f2a25;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  word-break: break-word;
+}
+
+.badgeFillGreen {
+  background: #a8d9af;
+}
+
+.badgeFillYellowSoft {
+  background: #ebc774;
+}
+
+.badgeFillBlue {
+  background: #84cadd;
+}
+
+.badgeFillRed {
+  background: #e79a8c;
+}
+
+
+/* bar chart */
+.xpPane {
+  position: absolute;
+  top: 18px;
+  left: calc(50% + 24px);
+  right: 24px;
+  height: 280px;
+  font-family: "Rounded Mplus 1c", Arial, sans-serif;
+}
+
+.xpChartTitle {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 72px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.periodButton {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 64px;
+  height: 64px;
+  font-size: 11px;
+}
+
+.periodButtonOuter {
+  position: absolute;
+  inset: 0;
+  background: #f7f7f7;
+  border: 1px solid #000;
+  box-sizing: border-box;
+}
+
+.periodDaily,
+.periodWeekly {
+  position: absolute;
+  left: 2px;
+  width: 58px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.periodDaily {
+  top: 2px;
+}
+
+.periodWeekly {
+  top: 34px;
+}
+
+.periodDailyBg,
+.periodWeeklyBg {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  border: 1px solid #e2b86d;
+  box-sizing: border-box;
+  background: #f7f7f7;
+}
+
+.periodActiveBg {
+  background: #f2cb82;
+}
+
+.periodInactiveBg {
+  background: #f7f7f7;
+}
+
+.periodText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 10px;
+}
+
+.periodDividerLine {
+  position: absolute;
+  top: 31px;
+  left: 5px;
+  width: 54px;
+  border-top: 1px solid #000;
+  box-sizing: border-box;
+}
+
+.barGraph {
+  position: absolute;
+  top: 70px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.barScrollArea {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 12px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #717171 #efefef;
+}
+
+.barGraphInner {
+  position: relative;
+  min-width: max-content;
+  height: 210px;
+  padding: 10px 12px 0 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+}
+
+.barYAxis {
+  width: 28px;
+  height: 150px;
+  position: relative;
+  flex: 0 0 28px;
+}
+
+.barYAxisTick {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.barYAxisTick:nth-child(1) {
+  top: 0;
+}
+
+.barYAxisTick:nth-child(2) {
+  top: 25%;
+}
+
+.barYAxisTick:nth-child(3) {
+  top: 50%;
+}
+
+.barYAxisTick:nth-child(4) {
+  top: 75%;
+}
+
+.barYAxisTick:nth-child(5) {
+  top: calc(100% - 8px);
+}
+
+.barYAxisLabel {
+  font-size: 9px;
+  line-height: 1;
+  color: #5a5a5a;
+}
+
+.barPlotArea {
+  position: relative;
+  height: 190px;
+  margin-left: 10px;
+  flex: 0 0 auto;
+}
+
+.barGridLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(0, 0, 0, 0.16);
+}
+
+.barBaseLine {
+  position: absolute;
+  bottom: 42px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid #000;
+  box-sizing: border-box;
+}
+
+.barGridValue {
+  display: none;
+}
+
+.barGroup {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: max-content;
+}
+
+.barGroupWeekly {
+  gap: 8px;
+}
+
+.barGroupItem {
+  position: relative;
+  width: 60px;
+  height: 176px;
+  flex: 0 0 auto;
+}
+
+.barGroupItemWeekly {
+  width: 82px;
+}
+
+.barRect {
+  position: absolute;
+  bottom: 42px;
+  left: 15px;
+  width: 30px;
+  background: #9f81c7;
+  border: 1px solid #000;
+  box-sizing: border-box;
+}
+
+.barGroupItemWeekly .barRect {
+  left: 24px;
+  width: 34px;
+}
+
+.barXp {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #533737;
+}
+
+.barDateLabel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  min-height: 38px;
+  line-height: 1.08;
+  text-align: center;
+}
+
+.barDay {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.barDate {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+
+@media (max-width: 1100px) {
+  .splitCardBottom {
+    min-height: 420px;
+  }
+
+  .bottomSplitDivider {
+    display: none;
+  }
+
+  .completionPane,
+  .xpPane {
+    position: relative;
+    left: auto;
+    top: auto;
+    right: auto;
+    width: calc(100% - 40px);
+    height: 190px;
+    margin: 14px 20px;
+  }
+}
+
+/* -------------------------
+   6. Avatar
 ------------------------- */
 .avatarCard {
   padding: 16px;
-  border: 1.4px solid rgba(0, 0, 0, 0.14);
-  border-radius: 5px;
+  /* border: 1.4px solid rgba(0, 0, 0, 0.14); */
+  border-radius: 2px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  background-color: #fefefe;
+  border: 1px solid #efefef;
+  box-sizing: border-box;
 }
 
 .avatarBig {
   height: 240px;
-  border-radius: 5px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(0, 0, 0, 0.06);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25) inset;
+  border-radius: 2px;
+  background-color: #f7f7f7;
+  border: 0.5px solid rgba(42, 42, 42, 0.5);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -999,10 +1639,11 @@ body {
 
 .avatarThumbCard {
   width: 110px;
-  border-radius: 5px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: #fff;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25) inset;
+  border-radius: 2px;
+  background-color: #f7f7f7;
+  border: 0.5px solid rgba(42, 42, 42, 0.5);
+  box-sizing: border-box;
   padding: 10px 10px 8px;
   cursor: pointer;
 }
@@ -1013,7 +1654,7 @@ body {
 
 .avatarThumbImg {
   height: 84px;
-  border-radius: 10px;
+  border-radius: 1px;
   background: rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
@@ -1042,7 +1683,7 @@ body {
 }
 
 /* -------------------------
-   5.2 Calendar
+   7 Calendar
 ------------------------- */
 .calendarCard {
   position: relative;
@@ -1205,7 +1846,6 @@ body {
 /* =========================================================
    6) MODAL
    - popup แก้ข้อมูล
-   - ปรับให้เล็กลงและใช้งานง่าย
 ========================================================= */
 .modalOverlay {
   position: fixed;

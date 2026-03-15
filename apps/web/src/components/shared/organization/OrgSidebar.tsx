@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import type { NavItem } from "@/lib/config/student/routes";
-import styles from "./StudentSidebar.module.css";
+import type { NavItem } from "@/lib/config/organization/routes";
+import styles from "./OrgSidebar.module.css";
 
-type StudentSidebarProps = {
+type OrgSidebarProps = {
   items: NavItem[];
   onNavigate?: (item: NavItem) => void;
   logoSrc?: string;
@@ -13,7 +13,7 @@ type StudentSidebarProps = {
   onLogout?: () => void;
 };
 
-export default function StudentSidebar({
+export default function OrgSidebar({
   items,
   onNavigate,
   logoSrc = "/images/logo/logo-v2.png",
@@ -21,7 +21,7 @@ export default function StudentSidebar({
   className,
   style,
   onLogout,
-}: StudentSidebarProps) {
+}: OrgSidebarProps) {
   const wrapperClassName = className ? `${styles.sidebar} ${className}` : styles.sidebar;
 
   return (

@@ -1,0 +1,720 @@
+html,
+body {
+  overflow-x: hidden;
+}
+
+.dash {
+  width: 100%;
+  /* max-width: 1300px; */
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(400px, 0.85fr);
+  gap: 20px;
+  align-items: start;
+  box-sizing: border-box;
+}
+
+.leftRail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rightRail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: #1f1f1f;
+}
+
+.statsShell {
+  height: 145px;
+  background: #fefefe;
+  border: 1px solid #efefef;
+  border-radius: 2px;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+  padding: 8px 28px;
+  overflow: hidden;
+}
+
+.statsGrid {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.statWrap {
+  flex: 1;
+  min-width: 0;
+  height: 141px;
+  display: flex;
+  align-items: center;
+}
+
+.statCard {
+  flex: 1;
+  height: 120px;
+  background: #fefefe;
+  border: 0.5px solid #efefef;
+  border-radius: 2px;
+  box-shadow: 2px 2px 4px #f7f7f7;
+  box-sizing: border-box;
+  padding: 14px 7px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.statDivider {
+  width: 1px;
+  height: 141px;
+  margin: 0 12px;
+  border-right: 1px solid #000;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.statValue {
+  width: 100%;
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 500;
+  color: #000;
+  text-align: center;
+}
+
+.statLabel {
+  width: 100%;
+  margin-top: 14px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 300;
+  color: #000;
+  text-align: center;
+}
+
+.statBottom {
+  width: 100%;
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: start;
+}
+
+.statBottomCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.statBreakdownLabel {
+  font-size: 10px;
+  line-height: 2;
+  font-weight: 300;
+  color: #717070;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.statBreakdownValue {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 400;
+  color: #717070;
+  text-align: center;
+}
+
+.skillCard,
+.companyCard,
+.activityCard,
+.calendarCard {
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.skillCard {
+  padding: 14px 18px 12px;
+  width: 100%;
+  min-height: 190px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.skillHead {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  margin-bottom: 8px;
+}
+
+.skillTitle {
+  font-size: 18px;
+  font-weight: 500;
+  color: #000;
+  line-height: 1.1;
+}
+
+.skillViewport {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.skillScroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #8a8a8a #efefef;
+}
+
+.skillScroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.skillScroll::-webkit-scrollbar-track {
+  background: #efefef;
+  border-radius: 999px;
+  border: 1px solid #000;
+}
+
+.skillScroll::-webkit-scrollbar-thumb {
+  background: #8a8a8a;
+  border-radius: 999px;
+  border: 1px solid #000;
+}
+
+.skillRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  width: max-content;
+  min-width: 100%;
+  padding: 0 4px;
+}
+
+.skillCol {
+  width: 52px;
+  min-width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.skillPct {
+  min-height: 18px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 500;
+  color: #000;
+  text-align: center;
+}
+
+.skillTube {
+  width: 20px;
+  height: 100px;
+  border-radius: 3px;
+  border: 1px solid #000;
+  background: #fff;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.skillFill {
+  width: 100%;
+  min-height: 0;
+  background: #8b8b8b;
+}
+
+.skillLabel {
+  margin-top: 6px;
+  width: 100%;
+  font-size: 11px;
+  line-height: 1.15;
+  color: #000;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trackPink { background: #d23f7e; }
+.trackYellow { background: #f6bd60; }
+.trackGreen { background: #84a59d; }
+.trackSoftPink { background: #f5cac3; }
+.trackBlue { background: #1270b0; }
+.trackOrange { background: #e0a971; }
+.trackRose { background: #ffa3b5; }
+
+.trackGreenWide {
+  width: 100%;
+  background: #84a59d;
+}
+
+.companyCard {
+  height: 335px;
+  padding: 16px 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.companyList {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 4px;
+  box-sizing: border-box;
+}
+
+.companyItem {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+}
+
+.companyItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.companyLogo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  padding: 2px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.companyLogoInner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.companyInfo {
+  min-width: 0;
+}
+
+.companyName {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.15;
+  color: #111;
+}
+
+.companySubtitle {
+  margin-top: 3px;
+  font-size: 8px;
+  line-height: 1.25;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.activityCard {
+  height: 250px;
+  padding: 18px 20px 16px;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.activityHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  position: static;
+  height: auto;
+}
+
+.activityTitle {
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 500;
+  color: #000;
+}
+
+.viewAllBtn {
+  min-width: 72px;
+  height: 26px;
+  border: 1px solid rgba(42, 42, 42, 0.28);
+  border-radius: 2px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 400;
+  color: #2a2a2a;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.viewAllBtn:hover {
+  background: #f5cac3;
+  border-color: rgba(42, 42, 42, 0.42);
+}
+
+.viewAllLink {
+  min-width: 72px;
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid rgba(42, 42, 42, 0.28);
+  border-radius: 2px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 400;
+  color: #2a2a2a;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.viewAllLink:hover {
+  background: #f5cac3;
+  border-color: rgba(42, 42, 42, 0.42);
+}
+
+.activityScrollArea {
+  width: 100%;
+  height: 170px;
+  overflow-y: auto;
+  padding-right: 6px;
+  box-sizing: border-box;
+  position: static;
+}
+
+.activityTable {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.activityRow {
+  position: relative;
+  width: 100%;
+  min-height: 65px;
+  display: grid;
+  grid-template-columns: 72px minmax(200px, 1.6fr) 92px 92px 56px 84px;
+  align-items: stretch;
+  border: 1px solid rgba(42, 42, 42, 0.14);
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.activityRowBg {
+  display: none;
+}
+
+.activityIconCell,
+.activityTitleCell,
+.activityMetaCol,
+.activityStatusCol {
+  position: static;
+}
+
+.activityIconCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.activityBadgeImgFull {
+  width: 54px;
+  height: 54px;
+  /* border-radius: 50%; */
+  object-fit: cover;
+  display: block;
+}
+
+.activityBadgeImg {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  display: block;
+}
+
+.activityTitleCell {
+  height: auto;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  text-align: left;
+  border-right: 1px solid #d7d7d7;
+}
+
+.activityName {
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 500;
+  color: #222;
+  word-break: break-word;
+}
+
+.activityMetaCol {
+  width: auto;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 8px;
+  border-right: 1px solid #d7d7d7;
+}
+
+.activityMetaLabel {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 400;
+  color: #555;
+  text-align: center;
+}
+
+.activityMetaValue,
+.activityMetaValueWide {
+  margin-top: 8px;
+  width: auto;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 500;
+  color: #111;
+  text-align: center;
+}
+
+.activityStatusCol {
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 10px;
+}
+
+.statusPill {
+  width: 100%;
+  min-height: 22px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1f1f1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statusPillPending {
+  background: #ffd186;
+}
+
+.statusPillJoin {
+  background: #bfeabb;
+}
+
+.statusPillEnded {
+  background: #fab8bb;
+}
+
+.statusPillHidden {
+  display: none;
+}
+
+.activityDivider1,
+.activityDivider2,
+.activityDivider3,
+.activityDivider4 {
+  display: none;
+}
+
+.activityScrollArea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.activityScrollArea::-webkit-scrollbar-track {
+  background: #efefef;
+  border-radius: 999px;
+}
+
+.activityScrollArea::-webkit-scrollbar-thumb {
+  background: #8a8a8a;
+  border-radius: 999px;
+}
+
+
+.calendarCard {
+  position: relative;
+  width: 100%;
+  height: 310px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.calendarPanel {
+  position: absolute;
+  inset: 16px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  background: #fefefe;
+}
+
+.calendarHeader {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 0 0 8px;
+}
+
+.calendarMonthChip {
+  height: 24px;
+  padding: 2px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendarTitle {
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  color: #000;
+}
+
+.calendarGrid {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #000;
+}
+
+.calendarRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  column-gap: 8px;
+}
+
+.calendarWeekDay {
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendarCell {
+  min-height: 40px;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.calendarCellInner {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2px;
+  box-sizing: border-box;
+}
+
+.calendarDay {
+  line-height: 1.1;
+}
+
+.calendarEvents {
+  margin-top: 4px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.calendarWeekEnd { color: #17a1fa; }
+.calendarOtherMonth { color: #616161; }
+.calendarMutedCell .calendarDay { color: #b3b3b3; }
+
+.trackBar {
+  width: 22px;
+  height: 5px;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .dash {
+    grid-template-columns: 1fr;
+  }
+
+  .rightRail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 760px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rightRail {
+    grid-template-columns: 1fr;
+  }
+
+  .activityRow {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .activityMetaCell,
+  .activityXpCell,
+  .activityStatusCell {
+    grid-column: 2;
+    border-right: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+}

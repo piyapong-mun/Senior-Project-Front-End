@@ -1,5 +1,5 @@
 import StudentSidebar from "@/components/shared/student/StudentSidebar";
-import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/routes";
+import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/student/routes";
 
 export default function StudentOnboardingPage() {
   return (

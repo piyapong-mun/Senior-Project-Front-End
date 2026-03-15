@@ -25,8 +25,8 @@ import {
 import { useCompanies } from "../hooks/useCompanies";
 import type { CamAnimState, Company, HoverBuildingPayload, YawAnimState } from "../types";
 import { angleDiff, nearestRoadPointToBuilding, samplePointOnMesh } from "../utils/three";
-import type { NavItem } from "@/lib/config/routes";
-import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/routes";
+import type { NavItem } from "@/lib/config/student/routes";
+import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/student/routes";
 
 export default function ExploreScene() {
   const router = useRouter();

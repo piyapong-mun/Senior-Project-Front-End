@@ -2,7 +2,7 @@
 
 import { useMemo, useState,useEffect, type ChangeEvent } from "react";
 import StudentSidebar from "@/components/shared/student/StudentSidebar";
-import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/routes";
+import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/student/routes";
 import styles from "./page.module.css";
 
 type Employee = {
@@ -148,7 +148,7 @@ export default function OrgDashboardPage() {
 
     return (
         <div className={styles.page}>
-            {/* ✅ เมนูซ้าย: ตามที่บอก ไม่แก้ */}
+            {/* เมนูซ้าย: ตามที่บอก ไม่แก้ */}
             <StudentSidebar items={STUDENT_SIDEBAR_ITEMS} style={{ height: "100%" }} />
 
             <main className={styles.main}>

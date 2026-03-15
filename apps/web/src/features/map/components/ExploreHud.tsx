@@ -1,5 +1,5 @@
-import type { NavItem } from "@/lib/config/routes";
-import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/routes";
+import type { NavItem } from "@/lib/config/student/routes";
+import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/student/routes";
 import StudentSidebar from "@/components/shared/student/StudentSidebar";
 import { Company } from "../types";
 

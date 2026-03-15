@@ -658,47 +658,84 @@ function MidRow({
 function ActivityMissionSplit() {
   return (
     <section className={cx(styles.card, styles.splitCard)}>
-      <div className={styles.splitLeft}>
-        <div className={styles.cardHead}>
-          <div className={styles.sectionTitle}>Activity Overview</div>
-          <button className={styles.viewAll} type="button">
-            view all
+      <div className={styles.splitCardBg} />
+      <div className={styles.splitDivider} aria-hidden />
+
+      <div className={styles.activityPane}>
+        <div className={styles.activityPaneHead}>
+          <div className={styles.activityOverviewTitle}>Activity Overview</div>
+
+          <button className={styles.viewAllBtn} type="button">
+            <span>view all</span>
           </button>
         </div>
 
-        <div className={styles.activityCards}>
-          {ACTIVITIES.map((a) => (
-            <div key={a.id} className={styles.activityItem}>
-              <div>
-                <div className={styles.activityTitle}>{a.title}</div>
-                <div className={styles.activitySub}>{a.sub}</div>
-              </div>
-
-              <div className={styles.activityBottom}>
-                <div className={styles.activityXp}>{a.xp} XP</div>
-                <div className={styles.star}>⭐</div>
-              </div>
-            </div>
-          ))}
+        <div className={styles.activityIconWrap} aria-hidden>
+          <img
+            src="/images/icons/jigsaw-icon.png"
+            alt=""
+            className={styles.activityIconImg}
+            draggable={false}
+          />
         </div>
+
+        <div className={styles.activityScrollArea}>
+          <div className={styles.activityRow}>
+            {ACTIVITIES.map((a) => (
+              <button key={a.id} type="button" className={styles.activityCard}>
+                <div className={styles.activityCardBg} />
+
+                <div className={styles.activityCardText}>
+                  <div className={styles.activityCardTitle}>{a.title}</div>
+                  <div className={styles.activityCardSub}>{a.sub}</div>
+                </div>
+
+                <div className={styles.activityRewardIcon} aria-hidden>
+                  ⭐
+                </div>
+
+                <div className={styles.activityRewardText}>{a.xp} XP</div>
+              </button>
+            ))}
+
+            {ACTIVITIES.map((a) => (
+              <button key={`${a.id}-copy`} type="button" className={styles.activityCard}>
+                <div className={styles.activityCardBg} />
+
+                <div className={styles.activityCardText}>
+                  <div className={styles.activityCardTitle}>{a.title}</div>
+                  <div className={styles.activityCardSub}>{a.sub}</div>
+                </div>
+
+                <div className={styles.activityRewardIcon} aria-hidden>
+                  ⭐
+                </div>
+
+                <div className={styles.activityRewardText}>{a.xp} XP</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
       </div>
 
-      <div className={styles.splitVR} aria-hidden />
+      <div className={styles.missionPane}>
+        <div className={styles.missionPaneTitle}>Today&apos;s mission</div>
 
-      <div className={styles.splitRight}>
-        <div className={styles.sectionTitle}>Today’s mission</div>
-        <div className={styles.missionList}>
-          <div className={styles.missionItem}>
-            <div>Join 2 activities</div>
-            <b>10 XP</b>
+        <div className={styles.missionPaneList}>
+          <div className={styles.missionPaneItem}>
+            <div className={styles.missionPaneText}>Join 2 activities</div>
+            <div className={styles.missionPaneXp}>10 XP</div>
           </div>
-          <div className={styles.missionItem}>
-            <div>Complete one activity</div>
-            <b>10 XP</b>
+
+          <div className={styles.missionPaneItem}>
+            <div className={styles.missionPaneText}>Complete one activity</div>
+            <div className={styles.missionPaneXp}>10 XP</div>
           </div>
-          <div className={styles.missionItem}>
-            <div>Join activity in 15 minutes</div>
-            <b>10 XP</b>
+
+          <div className={styles.missionPaneItem}>
+            <div className={styles.missionPaneText}>Join activity in 15 minutes</div>
+            <div className={styles.missionPaneXp}>10 XP</div>
           </div>
         </div>
       </div>
@@ -708,52 +745,433 @@ function ActivityMissionSplit() {
 
 /* Split card: Completion | XP chart (Figma structure) */
 function BottomSplit() {
+  const [period, setPeriod] = useState<"daily" | "weekly">("daily");
+  const [selectedSegment, setSelectedSegment] = useState<
+    "completed" | "inProgress" | "registered" | "incomplete" | null
+  >(null);
+
+  const completionSegments = {
+    completed: {
+      key: "completed" as const,
+      title: "Completed",
+      count: 3,
+      color: "#9FD5A8",
+      colorClass: styles.badgeFillGreen,
+      items: [
+        "Frontend Basics & Web Terminology",
+        "UI Layout Explanation Task",
+        "Responsive Web Page Workshop",
+      ],
+    },
+    inProgress: {
+      key: "inProgress" as const,
+      title: "In Progress",
+      count: 10,
+      color: "#F1C97B",
+      colorClass: styles.badgeFillYellowSoft,
+      items: [
+        "Typography Practice Challenge",
+        "Color Theory Basics",
+        "Landing Page Wireframe",
+        "Accessibility Intro Task",
+        "Component Naming Exercise",
+        "Responsive Grid Exercise",
+        "Portfolio Content Draft",
+        "Navbar Interaction Practice",
+        "Button Variant Design",
+        "Card Layout Refinement",
+      ],
+    },
+    registered: {
+      key: "registered" as const,
+      title: "Registered",
+      count: 1,
+      color: "#7EC6D9",
+      colorClass: styles.badgeFillBlue,
+      items: ["Advanced Prototype Session"],
+    },
+    incomplete: {
+      key: "incomplete" as const,
+      title: "Incomplete",
+      count: 1,
+      color: "#E58F82",
+      colorClass: styles.badgeFillRed,
+      items: ["JavaScript Fundamentals Quiz"],
+    },
+  } as const;
+
+  const segmentOrder = [
+    completionSegments.completed,
+    completionSegments.incomplete,
+    completionSegments.registered,
+    completionSegments.inProgress,
+  ];
+
+  const totalActivities = segmentOrder.reduce((sum, seg) => sum + seg.count, 0);
+
+  const allItems = segmentOrder.flatMap((seg) =>
+    seg.items.map((item) => ({
+      item,
+      colorClass: seg.colorClass,
+      sectionTitle: seg.title,
+    }))
+  );
+
+  const currentInfo = selectedSegment ? completionSegments[selectedSegment] : null;
+  const rightItems = currentInfo
+    ? currentInfo.items.map((item) => ({
+      item,
+      colorClass: currentInfo.colorClass,
+      sectionTitle: currentInfo.title,
+    }))
+    : allItems;
+
+  const dailyBars = [
+    { labelTop: "SUN", labelBottom: "04/01/2026", xp: 20 },
+    { labelTop: "MON", labelBottom: "05/02/2026", xp: 25 },
+    { labelTop: "TUE", labelBottom: "06/02/2026", xp: 15 },
+    { labelTop: "WED", labelBottom: "07/02/2026", xp: 23 },
+    { labelTop: "THU", labelBottom: "08/02/2026", xp: 12 },
+    { labelTop: "FRI", labelBottom: "09/02/2026", xp: 25 },
+    { labelTop: "SAT", labelBottom: "10/02/2026", xp: 30 },
+    { labelTop: "SUN", labelBottom: "11/02/2026", xp: 18 },
+    { labelTop: "MON", labelBottom: "12/02/2026", xp: 32 },
+  ];
+
+  const weeklyBars = [
+    { labelTop: "week1", labelBottom: "04/01/26-10/01/26", xp: 175 },
+    { labelTop: "week2", labelBottom: "11/01/26-17/01/26", xp: 90 },
+    { labelTop: "week3", labelBottom: "18/01/26-24/01/26", xp: 150 },
+    { labelTop: "week4", labelBottom: "25/01/26-31/01/26", xp: 110 },
+    { labelTop: "week5", labelBottom: "01/02/26-07/02/26", xp: 185 },
+    { labelTop: "week6", labelBottom: "08/02/26-14/02/26", xp: 140 },
+  ];
+
+  const barsRaw = period === "daily" ? dailyBars : weeklyBars;
+  const maxXp = Math.max(...barsRaw.map((b) => b.xp), 1);
+  const chartMaxHeight = period === "daily" ? 126 : 138;
+
+  const bars = barsRaw.map((b) => ({
+    ...b,
+    h: Math.max(32, Math.round((b.xp / maxXp) * chartMaxHeight)),
+  }));
+
+  const size = 210;
+  const center = size / 2;
+  const radius = 56;
+  const strokeWidth = 40;
+  const circumference = 2 * Math.PI * radius;
+
+  let accumulated = 0;
+
+  const donutSegments = segmentOrder.map((seg) => {
+    const fraction = seg.count / totalActivities;
+    const arc = circumference * fraction;
+    const startFraction = accumulated;
+    const midFraction = startFraction + fraction / 2;
+    accumulated += fraction;
+
+    const angle = midFraction * Math.PI * 2 - Math.PI / 2;
+    const isActive = selectedSegment === seg.key;
+
+    const popDistance = isActive ? 3 : 0;
+    const offsetX = isActive ? Math.cos(angle) * popDistance : 0;
+    const offsetY = isActive ? Math.sin(angle) * popDistance : 0;
+
+    const labelRadius =
+      seg.key === "inProgress"
+        ? radius - strokeWidth / 2 + 2
+        : radius - strokeWidth / 2 + 8;
+
+    const labelX = center + Math.cos(angle) * labelRadius;
+    const labelY = center + Math.sin(angle) * labelRadius;
+
+    return {
+      ...seg,
+      arc,
+      dashOffset: -startFraction * circumference,
+      offsetX,
+      offsetY,
+      labelX,
+      labelY,
+      isActive,
+    };
+  });
+
+  const yTicks = period === "daily" ? [0, 10, 20, 30, 40] : [0, 50, 100, 150, 200];
+  const chartMaxValue = yTicks[yTicks.length - 1];
+  const chartDrawableHeight = period === "daily" ? 116 : 124;
+
+  const barsForRender = barsRaw.map((b) => ({
+    ...b,
+    h: Math.max(22, Math.round((b.xp / chartMaxValue) * chartDrawableHeight)),
+  }));
+
+  const itemWidth = period === "daily" ? 60 : 82;
+  const itemGap = period === "daily" ? 8 : 12;
+  const plotWidth = barsForRender.length * itemWidth + (barsForRender.length - 1) * itemGap;
+
   return (
     <section className={cx(styles.card, styles.splitCardBottom)}>
-      <div className={styles.completionPane}>
-        <div className={styles.sectionTitle}>Activity Completion Status</div>
+      <div className={styles.bottomSplitDivider} aria-hidden />
 
-        <div className={styles.completionBody}>
-          <div className={styles.donut}>
-            <div className={styles.donutCenter}>15</div>
+      <div className={styles.completionPane}>
+        <div className={styles.completionTitle}>Activity Completion Status</div>
+
+        <div className={styles.completionContentFigure}>
+          <div className={styles.completionDonutCol}>
+            <div
+              className={styles.donutFigureWrap}
+              onClick={() => setSelectedSegment(null)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedSegment(null);
+                }
+              }}
+              aria-label="Show all activity statuses"
+            >
+              <svg
+                viewBox={`0 0 ${size} ${size}`}
+                className={styles.donutFigureSvg}
+                aria-label="Activity completion donut chart"
+              >
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={radius}
+                  fill="none"
+                  stroke="#F3EEE8"
+                  strokeWidth={strokeWidth}
+                />
+
+                {donutSegments.map((seg) => (
+                  <g
+                    key={seg.key}
+                    transform={`translate(${seg.offsetX} ${seg.offsetY})`}
+                    className={styles.donutFigureGroup}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSegment(seg.key);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedSegment(seg.key);
+                      }
+                    }}
+                  >
+                    <circle
+                      cx={center}
+                      cy={center}
+                      r={radius}
+                      fill="none"
+                      stroke={seg.color}
+                      strokeWidth={strokeWidth}
+                      strokeLinecap="butt"
+                      strokeDasharray={`${seg.arc} ${circumference - seg.arc}`}
+                      strokeDashoffset={seg.dashOffset}
+                      transform={`rotate(-90 ${center} ${center})`}
+                      className={cx(
+                        styles.donutFigureStroke,
+                        selectedSegment === null && styles.donutFigureStrokeNeutral,
+                        seg.isActive && styles.donutFigureStrokeActive,
+                        selectedSegment !== null &&
+                        selectedSegment !== seg.key &&
+                        styles.donutFigureStrokeDim
+                      )}
+                    />
+
+                    <text
+                      x={seg.labelX}
+                      y={seg.labelY}
+                      textAnchor="middle"
+                      className={cx(
+                        seg.key === "inProgress"
+                          ? styles.donutFigureBigNumber
+                          : styles.donutFigureNumber
+                      )}
+                    >
+                      {seg.count}
+                    </text>
+                  </g>
+                ))}
+
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={30}
+                  fill="#F4F4F1"
+                  stroke="#3A332C"
+                  strokeWidth="1.4"
+                />
+
+                <text
+                  x={center}
+                  y={center + 6}
+                  textAnchor="middle"
+                  className={styles.donutFigureCenter}
+                >
+                  {totalActivities}
+                </text>
+
+
+              </svg>
+            </div>
+
+            <div className={styles.completionLegendGrid}>
+              {segmentOrder.map((seg) => (
+                <button
+                  key={seg.key}
+                  type="button"
+                  className={cx(
+                    styles.completionLegendButton,
+                    seg.colorClass,
+                    selectedSegment === seg.key && styles.completionLegendButtonActive
+                  )}
+                  onClick={() => setSelectedSegment(seg.key)}
+                >
+                  <span className={styles.completionLegendButtonText}>{seg.title}</span>
+                  <span className={styles.completionLegendButtonCount}>({seg.count})</span>
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className={cx(
+                  styles.completionLegendButton,
+                  styles.completionLegendAllButton,
+                  selectedSegment === null && styles.completionLegendButtonActive
+                )}
+                onClick={() => setSelectedSegment(null)}
+              >
+                <span className={styles.completionLegendButtonText}>All</span>
+                <span className={styles.completionLegendButtonCount}>({totalActivities})</span>
+              </button>
+            </div>
           </div>
 
-          <div className={styles.legend}>
-            <div>
-              <span className={cx(styles.dot, styles.dotGreen)} /> Completed
+          <div className={styles.completionInfoCol}>
+            <div
+              className={cx(
+                styles.completionBadgeFigure,
+                currentInfo ? currentInfo.colorClass : styles.completionBadgeAll
+              )}
+            >
+              {currentInfo ? currentInfo.title : "All Statuses"}
             </div>
-            <div>
-              <span className={cx(styles.dot, styles.dotYellow)} /> In progress
-            </div>
-            <div>
-              <span className={cx(styles.dot, styles.dotRed)} /> Not started
+
+            <div className={styles.completionInfoListScrollable}>
+              {rightItems.map((entry, idx) => (
+                <div key={`${entry.sectionTitle}-${entry.item}-${idx}`} className={styles.completionInfoItem}>
+                  - {entry.item}
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      <div className={styles.splitVR} aria-hidden />
-
       <div className={styles.xpPane}>
-        <div className={styles.cardHead}>
-          <div className={styles.sectionTitle}>สถิติ XP ล่าสุด</div>
-          <div className={styles.periodToggle}>
-            <button className={cx(styles.pill, styles.pillOn)} type="button">
-              daily
-            </button>
-            <button className={styles.pill} type="button">
-              weekly
-            </button>
-          </div>
+        <div className={styles.xpChartTitle}>
+          {period === "daily" ? "กราฟ XP ต่อวัน" : "กราฟ XP ต่อสัปดาห์"}
         </div>
 
-        <div className={styles.barChart}>
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className={styles.barCol}>
-              <div className={styles.bar} style={{ height: `${22 + (i % 5) * 14}%` }} />
-              <div className={styles.barLabel}>D{i + 1}</div>
+        <div className={styles.periodButton}>
+          <div className={styles.periodButtonOuter} />
+
+          <button
+            type="button"
+            className={styles.periodDaily}
+            onClick={() => setPeriod("daily")}
+            aria-pressed={period === "daily"}
+          >
+            <div
+              className={cx(
+                styles.periodDailyBg,
+                period === "daily" ? styles.periodActiveBg : styles.periodInactiveBg
+              )}
+            />
+            <div className={styles.periodText}>daily</div>
+          </button>
+
+          <button
+            type="button"
+            className={styles.periodWeekly}
+            onClick={() => setPeriod("weekly")}
+            aria-pressed={period === "weekly"}
+          >
+            <div
+              className={cx(
+                styles.periodWeeklyBg,
+                period === "weekly" ? styles.periodActiveBg : styles.periodInactiveBg
+              )}
+            />
+            <div className={styles.periodText}>weekly</div>
+          </button>
+
+          <div className={styles.periodDividerLine} />
+        </div>
+
+        <div className={styles.barGraph}>
+          <div className={styles.barScrollArea}>
+            <div className={styles.barGraphInner}>
+              <div className={styles.barYAxis}>
+                {yTicks
+                  .slice()
+                  .reverse()
+                  .map((tick) => (
+                    <div key={tick} className={styles.barYAxisTick}>
+                      <span className={styles.barYAxisLabel}>{tick}</span>
+                    </div>
+                  ))}
+              </div>
+
+              <div className={styles.barPlotArea} style={{ width: `${plotWidth}px` }}>
+                {yTicks
+                  .slice(1)
+                  .reverse()
+                  .map((tick, idx) => (
+                    <div key={tick} className={styles.barGridLine} style={{ top: `${idx * 25}%` }}>
+                      <span className={styles.barGridValue}>{tick}</span>
+                    </div>
+                  ))}
+
+                <div className={styles.barBaseLine} />
+
+                <div
+                  className={cx(
+                    styles.barGroup,
+                    period === "weekly" && styles.barGroupWeekly
+                  )}
+                >
+                  {barsForRender.map((b) => (
+                    <div
+                      key={`${period}-${b.labelTop}-${b.labelBottom}`}
+                      className={cx(
+                        styles.barGroupItem,
+                        period === "weekly" && styles.barGroupItemWeekly
+                      )}
+                    >
+                      <div className={styles.barRect} style={{ height: `${b.h}px` }} />
+                      <div className={styles.barXp} style={{ bottom: `${b.h + 40}px` }}>
+                        {b.xp} XP
+                      </div>
+                      <div className={styles.barDateLabel}>
+                        <span className={styles.barDay}>{b.labelTop}</span>
+                        <span className={styles.barDate}>{b.labelBottom}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>

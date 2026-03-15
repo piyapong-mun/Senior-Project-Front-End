@@ -1,6 +1,6 @@
-import StudentSidebar from "@/components/shared/student/StudentSidebar";
-import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/student/routes";
-import ClientDashboard from "./ClientDashboard";
+import OrgSidebar from "@/components/shared/organization/OrgSidebar";
+import { ORGANIZATION_SIDEBAR_ITEMS } from "@/lib/config/organization/routes";
+// import ClientDashboard from "./ClientDashboard";
 
 export default function StudentDashboardPage() {
   return (
@@ -14,7 +14,7 @@ export default function StudentDashboardPage() {
         }}
       >
         <div style={{ position: "sticky", top: 18, height: "calc(100vh - 36px)" }}>
-          <StudentSidebar items={STUDENT_SIDEBAR_ITEMS} style={{ height: "100%" }} />
+          <OrgSidebar items={ORGANIZATION_SIDEBAR_ITEMS} style={{ height: "100%" }} />
         </div>
 
         <main
@@ -30,7 +30,7 @@ export default function StudentDashboardPage() {
           }}
         >
           <div style={{ width: 1380 }}>
-            <ClientDashboard />
+            {/* <ClientDashboard /> */}
           </div>
         </main>
 

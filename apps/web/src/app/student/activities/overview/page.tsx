@@ -1,6 +1,6 @@
 import StudentSidebar from "@/components/shared/student/StudentSidebar";
 import { STUDENT_SIDEBAR_ITEMS } from "@/lib/config/student/routes";
-import ActivityDashboard from "./ActivityDashboard";
+import AllActivities from "./overview";
 
 export default function StudentActiviesDashboardPage() {
   return (
@@ -30,7 +30,7 @@ export default function StudentActiviesDashboardPage() {
             }}
           >
             <div style={{ width: 1380 }}>
-              <ActivityDashboard />
+              <AllActivities />
             </div>
           </main>
   
