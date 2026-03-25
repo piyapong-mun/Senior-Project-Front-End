@@ -1,9 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { Fragment, useMemo, useState, useEffect, type ChangeEvent } from "react";
+import { Fragment, useMemo, useState, useEffect, type ChangeEvent, useCallback } from "react";
 import { ORGANIZATION_SIDEBAR_ITEMS } from "@/lib/config/organization/routes";
 import styles from "./OrgDashboard.module.css";
+
+// Backend Json Type
+import { OrgDashboard, EmployeeInfo, ActivityStatsInfo, SkillStatsInfo, UniversityStatsInfo, ActivityInfo, CompleteStatsInfo } from "@/app/api/org/dashboard/route";
 
 
 type OrgForm = {
@@ -376,10 +379,12 @@ export default function OrgDashboardPage() {
     const [selectedActivityKind, setSelectedActivityKind] = useState<ActivityFilter>("all");
     const [isActivityTypeOpen, setIsActivityTypeOpen] = useState(false);
 
-    const filteredOrgActivities = useMemo(() => {
-        if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
-        return ORG_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
-    }, [selectedActivityKind]);
+    // const filteredOrgActivities = useMemo(() => {
+    //     // if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
+    //     // return ORG_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
+    //     if (selectedActivityKind === "all") return UPDATED_ACTIVITY_ROWS;
+    //     return UPDATED_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
+    // }, [selectedActivityKind]);
 
     useEffect(() => {
         (async () => {
@@ -389,11 +394,149 @@ export default function OrgDashboardPage() {
         })();
     }, []);
 
+    // =======================
+    // Load and Update Data
+    // =======================
+    //---------------------------------------------------------------------------------------------------------
+    const [orgDashboard, setOrgDashboard] = useState<OrgDashboard | null>(null);
 
+    const [updatedMonthDonutLabels, setUpdatedMonthDonutLabels] = useState<any[]>([]);
+
+    const [updatedTypeDonutLabels, setUpdatedTypeDonutLabels] = useState<any[]>([]);
+
+    // ไม่ Rerender ถ้าไม่จำเป็น เพราะโหลดข้อมูลเยอะ
+    const fetchOrgDashboard = useCallback(async () => {
+        const res = await fetch("/api/org/dashboard");
+        const resJson = await res.json();
+        const data = resJson.data.orgDashboard;
+        setOrgDashboard(data);
+        return data;
+    }, [])
+
+    // Update Activity Rows
+    const updatedActivityRows = useMemo(() => {
+        function mapstatusTone(state: string) {
+            if (state === "pending") return "pending";
+            if (state === "can join") return "join";
+            if (state === "ended") return "ended";
+            return "pending";
+        }
+        return orgDashboard?.activity_info.map((activity) => ({
+            id: activity.activity_id,
+            title: activity.activity_name,
+            difficulty: "None",
+            category: "None",
+            kind: activity.activity_type,
+            xp: 0,
+            statusTone: mapstatusTone(activity.state),
+        })) ?? [];
+    }, [orgDashboard])
+
+    // Filter Activity Rows
+    const filteredOrgActivities = useMemo(() => {
+        return updatedActivityRows.filter((activity) => {
+            if (selectedActivityKind === "all") return true;
+            return activity.kind === selectedActivityKind;
+        });
+    }, [updatedActivityRows, selectedActivityKind]);
+
+    // Update Participants
+    const updatedParticipants = useMemo(() => {
+        var participantCounter = 0;
+        return orgDashboard?.complete_stats_info.map((participant) => ({
+            id: participantCounter++,
+            name: participant.first_name + " " + participant.last_name,
+            subtitle: "None",
+            score: participant.xp,
+            avatarBg: "#f1d6d8",
+            initials: participant.first_name[0] + participant.last_name[0],
+        })) ?? [];
+    }, [orgDashboard])
+
+    // Update Skill Bars
+    const updatedSkillBars = useMemo(() => {
+        return orgDashboard?.skill_stats_info.map((skill) => ({
+            label: skill.skill_name,
+            value: skill.number,
+        })) ?? [];
+    }, [orgDashboard])
+
+    // Update University Bars
+    const updatedParticipantBars = useMemo(() => {
+        return orgDashboard?.university_stats_info.map((participant) => ({
+            label: participant.university,
+            value: participant.number,
+        })) ?? [];
+    }, [orgDashboard])
+
+    // Fetch Data
+    useEffect(() => {
+        const init = async () => {
+            try {
+
+                const data = await fetchOrgDashboard();
+
+                if (data) {
+                    // 1. จัดการข้อมูลพนักงาน (ป้องกัน Error .map())
+                    const employeeList = (data.employees_info ?? []).map((employee: any) => ({
+                        id: employee.emp_id,
+                        firstName: employee.first_name,
+                        lastName: employee.last_name,
+                        position: employee.position,
+                        phone: employee.phone,
+                        email: "None", // ใน JSON ไม่มี email รายบุคคล
+                        canCheckChallenge: employee.is_reviewer, // ใช้ค่าจาก API
+                        avatarIndex: 0,
+                    }));
+                    setEmployees(employeeList);
+
+                    // 2. จัดการข้อมูล Org Draft
+                    // หมายเหตุ: contact ใน JSON เป็น stringified JSON ต้อง parse ก่อน
+                    let contactInfo = { email: "none", phone: "none" };
+                    try {
+                        if (data.contact) contactInfo = JSON.parse(data.contact);
+                    } catch (e) {
+                        console.error("Parse contact error", e);
+                    }
+
+                    setOrgDraft({
+                        orgName: data.org_name ?? "",
+                        companySize: data.size ?? "",
+                        businessType: "none",
+                        location: "none",
+                        aboutUs: data.about_org ?? "",
+                        logoFile: null,
+                        logoPreview: data.logo || null,
+                        email: contactInfo.email,
+                        phone: contactInfo.phone,
+                        website: data.website_url ?? "",
+                        linkedin: "none",
+                        facebook: "none",
+                        instagram: "none",
+                        youtube: "none",
+                        tiktok: "none",
+                    });
+
+                }
+            } catch (error) {
+                console.error("Error fetching org dashboard:", error);
+            }
+        };
+        init();
+    }, []);
+
+    // const filteredOrgActivities = useMemo(() => {
+    //     // if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
+    //     // return ORG_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
+    //     if (selectedActivityKind === "all") return updatedActivityRows;
+    //     return updatedActivityRows.filter((item) => item.kind === selectedActivityKind);
+    // }, [selectedActivityKind]);
+
+    //---------------------------------------------------------------------------------------------------------
 
     return (
 
-            <main className={styles.main}>
+        <main className={styles.main}>
             {/* ===== Row 1: Org profile + summary cards + avatar box ===== */}
             <section className={styles.topGrid}>
                 {/* Org profile card */}
@@ -451,22 +594,22 @@ export default function OrgDashboardPage() {
                     <div className={styles.summaryTopBox}>
                         <div className={styles.summaryTopBoxBg} />
 
-                        <div className={styles.summaryTotalValue}>15</div>
+                        <div className={styles.summaryTotalValue}>{orgDashboard?.activity_stats_info.total_activity}</div>
                         <div className={styles.summaryTotalLabel}>Total Activities</div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>challenge</div>
-                            <div className={styles.summaryMiniValue}>3</div>
+                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_challenge}</div>
                         </div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>courses</div>
-                            <div className={styles.summaryMiniValue}>8</div>
+                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_course}</div>
                         </div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>meetings</div>
-                            <div className={styles.summaryMiniValue}>4</div>
+                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_meeting}</div>
                         </div>
                     </div>
 
@@ -483,7 +626,7 @@ export default function OrgDashboardPage() {
                         </div>
 
                         <div className={styles.summaryParticipantText}>
-                            <div className={styles.summaryParticipantValue}>32</div>
+                            <div className={styles.summaryParticipantValue}>{orgDashboard?.activity_stats_info.total_participant}</div>
                             <div className={styles.summaryParticipantLabel}>Total Participants</div>
                         </div>
                     </div>
@@ -674,7 +817,8 @@ export default function OrgDashboardPage() {
                                 <div className={styles.statisticsBarsBaseline} />
 
                                 <div className={styles.statisticsBarsRow}>
-                                    {(statsTab === "participants" ? PARTICIPANT_BARS : SKILL_BARS).map((item, index) => {
+                                    {/* {(statsTab === "participants" ? PARTICIPANT_BARS : SKILL_BARS).map((item, index) => { */}
+                                    {(statsTab === "participants" ? updatedParticipantBars : updatedSkillBars).map((item, index) => {
                                         const max = statsTab === "participants" ? 80 : 12;
                                         const barHeight = Math.max(42, (item.value / max) * 120);
                                         return (
@@ -763,7 +907,8 @@ export default function OrgDashboardPage() {
                         <h3 className={styles.rightTitle}>Participants</h3>
 
                         <div className={styles.studentsListScroller}>
-                            {PARTICIPANTS.map((person) => (
+                            {/* {PARTICIPANTS.map((person) => ( */}
+                            {updatedParticipants.map((person) => (
                                 <button
                                     key={person.id}
                                     type="button"
@@ -810,21 +955,21 @@ export default function OrgDashboardPage() {
                         <div className={styles.activityTypePopupBg} />
                         <div className={styles.activityTypePopupInner}>
                             {(["Meetings", "Courses", "Challenges"] as const).map((item, index) => (
-                                    <Fragment key={item}>
-                                        {index > 0 && <div className={styles.activityTypePopupDivider} />}
-                                        <button
-                                            type="button"
-                                            className={styles.activityTypePopupItem}
-                                            onClick={() => {
-                                                setSelectedActivityKind(item);
-                                                setIsActivityTypeOpen(false);
-                                            }}
-                                        >
-                                            <div className={styles.activityTypePopupItemBox} />
-                                            <div className={styles.activityTypePopupItemText}>{item}</div>
-                                        </button>
-                                    </Fragment>
-                                ))}
+                                <Fragment key={item}>
+                                    {index > 0 && <div className={styles.activityTypePopupDivider} />}
+                                    <button
+                                        type="button"
+                                        className={styles.activityTypePopupItem}
+                                        onClick={() => {
+                                            setSelectedActivityKind(item);
+                                            setIsActivityTypeOpen(false);
+                                        }}
+                                    >
+                                        <div className={styles.activityTypePopupItemBox} />
+                                        <div className={styles.activityTypePopupItemText}>{item}</div>
+                                    </button>
+                                </Fragment>
+                            ))}
                         </div>
                     </div>
                 </div>
