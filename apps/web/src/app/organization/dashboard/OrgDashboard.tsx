@@ -266,8 +266,89 @@ export default function OrgDashboardPage() {
     const openEditOrg = () => setIsEditOrgOpen(true);
     const closeEditOrg = () => setIsEditOrgOpen(false);
 
-    const handleSaveOrg = () => {
-        // ตรงนี้ค่อยต่อ API PUT/PATCH ภายหลัง
+    const handleSaveOrg = async (e: React.FormEvent) => {
+        // !TODO: Add API PUT/PATCH here
+        // Prevent default
+        e.preventDefault();
+
+        // ตรงนี้ค่อยต่อ API PUT/PATCH ภายหลัง    
+        // Format data
+        const formData = new FormData();
+        formData.append("about_org", orgDraft.aboutUs);
+        formData.append("size", orgDraft.companySize);
+        formData.append("location", orgDraft.location);
+        formData.append("logo", orgDraft.logoFile || "");
+        formData.append("logoPreview", orgDraft.logoPreview || "");
+        formData.append("website_url", orgDraft.website);
+
+        // add file to S3
+        // const file = orgDraft.logoFile;
+        // if (file) {
+        //     const formData = new FormData();
+        //     formData.append("file", file);
+        //     const res = await fetch(`${BACKEND}/upload`, {
+        //         method: "POST",
+        //         headers: {
+        //             Authorization: `Bearer ${accessToken}`,
+        //         },
+        //         body: formData,
+        //     });
+        //     if (!res.ok) {
+        //         throw new Error("Failed to upload file");
+        //     }
+        //     const data = await res.json();
+        //     formData.append("logo", data.url);
+        // }
+
+        // Test add file to S3
+        const file = orgDraft.logoFile;
+        if (file) {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("bucketName", "vcep-assets-dev")
+            formData.append("folderName", "org-logos")
+
+
+
+
+            const res = await fetch(`/api/s3`, {
+                method: "PUT",
+                body: formData,
+            });
+            if (!res.ok) {
+                throw new Error("Failed to upload file");
+            }
+            const data = await res.json();
+            formData.append("logo", data.url);
+        }
+
+        // Backend Template
+        // {
+        // "about_org": "string",
+        // "building_id": "string",
+        // "contact": "{ \"email\": \"[EMAIL_ADDRESS]\", \"phone\": \"1234567890\" }",
+        // "logo": "string",
+        // "org_name": "string",
+        // "position_x": 0,
+        // "position_y": 0,
+        // "size": "string",
+        // "website_url": "string"
+        // }
+
+        // pack email, phone, facebook, instagram, youtube, tiktok
+        const contact = {
+            email: orgDraft.email,
+            phone: orgDraft.phone,
+            facebook: orgDraft.facebook,
+            instagram: orgDraft.instagram,
+            youtube: orgDraft.youtube,
+            tiktok: orgDraft.tiktok,
+        };
+        // Pack to json
+        const contactJson = JSON.stringify(contact);
+        formData.append("contact", contactJson);
+
+        console.log(orgDraft);
         setIsEditOrgOpen(false);
         setIsSavedOpen(true);
     };
@@ -424,8 +505,8 @@ export default function OrgDashboardPage() {
         return orgDashboard?.activity_info.map((activity) => ({
             id: activity.activity_id,
             title: activity.activity_name,
-            difficulty: "None",
-            category: "None",
+            hours: activity.hours,
+            category: activity.activity_type,
             kind: activity.activity_type,
             xp: 0,
             statusTone: mapstatusTone(activity.state),
@@ -699,7 +780,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>4</div>
+                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_meeting}</div>
                             <div className={styles.summaryActivityLabel}>Meetings</div>
                         </div>
 
@@ -707,7 +788,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>8</div>
+                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_course}</div>
                             <div className={styles.summaryActivityLabel}>Courses</div>
                         </div>
 
@@ -715,7 +796,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>5</div>
+                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_challenge}</div>
                             <div className={styles.summaryActivityLabel}>Challenges</div>
                         </div>
                     </div>
@@ -867,10 +948,10 @@ export default function OrgDashboardPage() {
                                     <div className={styles.activityNameCell}>{item.title}</div>
                                     <div className={styles.activityDivider} />
 
-                                    <div className={styles.activityInfoCell}>
+                                    {/* <div className={styles.activityInfoCell}>
                                         <div className={styles.activityInfoHead}>difficulty</div>
                                         <div className={styles.activityInfoValue}>{item.difficulty}</div>
-                                    </div>
+                                    </div> */}
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityInfoCell}>
@@ -880,8 +961,8 @@ export default function OrgDashboardPage() {
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityInfoCellXp}>
-                                        <div className={styles.activityInfoHead}>XP</div>
-                                        <div className={styles.activityInfoValue}>{item.xp}</div>
+                                        <div className={styles.activityInfoHead}>Hours</div>
+                                        <div className={styles.activityInfoValue}>{item.hours}</div>
                                     </div>
                                     <div className={styles.activityDivider} />
 
@@ -1213,7 +1294,7 @@ export default function OrgDashboardPage() {
                             <button
                                 type="button"
                                 className={styles.popupIconButton}
-                                onClick={handleSaveOrg}
+                                onClick={(e) => handleSaveOrg(e)}
                                 aria-label="Save organization"
                             >
                                 <Image

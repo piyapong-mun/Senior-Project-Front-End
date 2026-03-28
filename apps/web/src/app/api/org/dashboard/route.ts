@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { decodeJwt } from "jose";
 
-const BACKEND = process.env.BACKEND_URL || "http://localhost:1323";
+const BACKEND = process.env.BACKEND_URL;
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "vcep_session";
 
 
@@ -189,6 +189,7 @@ type ActivityInfo = {
     max_participants: number;
     is_open_ended: boolean;
     state: string;
+    hours: number;
 }
 
 // Will Load only 20 first student
