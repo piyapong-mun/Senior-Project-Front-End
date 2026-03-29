@@ -1423,3 +1423,176 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* =========================
+   12) Challenge-specific
+========================= */
+.challengeDetailsPanel {
+  min-height: 607px;
+  padding: 28px 32px 24px;
+}
+
+.challengeFields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.challengeFieldBlock {
+  width: 100%;
+}
+
+.challengeTextarea {
+  min-height: 88px;
+}
+
+.challengeLevelGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  position: relative;
+}
+
+.challengeLevelButton {
+  min-height: 48px;
+  border: 5px solid #a8dadc;
+  background: #fff;
+  font-family: inherit;
+  font-size: 20px;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.challengeLevelButton:hover {
+  background: #edf9f9;
+}
+
+.challengeLevelButtonActive {
+  background: #a8dadc;
+}
+
+.submissionTextarea {
+  min-height: 85px;
+}
+
+.accessCardIconWrap {
+  width: 72px;
+  height: 72px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 6px auto 0;
+}
+
+.accessAudienceIcon {
+  object-fit: contain;
+}
+
+.inviteOnlyPlus {
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+  position: relative;
+}
+
+.inviteOnlyPlus::before,
+.inviteOnlyPlus::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+}
+
+.inviteOnlyPlus::before {
+  width: 16px;
+  height: 1.5px;
+}
+
+.inviteOnlyPlus::after {
+  width: 1.5px;
+  height: 16px;
+}
+
+.personIcon {
+  position: relative;
+  width: 56px;
+  height: 62px;
+}
+
+.personIconHead {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f1c768;
+  border: 1.5px solid rgba(0, 0, 0, 0.7);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+}
+
+.personIconBody {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 34px;
+  height: 42px;
+  border-radius: 16px 16px 4px 4px;
+  background: #b9b1f3;
+  border: 1.5px solid rgba(0, 0, 0, 0.7);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+}
+
+.personIconBody::before,
+.personIconBody::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  width: 10px;
+  height: 24px;
+  background: #b9b1f3;
+  border: 1.5px solid rgba(0, 0, 0, 0.7);
+  box-sizing: border-box;
+}
+
+.personIconBody::before {
+  left: -6px;
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  transform: rotate(6deg);
+}
+
+.personIconBody::after {
+  right: -6px;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  transform: rotate(-6deg);
+}
+
+.challengeRewardBadge {
+  width: 54px;
+  height: 54px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+
+.challengeRewardBadge span {
+  position: relative;
+  z-index: 1;
+}
+
+.challengeRewardBadgeIcon {
+  object-fit: contain;
+}

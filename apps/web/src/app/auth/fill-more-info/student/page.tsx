@@ -618,24 +618,21 @@ export default function FillMoreInfoStudentPage() {
               );
             })}
           </div>
+
+          <div className={styles.nextWrap}>
+            <button
+              className={styles.nextBtn}
+              type="button"
+              onClick={handleNext}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Next"}
+            </button>
+          </div>
+          <div className={styles.errorWrap}>
+            {err ? <p className={styles.errorText}>{err}</p> : null}
+          </div>
         </section>
-
-        <div className={styles.nextWrap}>
-          <button
-            className={styles.nextBtn}
-            type="button"
-            onClick={handleNext}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : "Next"}
-          </button>
-
-          {err && (
-            <p className={styles.note} style={{ marginTop: 8 }}>
-              {err}
-            </p>
-          )}
-        </div>
       </main>
     </div>
   );
