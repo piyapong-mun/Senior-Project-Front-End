@@ -156,7 +156,7 @@
   height: 640px;
   display: block;
   padding-top: 30px;
-  padding-right: 28px; /* ให้ Next ตรงแนวสวยขึ้น */
+  padding-right: 28px;
 }
 
 
@@ -223,10 +223,11 @@
 .avatarDots{
   position: absolute;
   left: 50%;
-  bottom: 112px;          /* ✅ ล็อกตำแหน่งเหนือปุ่ม Next */
+  bottom: 140px;
   transform: translateX(-50%);
   display: flex;
   gap: 10px;
+  /* z-index: 2; */
 }
 
 .dot{
@@ -254,31 +255,49 @@
 
 .nextWrap{
   position: absolute;
-  right: 28px;      /* ✅ ชิดขวา (เว้น 28px) */
-  bottom: 40px;     /* ✅ ตามเดิม */
+  right: 20px;
+  bottom: 60px;
   left: auto;
   transform: none;
-
-  width: auto;      /* ✅ ไม่ต้องกำหนด 712 */
-  max-width: none;
-  margin: 0;
-
-  display: block;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  z-index: 1;
 }
 
-
 .nextBtn{
-  position: static !important; /* ✅ บังคับล้ม absolute เก่า */
-  right: auto !important;
-  bottom: auto !important;
-
-  width: 220px;
+  position: static !important;
+  width: 240px;
   height: 52px;
   border-radius: 4px;
   border: 2px solid rgba(0,0,0,0.28);
   background: #fff;
   cursor: pointer;
   font-weight: 600;
+}
+
+.errorWrap{
+  position: absolute;
+  /* right: 20px; */
+  bottom: 25px;
+  width: 650px;
+  min-height: 60px;
+  margin-top: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  /* z-index: 1; */
+}
+
+.errorText{
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: #7a2f2f;
+  text-align: left;
+  word-break: break-word;
 }
 
 .nextBtn:hover, .iconBtn:hover{

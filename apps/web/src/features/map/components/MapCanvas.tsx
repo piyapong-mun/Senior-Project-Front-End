@@ -153,7 +153,7 @@ function YawAnimator({
 
 function MapModel({
   roadNamePrefix = "paved",
-  buildingNameIncludes = ["house", "building", "supermarket"],
+  buildingNameIncludes = ["building"],
   onRoadMeshesOnce,
   onPickRoadPoint,
   onPickBuilding,
@@ -168,7 +168,7 @@ function MapModel({
   onHoverBuilding?: (payload: HoverBuildingPayload) => void;
   resolveCompany: (meshName: string) => Company | null;
 }) {
-  const { scene } = useGLTF("/models/virtual_map_with_roadmask.glb");
+  const { scene } = useGLTF("https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/map/map.glb");
   const { camera, gl } = useThree();
 
   useEffect(() => {
@@ -313,7 +313,7 @@ function NameTag({
           color: "white",
           fontWeight: 900,
           fontSize: 22,
-          borderRadius: 999,
+          borderRadius: 5,
           whiteSpace: "nowrap",
           boxShadow: "0 14px 30px rgba(0,0,0,0.18)",
           letterSpacing: 0.2,
@@ -506,7 +506,7 @@ export default function MapCanvas({
       <Suspense fallback={null}>
         <PerspectiveCamera
           makeDefault
-          fov={35}
+          fov={18}
           ref={(c) => {
             cameraRef.current = c ?? null;
           }}
@@ -572,5 +572,5 @@ export default function MapCanvas({
   );
 }
 
-useGLTF.preload("/models/virtual_map_with_roadmask.glb");
+useGLTF.preload("https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/map/map.glb");
 useGLTF.preload("/models/boy.glb");

@@ -11,7 +11,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import styles from "./ActivityMeeting.module.css";
+import styles from "./ActivityChallenge.module.css";
 
 /* =========================
    Types
@@ -20,7 +20,7 @@ type ActivityKind = "meetings" | "courses" | "challenges";
 type ActivityStatus = "draft" | "publish";
 type AudienceAccess = "invitedOnly" | "everyone";
 type ParticipationMode = "joinAnytime" | "scheduledParticipation";
-type AttendanceLocation = "onsite" | "online";
+type ChallengeLevel = "beginner" | "intermediate" | "advanced";
 
 type ChoiceOption<T> = {
   value: T;
@@ -49,20 +49,22 @@ type UploadPreviewState = {
   fileName: string;
 };
 
-type PlaceSuggestionItem = {
-  id: string;
-  label: string;
-  placePrediction: any;
+type SkillFormValue = {
+  searchText: string;
+  selectedSkillId: string;
+  selectedSkillName: string;
+  selectedSkillCategory: string;
+  skillLevel: string;
+  percentText: string;
 };
 
-type SelectedPlaceState = {
-  displayText: string;
-  placeName: string;
-  formattedAddress: string;
-  detailText: string;
-  latitude: number | null;
-  longitude: number | null;
-  googleMapsUri: string;
+type RangePickerKey = "startDate" | "startTime" | "endDate" | "endTime" | null;
+
+type RangeValue = {
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
 };
 
 function createEmptyUploadState(): UploadPreviewState {
@@ -75,7 +77,7 @@ function createEmptyUploadState(): UploadPreviewState {
 }
 
 /* =========================
-   Mock Data
+   Static Data
 ========================= */
 const ACTIVITY_TYPE_OPTIONS: ChoiceOption<ActivityKind>[] = [
   { value: "meetings", label: "Meetings" },
@@ -99,46 +101,39 @@ const PARTICIPATION_OPTIONS: ChoiceOption<ParticipationMode>[] = [
   { value: "scheduledParticipation", label: "Scheduled Participation" },
 ];
 
+const CHALLENGE_LEVEL_OPTIONS: ChoiceOption<ChallengeLevel>[] = [
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+];
+
 const SKILL_PROGRESS_LIST: SkillProgressItem[] = [
   {
     id: "skill-01",
     skillName: "Performance Analysis",
-    skillLevel: "Understanding",
+    skillLevel: "Applying",
     percentText: "30%",
   },
   {
     id: "skill-02",
     skillName: "Performance Analysis",
-    skillLevel: "Remembering",
-    percentText: "20%",
+    skillLevel: "Analyzing",
+    percentText: "35%",
   },
   {
     id: "skill-03",
     skillName: "Performance Analysis",
-    skillLevel: "Applying",
-    percentText: "10%",
-  },
-  {
-    id: "skill-04",
-    skillName: "Performance Analysis",
-    skillLevel: "Analyzing",
-    percentText: "20%",
-  },
-  {
-    id: "skill-05",
-    skillName: "Performance Analysis",
     skillLevel: "Creating",
-    percentText: "10%",
+    percentText: "35%",
   },
 ];
 
 const FORM_DEFAULTS = {
   activityTitle: "",
   description: "",
-  onsiteLocation: "",
-  onlineLink: "",
-  speakerNames: "",
-  speakerBio: "",
+  problemStatement: "",
+  goalExpectedOutcome: "",
+  submissionRequirements: "",
   enrollmentStartDate: "",
   enrollmentStartTime: "",
   enrollmentEndDate: "",
@@ -148,28 +143,7 @@ const FORM_DEFAULTS = {
   activityEndDate: "",
   activityEndTime: "",
   maxParticipants: "0",
-  xpReward: "20",
-  badgeButtonText: "upload",
-  certificateButtonText: "upload",
-  qrCodeValue: "ACT-MEETING-2026-001",
-};
-
-type SkillFormValue = {
-  searchText: string;
-  selectedSkillId: string;
-  selectedSkillName: string;
-  selectedSkillCategory: string;
-  skillLevel: string;
-  percentText: string;
-};
-
-type RangePickerKey = "startDate" | "startTime" | "endDate" | "endTime" | null;
-
-type RangeValue = {
-  startDate: string;
-  startTime: string;
-  endDate: string;
-  endTime: string;
+  xpReward: "60",
 };
 
 const SKILL_LEVEL_OPTIONS = [
@@ -181,17 +155,17 @@ const SKILL_LEVEL_OPTIONS = [
   "Creating",
 ];
 
-function parsePercentValue(value: string) {
-  const numeric = Number(String(value).replace("%", "").trim());
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.max(0, Math.min(100, numeric));
-}
-
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
   const hours = String(Math.floor(index / 2)).padStart(2, "0");
   const minutes = index % 2 === 0 ? "00" : "30";
   return `${hours}:${minutes}`;
 });
+
+function parsePercentValue(value: string) {
+  const numeric = Number(String(value).replace("%", "").trim());
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(100, numeric));
+}
 
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -229,7 +203,6 @@ function buildCalendarCells(viewMonth: Date) {
   const offset = firstDayOfMonth.getDay();
   const totalDays = lastDayOfMonth.getDate();
   const totalCells = offset + totalDays <= 35 ? 35 : 42;
-
   const gridStart = new Date(year, month, 1 - offset);
 
   return Array.from({ length: totalCells }, (_, index) => {
@@ -248,133 +221,6 @@ function buildCalendarCells(viewMonth: Date) {
 function isDateInRange(targetIso: string, startIso: string, endIso: string) {
   if (!startIso || !endIso) return false;
   return targetIso >= startIso && targetIso <= endIso;
-}
-
-/* =========================
-   Google Maps Place Search
-========================= */
-declare global {
-  interface Window {
-    google?: any;
-    __googleMapsPlacesLoaderPromise?: Promise<any>;
-  }
-}
-
-const GOOGLE_MAPS_SCRIPT_ID = "activity-meeting-google-maps-script";
-
-function loadGoogleMapsPlacesApi() {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("Google Maps can only load in the browser."));
-  }
-
-  if (window.google?.maps?.importLibrary) {
-    return Promise.resolve(window.google);
-  }
-
-  if (window.__googleMapsPlacesLoaderPromise) {
-    return window.__googleMapsPlacesLoaderPromise;
-  }
-
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-  if (!apiKey) {
-    return Promise.reject(
-      new Error("Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY")
-    );
-  }
-
-  window.__googleMapsPlacesLoaderPromise = new Promise((resolve, reject) => {
-    const existingScript = document.getElementById(
-      GOOGLE_MAPS_SCRIPT_ID
-    ) as HTMLScriptElement | null;
-
-    const handleResolve = () => {
-      if (window.google?.maps?.importLibrary) {
-        resolve(window.google);
-      } else {
-        reject(new Error("Google Maps loaded but importLibrary is unavailable."));
-      }
-    };
-
-    const handleReject = () => {
-      reject(new Error("Failed to load Google Maps JavaScript API."));
-    };
-
-    if (existingScript) {
-      existingScript.addEventListener("load", handleResolve, { once: true });
-      existingScript.addEventListener("error", handleReject, { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = GOOGLE_MAPS_SCRIPT_ID;
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-      apiKey
-    )}&libraries=places&v=weekly&loading=async&language=th&region=TH`;
-    script.addEventListener("load", handleResolve, { once: true });
-    script.addEventListener("error", handleReject, { once: true });
-    document.head.appendChild(script);
-  });
-
-  return window.__googleMapsPlacesLoaderPromise;
-}
-
-function getAddressComponentText(components: any[] | undefined, typeName: string) {
-  if (!Array.isArray(components)) return "";
-
-  const matched = components.find((component) =>
-    Array.isArray(component?.types) ? component.types.includes(typeName) : false
-  );
-
-  return matched?.longText || matched?.shortText || "";
-}
-
-function joinUniqueText(parts: Array<string | undefined | null>) {
-  const cleaned = parts
-    .map((value) => (value || "").trim())
-    .filter(Boolean)
-    .filter((value, index, array) => array.indexOf(value) === index);
-
-  return cleaned.join(", ");
-}
-
-function normalizeSelectedPlace(place: any): SelectedPlaceState {
-  const components = Array.isArray(place?.addressComponents)
-    ? place.addressComponents
-    : [];
-
-  const detailText = joinUniqueText([
-    getAddressComponentText(components, "premise"),
-    getAddressComponentText(components, "subpremise"),
-    getAddressComponentText(components, "floor"),
-    getAddressComponentText(components, "room"),
-    getAddressComponentText(components, "street_number"),
-    getAddressComponentText(components, "route"),
-    getAddressComponentText(components, "sublocality_level_1"),
-    getAddressComponentText(components, "locality"),
-  ]);
-
-  const placeName = place?.displayName || "";
-  const formattedAddress = place?.formattedAddress || "";
-  const location = place?.location;
-
-  const fallbackDetailText = detailText || formattedAddress || "";
-  const displayText = joinUniqueText([
-    placeName,
-    fallbackDetailText,
-  ]).replace(/, /g, " — ");
-
-  return {
-    displayText,
-    placeName,
-    formattedAddress,
-    detailText: fallbackDetailText,
-    latitude: typeof location?.lat === "function" ? location.lat() : null,
-    longitude: typeof location?.lng === "function" ? location.lng() : null,
-    googleMapsUri: place?.googleMapsURI || "",
-  };
 }
 
 /* =========================
@@ -401,84 +247,24 @@ function CheckBoxIcon({ checked }: { checked: boolean }) {
   );
 }
 
-/* =========================
-   QR Code Preview
-========================= */
-const QR_SIZE = 21;
-
-function isInsideFinder(row: number, col: number, size: number) {
-  const topLeft = row < 7 && col < 7;
-  const topRight = row < 7 && col >= size - 7;
-  const bottomLeft = row >= size - 7 && col < 7;
-  return topLeft || topRight || bottomLeft;
-}
-
-function isFinderDark(row: number, col: number, size: number) {
-  let localRow = row;
-  let localCol = col;
-
-  if (row < 7 && col >= size - 7) {
-    localCol = col - (size - 7);
-  } else if (row >= size - 7 && col < 7) {
-    localRow = row - (size - 7);
+function AudienceIllustration({ value }: { value: AudienceAccess }) {
+  if (value === "invitedOnly") {
+    return (
+      <div className={styles.accessCardIconWrap} aria-hidden="true">
+        <span className={styles.inviteOnlyPlus} />
+      </div>
+    );
   }
-
-  const isOuterBorder =
-    localRow === 0 || localRow === 6 || localCol === 0 || localCol === 6;
-
-  const isCenterBlock =
-    localRow >= 2 && localRow <= 4 && localCol >= 2 && localCol <= 4;
-
-  return isOuterBorder || isCenterBlock;
-}
-
-function getQrCellIsDark(row: number, col: number, size: number) {
-  if (isInsideFinder(row, col, size)) {
-    return isFinderDark(row, col, size);
-  }
-
-  const isTimingRow = row === 6 && col > 7 && col < size - 8;
-  const isTimingCol = col === 6 && row > 7 && row < size - 8;
-
-  if (isTimingRow || isTimingCol) {
-    return (row + col) % 2 === 0;
-  }
-
-  const seed = (row * 13 + col * 17 + row * col) % 7;
-  return seed === 0 || seed === 1 || ((row + col) % 5 === 0 && row % 2 === 0);
-}
-
-function CheckInQrPreview({ value }: { value: string }) {
-  const qrCells = useMemo(() => {
-    return Array.from({ length: QR_SIZE * QR_SIZE }, (_, index) => {
-      const row = Math.floor(index / QR_SIZE);
-      const col = index % QR_SIZE;
-      return {
-        key: `${row}-${col}`,
-        isDark: getQrCellIsDark(row, col, QR_SIZE),
-      };
-    });
-  }, []);
 
   return (
-    <div className={styles.checkInBlock}>
-      <div className={styles.checkInTitle}>Check-in</div>
-
-      <div className={styles.qrPreviewCard}>
-        <div className={styles.qrPreviewFrame}>
-          <div className={styles.qrGrid} aria-label="Generated check-in QR code">
-            {qrCells.map((cell) => (
-              <span
-                key={cell.key}
-                className={`${styles.qrCell} ${cell.isDark ? styles.qrCellDark : ""}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.qrCodeLabel}>Generated QR Code</div>
-        <div className={styles.qrCodeValue}>{value}</div>
-      </div>
+    <div className={styles.accessCardIconWrap} aria-hidden="true">
+      <Image
+        src="/images/icons/body2-icon.png"
+        alt="Everyone can join"
+        fill
+        className={styles.accessAudienceIcon}
+        sizes="72px"
+      />
     </div>
   );
 }
@@ -532,355 +318,61 @@ function ActivityInformationSection() {
   );
 }
 
-function LocationAndSpeakerSection({
-  selectedLocation,
-  onSelectLocation,
+function ChallengeSpecificationSection({
+  selectedLevel,
+  onSelectLevel,
 }: {
-  selectedLocation: AttendanceLocation;
-  onSelectLocation: (value: AttendanceLocation) => void;
+  selectedLevel: ChallengeLevel;
+  onSelectLevel: (value: ChallengeLevel) => void;
 }) {
-  const [onsiteLocationInput, setOnsiteLocationInput] = useState(
-    FORM_DEFAULTS.onsiteLocation
-  );
-  const [onlineLink, setOnlineLink] = useState(FORM_DEFAULTS.onlineLink);
-  const [placeSuggestions, setPlaceSuggestions] = useState<PlaceSuggestionItem[]>([]);
-  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
-  const [placeSearchError, setPlaceSearchError] = useState("");
-  const [selectedPlace, setSelectedPlace] = useState<SelectedPlaceState | null>(
-    null
-  );
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-  const autocompleteSessionTokenRef = useRef<any | null>(null);
-  const latestRequestIdRef = useRef(0);
-  const shouldSkipNextSearchRef = useRef(false);
-  const blurTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (blurTimerRef.current) {
-        window.clearTimeout(blurTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (selectedLocation !== "onsite") {
-      setIsDropdownOpen(false);
-      return;
-    }
-
-    if (shouldSkipNextSearchRef.current) {
-      shouldSkipNextSearchRef.current = false;
-      return;
-    }
-
-    const keyword = onsiteLocationInput.trim();
-
-    if (keyword.length < 2) {
-      setPlaceSuggestions([]);
-      setPlaceSearchError("");
-      setIsSearchingPlaces(false);
-      return;
-    }
-
-    const timeoutId = window.setTimeout(async () => {
-      const requestId = latestRequestIdRef.current + 1;
-      latestRequestIdRef.current = requestId;
-
-      try {
-        setIsSearchingPlaces(true);
-        setPlaceSearchError("");
-
-        const google = await loadGoogleMapsPlacesApi();
-        const placesLibrary = await google.maps.importLibrary("places");
-        const AutocompleteSessionToken =
-          placesLibrary.AutocompleteSessionToken;
-        const AutocompleteSuggestion =
-          placesLibrary.AutocompleteSuggestion;
-
-        if (!autocompleteSessionTokenRef.current) {
-          autocompleteSessionTokenRef.current = new AutocompleteSessionToken();
-        }
-
-        const response =
-          await AutocompleteSuggestion.fetchAutocompleteSuggestions({
-            input: keyword,
-            language: "th",
-            region: "th",
-            sessionToken: autocompleteSessionTokenRef.current,
-          });
-
-        if (requestId !== latestRequestIdRef.current) {
-          return;
-        }
-
-        const nextSuggestions = Array.isArray(response?.suggestions)
-          ? response.suggestions
-              .map((suggestion: any, index: number) => {
-                const placePrediction = suggestion?.placePrediction;
-
-                if (!placePrediction) {
-                  return null;
-                }
-
-                const label = placePrediction.text?.toString?.() || "";
-
-                return {
-                  id: `${label}-${index}`,
-                  label,
-                  placePrediction,
-                };
-              })
-              .filter(Boolean)
-          : [];
-
-        setPlaceSuggestions(nextSuggestions as PlaceSuggestionItem[]);
-        setIsDropdownOpen(true);
-      } catch (error: any) {
-        if (requestId !== latestRequestIdRef.current) {
-          return;
-        }
-
-        setPlaceSuggestions([]);
-        setPlaceSearchError(
-          error?.message || "Failed to search places from Google Maps."
-        );
-      } finally {
-        if (requestId === latestRequestIdRef.current) {
-          setIsSearchingPlaces(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [onsiteLocationInput, selectedLocation]);
-
-  const handleSelectSuggestion = async (suggestion: PlaceSuggestionItem) => {
-    try {
-      setIsSearchingPlaces(true);
-      setPlaceSearchError("");
-
-      const place = suggestion.placePrediction.toPlace();
-      await place.fetchFields({
-        fields: [
-          "displayName",
-          "formattedAddress",
-          "addressComponents",
-          "location",
-          "googleMapsURI",
-        ],
-      });
-
-      const normalizedPlace = normalizeSelectedPlace(place);
-
-      shouldSkipNextSearchRef.current = true;
-      autocompleteSessionTokenRef.current = null;
-      setSelectedPlace(normalizedPlace);
-      setOnsiteLocationInput(normalizedPlace.displayText || suggestion.label);
-      setPlaceSuggestions([]);
-      setIsDropdownOpen(false);
-    } catch (error: any) {
-      setPlaceSearchError(
-        error?.message || "Failed to load selected place details."
-      );
-    } finally {
-      setIsSearchingPlaces(false);
-    }
-  };
-
-  const handleOnsiteInputChange = (value: string) => {
-    setOnsiteLocationInput(value);
-    setIsDropdownOpen(true);
-
-    if (selectedPlace && value !== selectedPlace.displayText) {
-      setSelectedPlace(null);
-    }
-  };
-
-  const clearSelectedPlace = () => {
-    autocompleteSessionTokenRef.current = null;
-    setSelectedPlace(null);
-    setOnsiteLocationInput("");
-    setPlaceSuggestions([]);
-    setPlaceSearchError("");
-    setIsDropdownOpen(false);
-  };
-
   return (
-    <SectionCard className={styles.detailsPanel}>
-      <div className={styles.locationBlock}>
-        <div className={styles.locationRow}>
-          <button
-            type="button"
-            className={styles.locationChoice}
-            onClick={() => onSelectLocation("onsite")}
-          >
-            <CheckBoxIcon checked={selectedLocation === "onsite"} />
-            <span>On-site</span>
-          </button>
+    <SectionCard className={`${styles.detailsPanel} ${styles.challengeDetailsPanel}`}>
+      <div className={styles.challengeFields}>
+        <div className={styles.challengeFieldBlock}>
+          <label className={styles.sectionTitle}>Problem statement</label>
+          <textarea
+            className={`${styles.bioTextarea} ${styles.challengeTextarea}`}
+            placeholder="description"
+            defaultValue={FORM_DEFAULTS.problemStatement}
+          />
+        </div>
 
-          <div className={styles.locationFieldWrap}>
-            <div className={styles.locationInputWrap}>
-              <input
-                className={`${styles.standardInput} ${selectedLocation !== "onsite" ? styles.locationInputDisabled : ""
+        <div className={styles.challengeFieldBlock}>
+          <label className={styles.sectionTitle}>Goal / expected outcome</label>
+          <textarea
+            className={`${styles.bioTextarea} ${styles.challengeTextarea}`}
+            placeholder="description"
+            defaultValue={FORM_DEFAULTS.goalExpectedOutcome}
+          />
+        </div>
+
+        <div className={styles.challengeFieldBlock}>
+          <div className={styles.challengeLevelGrid}>
+            {CHALLENGE_LEVEL_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`${styles.challengeLevelButton} ${selectedLevel === option.value
+                  ? styles.challengeLevelButtonActive
+                  : ""
                   }`}
-                placeholder="Search building, office, campus, floor, room"
-                value={onsiteLocationInput}
-                onChange={(event) => handleOnsiteInputChange(event.target.value)}
-                onFocus={() => {
-                  if (blurTimerRef.current) {
-                    window.clearTimeout(blurTimerRef.current);
-                  }
-                  if (selectedLocation === "onsite") {
-                    setIsDropdownOpen(true);
-                  }
-                }}
-                onClick={() => {
-                  if (selectedLocation !== "onsite") {
-                    onSelectLocation("onsite");
-                  }
-                  setIsDropdownOpen(true);
-                }}
-                onBlur={() => {
-                  blurTimerRef.current = window.setTimeout(() => {
-                    setIsDropdownOpen(false);
-                  }, 150);
-                }}
-                disabled={selectedLocation !== "onsite"}
-              />
-
-              {selectedLocation === "onsite" && isDropdownOpen ? (
-                <div className={styles.placeSearchDropdown}>
-                  {isSearchingPlaces ? (
-                    <div className={styles.placeSearchState}>Searching places...</div>
-                  ) : placeSearchError ? (
-                    <div className={styles.placeSearchError}>{placeSearchError}</div>
-                  ) : onsiteLocationInput.trim().length < 2 ? (
-                    <div className={styles.placeSearchState}>
-                      Type at least 2 characters to search Google Maps.
-                    </div>
-                  ) : placeSuggestions.length === 0 ? (
-                    <div className={styles.placeSearchState}>No places found</div>
-                  ) : (
-                    placeSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.id}
-                        type="button"
-                        className={styles.placeSuggestionButton}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => handleSelectSuggestion(suggestion)}
-                      >
-                        <div className={styles.placeSuggestionTitle}>
-                          {suggestion.label}
-                        </div>
-                        <div className={styles.placeSuggestionHint}>
-                          Select to fill place name and address details
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              ) : null}
-            </div>
-
-            <div className={styles.locationHelperText}>
-              Search from Google Maps, then the field will store the place name and address details automatically.
-            </div>
-
-            {selectedLocation === "onsite" && selectedPlace ? (
-              <div className={styles.selectedPlaceCard}>
-                <div className={styles.selectedPlaceHeader}>
-                  <div>
-                    <div className={styles.selectedPlaceTitle}>
-                      {selectedPlace.placeName || "Selected place"}
-                    </div>
-                    <div className={styles.selectedPlaceDetail}>
-                      {selectedPlace.detailText || selectedPlace.formattedAddress}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className={styles.clearSelectedPlaceButton}
-                    onClick={clearSelectedPlace}
-                  >
-                    Clear
-                  </button>
-                </div>
-
-                {selectedPlace.formattedAddress ? (
-                  <div className={styles.selectedPlaceMeta}>
-                    Full address: {selectedPlace.formattedAddress}
-                  </div>
-                ) : null}
-
-                {selectedPlace.latitude !== null && selectedPlace.longitude !== null ? (
-                  <div className={styles.selectedPlaceMeta}>
-                    Coordinates: {selectedPlace.latitude.toFixed(6)}, {" "}
-                    {selectedPlace.longitude.toFixed(6)}
-                  </div>
-                ) : null}
-
-                {selectedPlace.googleMapsUri ? (
-                  <a
-                    href={selectedPlace.googleMapsUri}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={styles.selectedPlaceLink}
-                  >
-                    Open in Google Maps
-                  </a>
-                ) : null}
-              </div>
-            ) : null}
+                onClick={() => onSelectLevel(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className={styles.locationRow}>
-          <button
-            type="button"
-            className={styles.locationChoice}
-            onClick={() => onSelectLocation("online")}
-          >
-            <CheckBoxIcon checked={selectedLocation === "online"} />
-            <span>Online</span>
-          </button>
-
-          <input
-            className={`${styles.standardInput} ${selectedLocation !== "online" ? styles.locationInputDisabled : ""
-              }`}
-            placeholder="Link"
-            value={onlineLink}
-            onChange={(event) => setOnlineLink(event.target.value)}
-            disabled={selectedLocation !== "online"}
+        <div className={styles.challengeFieldBlock}>
+          <label className={styles.sectionTitle}>Submission Requirements</label>
+          <textarea
+            className={`${styles.bioTextarea} ${styles.submissionTextarea}`}
+            placeholder="file, link (GitHub/Figma), video demo, pictures"
+            defaultValue={FORM_DEFAULTS.submissionRequirements}
           />
         </div>
       </div>
-
-      <div className={styles.divider} />
-
-      <div className={styles.formBlock}>
-        <label className={styles.sectionTitle}>Speakers/Hosts</label>
-        <input
-          className={styles.fullWidthInput}
-          placeholder="Body"
-          defaultValue={FORM_DEFAULTS.speakerNames}
-        />
-      </div>
-
-      <div className={styles.formBlock}>
-        <label className={styles.sectionTitle}>Position/Bio</label>
-        <textarea
-          className={styles.bioTextarea}
-          placeholder="description"
-          defaultValue={FORM_DEFAULTS.speakerBio}
-        />
-      </div>
-
-      <CheckInQrPreview value={FORM_DEFAULTS.qrCodeValue} />
     </SectionCard>
   );
 }
@@ -898,8 +390,8 @@ function ActivityStatusSection({
         <button
           type="button"
           className={`${styles.actionButton} ${selectedStatus === "draft"
-              ? styles.statusButtonActive
-              : styles.statusButtonInactive
+            ? styles.statusButtonActive
+            : styles.statusButtonInactive
             }`}
           onClick={() => onSelectStatus("draft")}
         >
@@ -916,8 +408,8 @@ function ActivityStatusSection({
         <button
           type="button"
           className={`${styles.actionButton} ${selectedStatus === "publish"
-              ? styles.statusButtonActive
-              : styles.statusButtonInactive
+            ? styles.statusButtonActive
+            : styles.statusButtonInactive
             }`}
           onClick={() => onSelectStatus("publish")}
         >
@@ -982,8 +474,6 @@ function AddSkillModal({
       .slice(0, 10);
   }, [availableSkills, formValue.searchText]);
 
-  const shouldShowDropdown = isSkillDropdownOpen;
-
   if (!isOpen) return null;
 
   return (
@@ -1018,7 +508,7 @@ function AddSkillModal({
               placeholder="Click or type to search skill"
             />
 
-            {shouldShowDropdown && (
+            {isSkillDropdownOpen && (
               <div className={styles.skillSearchResultBox}>
                 {isLoadingSkills ? (
                   <div className={styles.skillSearchState}>Loading skills...</div>
@@ -1028,8 +518,7 @@ function AddSkillModal({
                   <div className={styles.skillSearchState}>No skills found</div>
                 ) : (
                   filteredSkills.map((skill) => {
-                    const isSelected =
-                      formValue.selectedSkillId === skill.skillId;
+                    const isSelected = formValue.selectedSkillId === skill.skillId;
 
                     return (
                       <button
@@ -1037,6 +526,7 @@ function AddSkillModal({
                         type="button"
                         className={`${styles.skillSearchItem} ${isSelected ? styles.skillSearchItemActive : ""
                           }`}
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => {
                           onChange({
                             ...formValue,
@@ -1104,6 +594,7 @@ function AddSkillModal({
             placeholder={`0 - ${remainingPercent}`}
           />
         </div>
+
         <div className={styles.selectedSkillSummary}>
           Remaining weight: {remainingPercent}%
         </div>
@@ -1177,10 +668,7 @@ function RewardUploadBox({
             )}
 
             <div className={styles.rewardPreviewOverlay}>
-              <span
-                className={styles.rewardPreviewName}
-                title={upload.fileName}
-              >
+              <span className={styles.rewardPreviewName} title={upload.fileName}>
                 {upload.fileName}
               </span>
             </div>
@@ -1206,8 +694,7 @@ function RewardUploadBox({
 }
 
 function SkillsAndRewardsSection() {
-  const [skillItems, setSkillItems] =
-    useState<SkillProgressItem[]>(SKILL_PROGRESS_LIST);
+  const [skillItems, setSkillItems] = useState<SkillProgressItem[]>(SKILL_PROGRESS_LIST);
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [availableSkills, setAvailableSkills] = useState<SkillOption[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
@@ -1295,7 +782,6 @@ function SkillsAndRewardsSection() {
     (setter: Dispatch<SetStateAction<UploadPreviewState>>) =>
       (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-
         if (!file) return;
 
         const isSupported =
@@ -1438,20 +924,31 @@ function SkillsAndRewardsSection() {
 
         <div className={styles.skillWeightSummary}>
           <span>Total: {totalPercent}%</span>
-          <span>Remaining: {Math.max(0, 100 - totalPercent)}%</span>
+          <span>Remaining: {remainingPercent}%</span>
         </div>
 
         <div className={styles.rewardStatsGrid}>
           <div className={styles.rewardCell}>
             <div className={styles.rewardTitle}>XP</div>
             <div className={styles.xpValueBox}>{FORM_DEFAULTS.xpReward}</div>
+            <div className={styles.rewardIconWrap} aria-hidden="true">
+              <div className={styles.challengeRewardBadge}>
+                <Image
+                  src="/images/icons/badge01.png"
+                  alt="Challenge badge"
+                  fill
+                  className={styles.challengeRewardBadgeIcon}
+                  sizes="54px"
+                />
+              </div>
+            </div>
           </div>
 
           <div className={styles.rewardCell}>
             <div className={styles.rewardTitle}>Badges</div>
             <RewardUploadBox
               title="Badge"
-              inputId="badge-upload-input"
+              inputId="challenge-badge-upload-input"
               upload={badgeUpload}
               onFileChange={handleRewardFileChange(setBadgeUpload)}
               onClear={clearRewardUpload(setBadgeUpload)}
@@ -1462,13 +959,14 @@ function SkillsAndRewardsSection() {
             <div className={styles.rewardTitle}>Certificate</div>
             <RewardUploadBox
               title="Certificate"
-              inputId="certificate-upload-input"
+              inputId="challenge-certificate-upload-input"
               upload={certificateUpload}
               onFileChange={handleRewardFileChange(setCertificateUpload)}
               onClear={clearRewardUpload(setCertificateUpload)}
             />
           </div>
         </div>
+
         {rewardUploadError ? (
           <div className={styles.rewardUploadError}>{rewardUploadError}</div>
         ) : null}
@@ -1524,9 +1022,7 @@ function CalendarPopup({
           ‹
         </button>
 
-        <div className={styles.calendarMonthTitle}>
-          {formatMonthTitle(visibleMonth)}
-        </div>
+        <div className={styles.calendarMonthTitle}>{formatMonthTitle(visibleMonth)}</div>
 
         <button
           type="button"
@@ -1837,6 +1333,7 @@ function AccessAndScheduleSection({
             onClick={() => onSelectAudience(option.value)}
           >
             <div className={styles.accessTitle}>{option.label}</div>
+            <AudienceIllustration value={option.value} />
           </button>
         ))}
       </div>
@@ -1849,8 +1346,8 @@ function AccessAndScheduleSection({
             key={option.value}
             type="button"
             className={`${styles.joinModeButton} ${selectedParticipation === option.value
-                ? styles.joinModeButtonActive
-                : ""
+              ? styles.joinModeButtonActive
+              : ""
               }`}
             onClick={() => onSelectParticipation(option.value)}
           >
@@ -1907,18 +1404,18 @@ function AccessAndScheduleSection({
 /* =========================
    Main Page
 ========================= */
-export default function ActivityMeeting() {
+export default function ActivityChallenge() {
   const router = useRouter();
   const [selectedActivityType, setSelectedActivityType] =
-    useState<ActivityKind>("meetings");
+    useState<ActivityKind>("challenges");
   const [selectedActivityStatus, setSelectedActivityStatus] =
-    useState<ActivityStatus>("draft");
+    useState<ActivityStatus>("publish");
   const [selectedAudience, setSelectedAudience] =
     useState<AudienceAccess>("everyone");
   const [selectedParticipation, setSelectedParticipation] =
     useState<ParticipationMode>("scheduledParticipation");
-  const [selectedLocation, setSelectedLocation] =
-    useState<AttendanceLocation>("onsite");
+  const [selectedLevel, setSelectedLevel] =
+    useState<ChallengeLevel>("advanced");
 
   const handleSelectActivityType = (value: ActivityKind) => {
     if (value === selectedActivityType) return;
@@ -1936,9 +1433,9 @@ export default function ActivityMeeting() {
           onSelectType={handleSelectActivityType}
         />
 
-        <LocationAndSpeakerSection
-          selectedLocation={selectedLocation}
-          onSelectLocation={setSelectedLocation}
+        <ChallengeSpecificationSection
+          selectedLevel={selectedLevel}
+          onSelectLevel={setSelectedLevel}
         />
       </div>
 
