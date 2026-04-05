@@ -147,11 +147,18 @@ const FALLBACK_ORG: CurrentOrg = {
 };
 
 const FALLBACK_REMOTE_STUDENTS: RemoteStudent[] = [
-  { id: "p1", name: "Charlotte Garcia", position: new THREE.Vector3(-32, 5, 18), modelUrl: "/models/boy.glb" },
-  { id: "p2", name: "Emma Williams", position: new THREE.Vector3(-14, 5, 8), modelUrl: "/models/boy.glb" },
+  { id: "p1", name: "Charlotte Garcia", position: new THREE.Vector3(10, 5, -4), modelUrl: "/models/boy.glb" },
+  { id: "p2", name: "Emma Williams", position: new THREE.Vector3(-7, 5, -2), modelUrl: "/models/boy.glb" },
   { id: "p3", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
   { id: "p4", name: "Alexander Davis", position: new THREE.Vector3(18, 5, 12), modelUrl: "/models/boy.glb" },
   { id: "p5", name: "Olivia Davis", position: new THREE.Vector3(28, 5, -18), modelUrl: "/models/boy.glb" },
+  { id: "p6", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
+  { id: "p7", name: "Alexander Davis", position: new THREE.Vector3(18, 5, 12), modelUrl: "/models/boy.glb" },
+  { id: "p8", name: "Olivia Davis", position: new THREE.Vector3(28, 5, -18), modelUrl: "/models/boy.glb" },
+    { id: "p9", name: "Charlotte Garcia", position: new THREE.Vector3(10, 5, -4), modelUrl: "/models/boy.glb" },
+  { id: "p10", name: "Emma Williams", position: new THREE.Vector3(-7, 5, -2), modelUrl: "/models/boy.glb" },
+  { id: "p11", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
+  { id: "p12", name: "Alexander Davis", position: new THREE.Vector3(18, 5, 12), modelUrl: "/models/boy.glb" },
 ];
 
 function normalizeActivities(input: unknown): OrgActivity[] {
@@ -192,54 +199,69 @@ function normalizeActivities(input: unknown): OrgActivity[] {
 }
 
 function buildProfileSummary(payload: any): OrgProfileSummary {
-  if (!payload || typeof payload !== "object") return DASHBOARD_PROFILE_SUMMARY;
+  if (!payload || typeof payload !== "object") return {};
 
   return {
-    description:
-      typeof payload.description === "string"
-        ? payload.description
-        : typeof payload.about === "string"
-          ? payload.about
-          : DASHBOARD_PROFILE_SUMMARY.description,
-    phone:
-      typeof payload.phone === "string" ? payload.phone : DASHBOARD_PROFILE_SUMMARY.phone,
-    email:
-      typeof payload.email === "string" ? payload.email : DASHBOARD_PROFILE_SUMMARY.email,
-    address:
-      typeof payload.address === "string" ? payload.address : DASHBOARD_PROFILE_SUMMARY.address,
-    totalActivities: Number(payload.total_activities ?? payload.totalActivities ?? DASHBOARD_PROFILE_SUMMARY.totalActivities),
-    published: Number(payload.published ?? DASHBOARD_PROFILE_SUMMARY.published),
-    draft: Number(payload.draft ?? DASHBOARD_PROFILE_SUMMARY.draft),
-    meetings: Number(payload.meetings ?? DASHBOARD_PROFILE_SUMMARY.meetings),
-    courses: Number(payload.courses ?? DASHBOARD_PROFILE_SUMMARY.courses),
-    challenges: Number(payload.challenges ?? DASHBOARD_PROFILE_SUMMARY.challenges),
-    participants: Number(payload.participants ?? payload.total_participants ?? DASHBOARD_PROFILE_SUMMARY.participants),
+    description: typeof payload.description === "string" ? payload.description
+      : typeof payload.about === "string" ? payload.about
+      : undefined,
+    phone: typeof payload.phone === "string" && payload.phone ? payload.phone : undefined,
+    email: typeof payload.email === "string" && payload.email ? payload.email : undefined,
+    address: typeof payload.address === "string" && payload.address ? payload.address : undefined,
+    totalActivities: payload.total_activities != null ? Number(payload.total_activities)
+      : payload.totalActivities != null ? Number(payload.totalActivities)
+      : undefined,
+    published: payload.published != null ? Number(payload.published) : undefined,
+    draft: payload.draft != null ? Number(payload.draft) : undefined,
+    meetings: payload.meetings != null ? Number(payload.meetings) : undefined,
+    courses: payload.courses != null ? Number(payload.courses) : undefined,
+    challenges: payload.challenges != null ? Number(payload.challenges) : undefined,
+    participants: payload.participants != null ? Number(payload.participants)
+      : payload.total_participants != null ? Number(payload.total_participants)
+      : undefined,
   };
 }
 
 function buildOrgFromPayload(payload: any): CurrentOrg | null {
   if (!payload || typeof payload !== "object") return null;
 
+  // รองรับทั้ง normalizeOrg format (orgName, aboutUs, email ฯลฯ)
+  // และ raw backend format (org_name, about_org ฯลฯ)
   const orgName = String(
-    payload.org_name ?? payload.organization_name ?? payload.name ?? payload.company_name ?? ""
+    payload.orgName ?? payload.org_name ?? payload.organization_name ?? payload.name ?? ""
   ).trim();
 
   if (!orgName) return null;
 
+  // building mesh name จาก buildingName ที่ set ไว้ใน DB
+  const buildingMeshName = String(
+    payload.buildingName ?? payload.building_name ?? MOCK_CURRENT_ACCOUNT_BUILDING_MESH_NAME
+  ).trim() || MOCK_CURRENT_ACCOUNT_BUILDING_MESH_NAME;
+
   return {
-    org_id: String(payload.org_id ?? payload.organization_id ?? payload.id ?? "org"),
+    org_id: String(payload.orgId ?? payload.org_id ?? payload.id ?? "org"),
     org_name: orgName,
     logo:
-      typeof payload.logo === "string"
-        ? payload.logo
-        : typeof payload.logo_url === "string"
-          ? payload.logo_url
-          : typeof payload.profile_image_url === "string"
-            ? payload.profile_image_url
-            : undefined,
-    building_mesh_names: [MOCK_CURRENT_ACCOUNT_BUILDING_MESH_NAME],
+      typeof payload.logoPreview === "string" && payload.logoPreview
+        ? payload.logoPreview
+        : typeof payload.logo === "string" && payload.logo
+          ? payload.logo
+          : undefined,
+    building_mesh_names: [buildingMeshName],
     activities: normalizeActivities(payload.activities ?? payload.open_activities ?? payload.activity_list),
-    profileSummary: buildProfileSummary(payload),
+    profileSummary: buildProfileSummary({
+      description: payload.aboutUs ?? payload.about_org ?? payload.description,
+      phone: payload.phone,
+      email: payload.email,
+      address: payload.location ?? payload.address,
+      total_activities: payload.totalActivities ?? payload.total_activities,
+      published: payload.published,
+      draft: payload.draft,
+      meetings: payload.meetings,
+      courses: payload.courses,
+      challenges: payload.challenges,
+      participants: payload.participants ?? payload.total_participants,
+    }),
   };
 }
 
@@ -290,11 +312,14 @@ export default function OrgExploreScene() {
 
     (async () => {
       try {
-        const response = await fetch("/api/organization/me", { cache: "no-store" });
+        const response = await fetch("/api/organization", { cache: "no-store" });
         const json = (await response.json().catch(() => null)) as OrgApiResponse | null;
         if (!response.ok || !json?.ok) return;
 
-        const nextOrg = buildOrgFromPayload(json.data ?? json.org ?? json);
+        // normalizeOrg คืน { ok, data: { organization: { orgName, orgId, ... } } }
+        const nextOrg = buildOrgFromPayload(
+          json.data?.organization ?? json.data ?? json.org ?? json
+        );
         if (!cancelled && nextOrg) {
           setOrg((prev) => ({
             ...prev,
@@ -440,7 +465,7 @@ export default function OrgExploreScene() {
 
   return (
     <div
-      style={{ height: "100vh", position: "relative", background: "#F3EEE8", overflow: "hidden" }}
+      style={{ height: "100vh", position: "relative", background: "#EEE7DE", overflow: "hidden" }}
       onContextMenu={(e) => e.preventDefault()}
     >
       <OrgExploreHud
@@ -464,7 +489,7 @@ export default function OrgExploreScene() {
             transform: "translateX(-50%)",
             zIndex: 60,
             padding: "8px 18px",
-            borderRadius: 999,
+            borderRadius: 5,
             background: "#FEFEFE",
             border: "1px solid #E0D6CD",
             boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
@@ -485,7 +510,7 @@ export default function OrgExploreScene() {
             transform: "translateX(-50%)",
             zIndex: 60,
             padding: "8px 18px",
-            borderRadius: 999,
+            borderRadius: 5,
             background: "#FEFEFE",
             border: "1px solid #E0D6CD",
             boxShadow: "0 8px 20px rgba(0,0,0,0.08)",

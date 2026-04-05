@@ -39,7 +39,6 @@ type SkillProgressItem = {
   skillName: string;
   skillCategory?: string;
   skillLevel: string;
-  percentText: string;
 };
 
 type UploadPreviewState = {
@@ -55,7 +54,6 @@ type SkillFormValue = {
   selectedSkillName: string;
   selectedSkillCategory: string;
   skillLevel: string;
-  percentText: string;
 };
 
 type RangePickerKey = "startDate" | "startTime" | "endDate" | "endTime" | null;
@@ -112,19 +110,16 @@ const SKILL_PROGRESS_LIST: SkillProgressItem[] = [
     id: "skill-01",
     skillName: "Performance Analysis",
     skillLevel: "Applying",
-    percentText: "30%",
   },
   {
     id: "skill-02",
     skillName: "Performance Analysis",
     skillLevel: "Analyzing",
-    percentText: "35%",
   },
   {
     id: "skill-03",
     skillName: "Performance Analysis",
     skillLevel: "Creating",
-    percentText: "35%",
   },
 ];
 
@@ -160,12 +155,6 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
   const minutes = index % 2 === 0 ? "00" : "30";
   return `${hours}:${minutes}`;
 });
-
-function parsePercentValue(value: string) {
-  const numeric = Number(String(value).replace("%", "").trim());
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.max(0, Math.min(100, numeric));
-}
 
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -433,8 +422,6 @@ function AddSkillModal({
   availableSkills,
   isLoadingSkills,
   loadError,
-  remainingPercent,
-  percentError,
   onChange,
   onClose,
   onSubmit,
@@ -444,8 +431,6 @@ function AddSkillModal({
   availableSkills: SkillOption[];
   isLoadingSkills: boolean;
   loadError: string;
-  remainingPercent: number;
-  percentError: string;
   onChange: (nextValue: SkillFormValue) => void;
   onClose: () => void;
   onSubmit: () => void;
@@ -583,26 +568,6 @@ function AddSkillModal({
           </select>
         </div>
 
-        <div className={styles.skillModalField}>
-          <label className={styles.skillModalLabel}>Percent</label>
-          <input
-            className={styles.skillModalInput}
-            value={formValue.percentText}
-            onChange={(event) =>
-              onChange({ ...formValue, percentText: event.target.value })
-            }
-            placeholder={`0 - ${remainingPercent}`}
-          />
-        </div>
-
-        <div className={styles.selectedSkillSummary}>
-          Remaining weight: {remainingPercent}%
-        </div>
-
-        {percentError ? (
-          <div className={styles.skillSearchError}>{percentError}</div>
-        ) : null}
-
         <div className={styles.skillModalActions}>
           <button
             type="button"
@@ -615,7 +580,7 @@ function AddSkillModal({
             type="button"
             className={styles.skillModalPrimaryButton}
             onClick={onSubmit}
-            disabled={!formValue.selectedSkillId || remainingPercent === 0}
+            disabled={!formValue.selectedSkillId}
           >
             Add
           </button>
@@ -699,7 +664,6 @@ function SkillsAndRewardsSection() {
   const [availableSkills, setAvailableSkills] = useState<SkillOption[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [skillLoadError, setSkillLoadError] = useState("");
-  const [skillPercentError, setSkillPercentError] = useState("");
 
   const [badgeUpload, setBadgeUpload] = useState<UploadPreviewState>(
     createEmptyUploadState()
@@ -715,16 +679,7 @@ function SkillsAndRewardsSection() {
     selectedSkillName: "",
     selectedSkillCategory: "",
     skillLevel: SKILL_LEVEL_OPTIONS[0],
-    percentText: "",
   });
-
-  const totalPercent = useMemo(() => {
-    return skillItems.reduce((sum, skill) => {
-      return sum + parsePercentValue(skill.percentText);
-    }, 0);
-  }, [skillItems]);
-
-  const remainingPercent = Math.max(0, 100 - totalPercent);
 
   useEffect(() => {
     let isCancelled = false;
@@ -773,9 +728,7 @@ function SkillsAndRewardsSection() {
       selectedSkillName: "",
       selectedSkillCategory: "",
       skillLevel: SKILL_LEVEL_OPTIONS[0],
-      percentText: "",
     });
-    setSkillPercentError("");
   };
 
   const handleRewardFileChange =
@@ -834,29 +787,7 @@ function SkillsAndRewardsSection() {
   }, [badgeUpload.previewUrl, certificateUpload.previewUrl]);
 
   const handleAddSkill = () => {
-    const trimmedPercent = skillFormValue.percentText.replace("%", "").trim();
-
     if (!skillFormValue.selectedSkillId) {
-      setSkillPercentError("Please select a skill");
-      return;
-    }
-
-    if (!trimmedPercent) {
-      setSkillPercentError("Please enter percent");
-      return;
-    }
-
-    const numericPercent = Number(trimmedPercent);
-
-    if (!Number.isFinite(numericPercent) || numericPercent <= 0) {
-      setSkillPercentError("Percent must be greater than 0");
-      return;
-    }
-
-    if (numericPercent > remainingPercent) {
-      setSkillPercentError(
-        `You can add only ${remainingPercent}% more (total must equal 100%)`
-      );
       return;
     }
 
@@ -868,7 +799,6 @@ function SkillsAndRewardsSection() {
         skillName: skillFormValue.selectedSkillName,
         skillCategory: skillFormValue.selectedSkillCategory,
         skillLevel: skillFormValue.skillLevel,
-        percentText: `${numericPercent}%`,
       },
     ]);
 
@@ -908,7 +838,6 @@ function SkillsAndRewardsSection() {
             <div className={styles.skillRow} key={skill.id}>
               <div className={styles.skillName}>{skill.skillName}</div>
               <div className={styles.skillLevel}>{skill.skillLevel}</div>
-              <div className={styles.skillPercent}>{skill.percentText}</div>
               <button
                 type="button"
                 className={styles.removeSkillButton}
@@ -920,11 +849,6 @@ function SkillsAndRewardsSection() {
               </button>
             </div>
           ))}
-        </div>
-
-        <div className={styles.skillWeightSummary}>
-          <span>Total: {totalPercent}%</span>
-          <span>Remaining: {remainingPercent}%</span>
         </div>
 
         <div className={styles.rewardStatsGrid}>
@@ -978,11 +902,8 @@ function SkillsAndRewardsSection() {
         availableSkills={availableSkills}
         isLoadingSkills={isLoadingSkills}
         loadError={skillLoadError}
-        remainingPercent={remainingPercent}
-        percentError={skillPercentError}
         onChange={(nextValue) => {
           setSkillFormValue(nextValue);
-          setSkillPercentError("");
         }}
         onClose={() => {
           resetSkillForm();

@@ -154,20 +154,23 @@ export default function SignInPage() {
 
       //  ไม่มี next = login ปกติ → ตรวจโปรไฟล์ว่าครบยัง
       try {
-        const meRes = await fetch("/api/student/active-account", { cache: "no-store" });
-        const me = await meRes.json().catch(() => null);
-
-        // สมมติ active-account คืน { ok:true, role, is_profile_complete }
-        const done = !!me?.is_profile_complete;
-
         if (role === "employee") {
-          router.push(done ? "/org/dashboard" : "/auth/fill-more-info/organization");
+          // ✅ เช็ค org_id จาก active-account
+          // ถ้ามี org_id แล้ว → ไป organization/explore ได้เลย
+          // ถ้ายังไม่มี → ไป fill-more-info/organization
+          const meRes = await fetch("/api/organization/active-account", { cache: "no-store" });
+          const me = await meRes.json().catch(() => null);
+          const hasOrg = !!me?.orgId;
+          router.push(hasOrg ? "/organization/explore" : "/auth/fill-more-info/organization");
         } else {
+          const meRes = await fetch("/api/student/active-account", { cache: "no-store" });
+          const me = await meRes.json().catch(() => null);
+          const done = !!me?.is_profile_complete;
           router.push(done ? "/student/explore" : "/auth/fill-more-info/student");
         }
       } catch {
         // fallback
-        router.push(role === "employee" ? "/org/dashboard" : "/student/explore");
+        router.push(role === "employee" ? "/organization/explore" : "/student/explore");
       }
     } catch {
       setError("Network error");
@@ -294,7 +297,7 @@ export default function SignInPage() {
 
       //  สำเร็จแล้ว backend จะ set cookie ให้เหมือน login
       const role = data?.role || "employee";
-      router.push(role === "employee" ? "/org/explore" : "/student/explore");
+      router.push(role === "employee" ? "/organization/explore" : "/student/explore");
     } catch {
       setError("Network error");
     } finally {

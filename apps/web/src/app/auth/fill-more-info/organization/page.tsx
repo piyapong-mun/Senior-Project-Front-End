@@ -1,20 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, Suspense } from "react";
 import styles from "./page.module.css";
 import { useRouter } from "next/navigation";
 
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
-import { Suspense } from "react";
+import { useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 
-function BoyModel({ url }: { url: string }) {
-  const { scene } = useGLTF(url);
-  return <primitive object={scene} />;
-}
-
-type OptionItem = { id: string; name: string };
+type BuildingOption = {
+  id: string;
+  name: string;
+  modelUrl: string;
+  previewUrl?: string | null;
+  unlockLevel?: number;
+};
 
 const NAV_ITEMS = [
   { label: "About", href: "/about", enabled: false },
@@ -23,118 +24,94 @@ const NAV_ITEMS = [
   { label: "Register", href: "/auth/register" },
 ];
 
-const AVATARS = [
-  "/images/avatar%20picture/avatar1.png",
-  "/images/avatar%20picture/avatar2.png",
-  "/images/avatar%20picture/avatar3.png",
-];
+function NormalizedBuilding({ url, sizeBoost = 1 }: { url: string; sizeBoost?: number }) {
+  const { scene } = useGLTF(url);
 
-function Avatar3D({ url }: { url: string }) {
+  const normalized = useMemo(() => {
+    const root = scene.clone(true);
+    root.updateMatrixWorld(true);
+
+    const rawBox = new THREE.Box3().setFromObject(root);
+    const rawSize = rawBox.getSize(new THREE.Vector3());
+
+    const safeHeight = Math.max(rawSize.y, 0.0001);
+    const safeWidth = Math.max(rawSize.x, 0.0001);
+    const safeDepth = Math.max(rawSize.z, 0.0001);
+    const footprint = Math.max(safeWidth, safeDepth);
+    const aspectRatio = safeHeight / footprint;
+
+    const autoBoost = aspectRatio > 1.45 ? 1.12 : 1;
+    const targetHeight = 2.45 * autoBoost * sizeBoost;
+
+    const scale = targetHeight / safeHeight;
+    root.scale.setScalar(scale);
+    root.updateMatrixWorld(true);
+
+    const scaledBox = new THREE.Box3().setFromObject(root);
+    const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+
+    root.position.set(-scaledCenter.x, -scaledBox.min.y - 0.02, -scaledCenter.z);
+    root.updateMatrixWorld(true);
+    return root;
+  }, [scene, sizeBoost]);
+
+  return <primitive object={normalized} />;
+}
+
+function StaticBuildingScene({ url, sizeBoost = 1 }: { url: string; sizeBoost?: number }) {
+  const yOffset = sizeBoost >= 1.4 ? -1.16 : sizeBoost >= 1.2 ? -1.02 : -0.82;
+
   return (
-    <div className={styles.avatarFrame3d} aria-label="Avatar frame">
-      <Canvas camera={{ position: [0, 1.25, 1.8], fov: 42 }}>
-        <ambientLight intensity={0.9} />
-        <directionalLight position={[3, 5, 3]} intensity={1.1} />
-        <Suspense fallback={null}>
-          {/* ปรับตำแหน่ง/สเกลให้พอดีกรอบ */}
-          <group
-            position={[0, -1.30, 0]}
-            scale={2.0}
-            rotation={[-0.50, -0.5, 0]}  // ✅ เงยหน้าขึ้น (ปรับได้)
-          >
-            <BoyModel url={url} />
-          </group>
-        </Suspense>
-
-        {/* ล็อกไม่ให้ผู้ใช้หมุน/ซูมเอง (เหมือนรูปนิ่ง) */}
-        <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
-      </Canvas>
-    </div>
+    <group position={[0, yOffset, 0]} rotation={[-0.12, 0.58, 0]}>
+      <NormalizedBuilding url={url} sizeBoost={sizeBoost} />
+    </group>
   );
 }
-useGLTF.preload("/models/boy.glb");
 
-function SelectorBox({
-  title,
-  options,
-  selectedIds,
-  onToggle,
+function BuildingViewer({
+  url,
+  errorText,
+  sizeBoost = 1,
 }: {
-  title: string;
-  options: OptionItem[];
-  selectedIds: string[];
-  onToggle: (id: string) => void;
+  url: string | null;
+  errorText?: string;
+  sizeBoost?: number;
 }) {
-  const [q, setQ] = useState("");
-
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return options;
-    return options.filter((o) => o.name.toLowerCase().includes(s));
-  }, [options, q]);
-
-  const selectedNames = useMemo(() => {
-    const set = new Set(selectedIds);
-    return options.filter((o) => set.has(o.id)).map((o) => o.name);
-  }, [options, selectedIds]);
+  if (!url) {
+    return (
+      <div className={styles.avatarFrame3d}>
+        <div className={styles.modelFallback}>{errorText || "No building model"}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.selectorBox}>
-      <div className={styles.selectorTag}>{title}</div>
-
-      <div className={styles.searchRow}>
-        <div className={styles.searchIcon}>⌕</div>
-        <input
-          className={styles.searchInput}
-          placeholder="Search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.optionGrid}>
-        {filtered.map((o) => {
-          const on = selectedIds.includes(o.id);
-          return (
-            <div
-              key={o.id}
-              className={styles.optionItem}
-              onClick={() => onToggle(o.id)}
-              onKeyDown={(e) =>
-                e.key === "Enter" || e.key === " " ? onToggle(o.id) : null
-              }
-              role="button"
-              tabIndex={0}
-            >
-              <div className={`${styles.checkBox} ${on ? styles.checkBoxOn : ""}`}>
-                {on ? "✓" : ""}
-              </div>
-              <div className={styles.optionLabel}>{o.name}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {selectedNames.length > 0 && (
-        <p className={styles.note} style={{ marginTop: 14 }}>
-          Selected: {selectedNames.join(", ")}
-        </p>
-      )}
+    <div className={styles.avatarFrame3d} aria-label="Building model frame">
+      <Canvas
+        frameloop="demand"
+        camera={{ position: [0, 1.4, 7.4], fov: 34 }}
+        gl={{ alpha: true, antialias: true }}
+        onCreated={({ gl }) => {
+          gl.setClearColor(0x000000, 0);
+        }}
+      >
+        <ambientLight intensity={1.1} />
+        <directionalLight position={[8, 12, 8]} intensity={1.15} />
+        <directionalLight position={[-6, 5, -5]} intensity={0.42} />
+        <Suspense fallback={null}>
+          <StaticBuildingScene url={url} sizeBoost={sizeBoost} />
+        </Suspense>
+      </Canvas>
     </div>
   );
 }
 
 export default function FillMoreInfoOrgPage() {
   const router = useRouter();
-
-  const [openJob, setOpenJob] = useState(false);
-  const [openSkill, setOpenSkill] = useState(false);
-
-  const [avatarIndex, setAvatarIndex] = useState(0);
-  const prevAvatar = () =>
-    setAvatarIndex((i) => (i - 1 + AVATARS.length) % AVATARS.length);
-  const nextAvatar = () =>
-    setAvatarIndex((i) => (i + 1) % AVATARS.length);
+  const [buildings, setBuildings] = useState<BuildingOption[]>([]);
+  const [buildingIndex, setBuildingIndex] = useState(0);
+  const [buildingError, setBuildingError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     orgName: "",
@@ -143,84 +120,161 @@ export default function FillMoreInfoOrgPage() {
     location: "",
     aboutUs: "",
     logoFile: null as File | null,
-
     email: "",
     phone: "",
     website: "",
-
     linkedin: "",
     facebook: "",
     instagram: "",
     youtube: "",
     tiktok: "",
+    buildingId: "",
   });
 
-  const [jobOptions, setJobOptions] = useState<OptionItem[]>([]);
-  const [skillOptions, setSkillOptions] = useState<OptionItem[]>([]);
-  const [jobSelected, setJobSelected] = useState<string[]>([]);
-  const [skillSelected, setSkillSelected] = useState<string[]>([]);
+  const selectedBuilding = buildings[buildingIndex] ?? null;
 
+  const selectedBuildingBoost = useMemo(() => {
+    const source = `${selectedBuilding?.name ?? ""} ${selectedBuilding?.modelUrl ?? ""}`.toLowerCase();
+    if (source.includes("building a") || source.includes("typea") || source.includes("building-model-typea")) return 1.42;
+    if (source.includes("building b") || source.includes("typeb") || source.includes("building-model-typeb")) return 1.38;
+    return 1;
+  }, [selectedBuilding]);
 
-  const setField =
-    (k: keyof typeof form) =>
-      (e: ChangeEvent<HTMLInputElement>) =>
-        setForm((p) => ({ ...p, [k]: e.target.value }));
+  const selectBuildingAt = (index: number) => {
+    if (!buildings.length) return;
+    const safeIndex = ((index % buildings.length) + buildings.length) % buildings.length;
+    const picked = buildings[safeIndex];
+    setBuildingIndex(safeIndex);
+    setForm((prev) => (prev.buildingId === picked.id ? prev : { ...prev, buildingId: picked.id }));
+  };
 
   useEffect(() => {
     (async () => {
-      const [jobsRes, skillsRes] = await Promise.all([
-        fetch("/api/options/jobs", { cache: "no-store" }),
-        fetch("/api/options/skills", { cache: "no-store" }),
+      // โหลด buildings และ org data พร้อมกัน
+      const [buildingsRes, orgRes] = await Promise.all([
+        fetch("/api/options/buildings", { cache: "no-store" }),
+        fetch("/api/organization", { cache: "no-store" }),
       ]);
 
-      if (jobsRes.ok) setJobOptions(await jobsRes.json());
-      if (skillsRes.ok) setSkillOptions(await skillsRes.json());
+      // ✅ โหลด buildings
+      let nextBuildings: BuildingOption[] = [];
+      if (buildingsRes.ok) {
+        const rows = await buildingsRes.json();
+        nextBuildings = Array.isArray(rows) ? rows : Array.isArray(rows?.items) ? rows.items : [];
+        setBuildings(nextBuildings);
+        setBuildingError(nextBuildings.length === 0 ? "No building model" : "");
+      } else {
+        const err = await buildingsRes.json().catch(() => null);
+        setBuildingError(err?.message || "Failed to load building model");
+      }
+
+      // ✅ โหลด org data ที่มีอยู่แล้ว → populate form
+      if (orgRes.ok) {
+        const orgJson = await orgRes.json().catch(() => null);
+        const org = orgJson?.data?.organization;
+        if (org) {
+          setForm((prev) => ({
+            ...prev,
+            orgName: org.orgName || "",
+            companySize: org.companySize || "",
+            businessType: org.businessType || "",
+            location: org.location || "",
+            aboutUs: org.aboutUs || "",
+            email: org.email || "",
+            phone: org.phone || "",
+            website: org.website || "",
+            linkedin: org.linkedin || "",
+            facebook: org.facebook || "",
+            instagram: org.instagram || "",
+            youtube: org.youtube || "",
+            tiktok: org.tiktok || "",
+            buildingId: org.buildingId || prev.buildingId,
+          }));
+
+          // ✅ ถ้า org มี buildingId อยู่แล้ว ให้ select building นั้นใน viewer
+          if (org.buildingId && nextBuildings.length > 0) {
+            const idx = nextBuildings.findIndex((b) => b.id === org.buildingId);
+            if (idx >= 0) setBuildingIndex(idx);
+          } else if (nextBuildings.length > 0) {
+            setBuildingIndex(0);
+            setForm((prev) => ({ ...prev, buildingId: nextBuildings[0].id }));
+          }
+          return;
+        }
+      }
+
+      // fallback: ถ้าไม่มี org data ก็ select building แรก
+      if (nextBuildings.length > 0) {
+        setBuildingIndex(0);
+        setForm((prev) => ({ ...prev, buildingId: nextBuildings[0].id }));
+      }
     })();
   }, []);
 
-  const toggleJob = (id: string) => {
-    setJobSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
-  const toggleSkill = (id: string) => {
-    setSkillSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  // crop modal state
-  const [cropOpen, setCropOpen] = useState(false);
-  const [cropUrl, setCropUrl] = useState<string | null>(null);
-  const [cropZoom, setCropZoom] = useState(1);
-  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
-  const [imgNat, setImgNat] = useState({ w: 0, h: 0 });
-
-  const cropBoxSize = 320; // ขนาดกรอบ crop (px)
-
   useEffect(() => {
-    if (!form.logoFile) {
-      setLogoPreview(null);
-      return;
-    }
+    if (!form.logoFile) return;
     const url = URL.createObjectURL(form.logoFile);
-    setLogoPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [form.logoFile]);
 
-  useEffect(() => {
-    if (!form.logoFile) {
-      setLogoPreview(null);
+  const prevBuilding = () => selectBuildingAt(buildingIndex - 1);
+  const nextBuilding = () => selectBuildingAt(buildingIndex + 1);
+
+  const saveOrganization = async () => {
+    if (!form.orgName.trim()) {
+      alert("Please enter organization name");
       return;
     }
-    const url = URL.createObjectURL(form.logoFile);
-    setLogoPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [form.logoFile]);
+    if (!form.buildingId) {
+      alert("Please select building");
+      return;
+    }
 
+    setSaving(true);
+    try {
+      const res = await fetch("/api/organization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgName: form.orgName,
+          companySize: form.companySize,
+          businessType: form.businessType,
+          location: form.location,
+          aboutUs: form.aboutUs,
+          email: form.email,
+          phone: form.phone,
+          website: form.website,
+          linkedin: form.linkedin,
+          facebook: form.facebook,
+          instagram: form.instagram,
+          youtube: form.youtube,
+          tiktok: form.tiktok,
+          buildingId: form.buildingId,
+        }),
+      });
 
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        alert(json?.message || "Failed to save organization");
+        return;
+      }
+
+      const orgId =
+        json?.data?.organization?.orgId ||
+        json?.data?.organization?.org_id ||
+        json?.data?.orgId ||
+        json?.orgId ||
+        "";
+
+      router.push(
+        orgId
+          ? `/auth/fill-more-info/organization/employee?orgId=${encodeURIComponent(orgId)}`
+          : "/auth/fill-more-info/organization/employee"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className={styles.page}>
@@ -247,333 +301,82 @@ export default function FillMoreInfoOrgPage() {
       </div>
 
       <main className={styles.main}>
-        {/* LEFT */}
         <section className={styles.card}>
           <h1 className={styles.title}>Organization</h1>
 
           <div className={styles.formScroll}>
             <div className={styles.formBlock}>
-
-              {/* Basic Information */}
               <div className={styles.sectionTitle}>Basic Information</div>
 
               <div className={styles.grid2_OrgName}>
-                <input
-                  className={styles.input}
-                  placeholder="Organization Name"
-                  value={form.orgName}
-                  onChange={(e) => setForm((p) => ({ ...p, orgName: e.target.value }))}
-                />
-                <input
-                  className={styles.input}
-                  placeholder="Company Size"
-                  value={form.companySize}
-                  onChange={(e) => setForm((p) => ({ ...p, companySize: e.target.value }))}
-                />
+                <input className={styles.input} placeholder="Organization Name" value={form.orgName} onChange={(e) => setForm((p) => ({ ...p, orgName: e.target.value }))} />
+                <input className={styles.input} placeholder="Company Size" value={form.companySize} onChange={(e) => setForm((p) => ({ ...p, companySize: e.target.value }))} />
               </div>
 
-              <input
-                className={styles.input}
-                placeholder="Business Type"
-                value={form.businessType}
-                onChange={(e) => setForm((p) => ({ ...p, businessType: e.target.value }))}
-              />
+              <input className={styles.input} placeholder="Business Type" value={form.businessType} onChange={(e) => setForm((p) => ({ ...p, businessType: e.target.value }))} />
+              <input className={styles.input} placeholder="Location" value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
 
-              <input
-                className={styles.input}
-                placeholder="Location"
-                value={form.location}
-                onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
-              />
-
-              {/* About Us + Logo (2 columns) */}
               <div className={styles.gridAboutLogo}>
-                <textarea
-                  className={styles.textarea}
-                  placeholder="About Us"
-                  value={form.aboutUs}
-                  onChange={(e) => setForm((p) => ({ ...p, aboutUs: e.target.value }))}
-                />
-
+                <textarea className={styles.textarea} placeholder="About Us" value={form.aboutUs} onChange={(e) => setForm((p) => ({ ...p, aboutUs: e.target.value }))} />
                 <div className={styles.logoBox}>
-                  {!logoPreview && <div className={styles.logoLabel}>Logo</div>}
+                  <div className={styles.logoLabel}>Logo</div>
                   <label className={styles.logoDrop}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className={styles.fileInput}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null;
-                        if (!f) return;
-
-                        // เปิด crop modal ด้วยไฟล์ที่เพิ่งเลือก
-                        const url = URL.createObjectURL(f);
-                        setCropUrl(url);
-                        setCropZoom(1);
-                        setCropOffset({ x: 0, y: 0 });
-                        setCropOpen(true);
-
-                        // reset input เพื่อเลือกไฟล์เดิมซ้ำได้
-                        e.currentTarget.value = "";
-                      }}
-                    />
+                    <input type="file" accept="image/*" className={styles.fileInput} onChange={(e) => setForm((p) => ({ ...p, logoFile: e.target.files?.[0] ?? null }))} />
                     <div className={styles.logoDropInner}>
-                      {logoPreview ? (
-                        <img src={logoPreview} alt="Logo preview" className={styles.logoPreviewImg} />
-                      ) : (
-                        <div className={styles.uploadText}>upload</div>
-                      )}
+                      <div className={styles.uploadText}>upload</div>
                     </div>
                   </label>
                 </div>
               </div>
 
               <div className={styles.hr} />
-
-              {/* Contact */}
               <div className={styles.sectionTitle}>Contact</div>
 
               <div className={styles.grid2}>
-                <input
-                  className={styles.input}
-                  placeholder="Email"
-                  value={form.email}
-                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                />
-                <input
-                  className={styles.input}
-                  placeholder="Phone number"
-                  value={form.phone}
-                  onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                />
+                <input className={styles.input} placeholder="Email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+                <input className={styles.input} placeholder="Phone number" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
               </div>
 
-              <input
-                className={styles.input}
-                placeholder="Website"
-                value={form.website}
-                onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
-              />
+              <input className={styles.input} placeholder="Website" value={form.website} onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))} />
 
               <div className={styles.hr} />
-
-              {/* Social */}
               <div className={styles.sectionTitle}>Organization</div>
 
-              <input
-                className={styles.input}
-                placeholder="LinkedIn link"
-                value={form.linkedin}
-                onChange={(e) => setForm((p) => ({ ...p, linkedin: e.target.value }))}
-              />
-              <input
-                className={styles.input}
-                placeholder="Facebook link"
-                value={form.facebook}
-                onChange={(e) => setForm((p) => ({ ...p, facebook: e.target.value }))}
-              />
-              <input
-                className={styles.input}
-                placeholder="Instagram link"
-                value={form.instagram}
-                onChange={(e) => setForm((p) => ({ ...p, instagram: e.target.value }))}
-              />
-              <input
-                className={styles.input}
-                placeholder="YouTube link"
-                value={form.youtube}
-                onChange={(e) => setForm((p) => ({ ...p, youtube: e.target.value }))}
-              />
-              <input
-                className={styles.input}
-                placeholder="TikTok link"
-                value={form.tiktok}
-                onChange={(e) => setForm((p) => ({ ...p, tiktok: e.target.value }))}
-              />
-
-              <div className={styles.hr} />
+              <input className={styles.input} placeholder="LinkedIn link" value={form.linkedin} onChange={(e) => setForm((p) => ({ ...p, linkedin: e.target.value }))} />
+              <input className={styles.input} placeholder="Facebook link" value={form.facebook} onChange={(e) => setForm((p) => ({ ...p, facebook: e.target.value }))} />
+              <input className={styles.input} placeholder="Instagram link" value={form.instagram} onChange={(e) => setForm((p) => ({ ...p, instagram: e.target.value }))} />
+              <input className={styles.input} placeholder="YouTube link" value={form.youtube} onChange={(e) => setForm((p) => ({ ...p, youtube: e.target.value }))} />
+              <input className={styles.input} placeholder="TikTok link" value={form.tiktok} onChange={(e) => setForm((p) => ({ ...p, tiktok: e.target.value }))} />
             </div>
           </div>
         </section>
 
-        {/* RIGHT: avatar 3D */}
-        <section className={styles.avatarStage} aria-label="Avatar">
-          <Avatar3D url="/models/boy.glb" />
+        <section className={styles.avatarStage} aria-label="Building selector">
+          <BuildingViewer url={selectedBuilding?.modelUrl ?? null} errorText={buildingError} sizeBoost={selectedBuildingBoost} />
+          <div className={styles.modelName}>{selectedBuilding?.name || "Building"}</div>
 
           <div className={styles.avatarDots}>
-            {[0, 1, 2].map((i) => (
+            {buildings.map((building, i) => (
               <button
-                key={i}
+                key={building.id}
                 type="button"
-                className={`${styles.dot} ${i === avatarIndex ? styles.dotOn : ""}`}
-                onClick={() => setAvatarIndex(i)}
-                aria-label={`Select avatar ${i + 1}`}
+                className={`${styles.dot} ${i === buildingIndex ? styles.dotOn : ""}`}
+                onClick={() => selectBuildingAt(i)}
+                aria-label={`Select ${building.name}`}
               />
             ))}
           </div>
 
           <div className={styles.avatarControls}>
-            <button className={styles.iconBtn} type="button" onClick={prevAvatar} aria-label="Previous">
-              {"<"}
-            </button>
-            <button className={styles.iconBtn} type="button" onClick={nextAvatar} aria-label="Next">
-              {">"}
-            </button>
+            <button className={styles.iconBtn} type="button" onClick={prevBuilding} aria-label="Previous building" disabled={!buildings.length}>{"<"}</button>
+            <button className={styles.iconBtn} type="button" onClick={nextBuilding} aria-label="Next building" disabled={!buildings.length}>{">"}</button>
           </div>
 
-          <button className={styles.nextBtn} type="button" onClick={() => router.push("/auth/fill-more-info/organization/employee")}>
-            Next
+          <button className={styles.nextBtn} type="button" onClick={saveOrganization} disabled={saving}>
+            {saving ? "Saving..." : "Next"}
           </button>
         </section>
       </main>
-
-      {cropOpen && cropUrl && (
-        <div className={styles.cropOverlay} role="dialog" aria-modal="true">
-          <div className={styles.cropModal}>
-            <div className={styles.cropHeader}>
-              <div className={styles.cropTitle}>Crop Logo</div>
-              <button
-                type="button"
-                className={styles.cropClose}
-                onClick={() => {
-                  URL.revokeObjectURL(cropUrl);
-                  setCropUrl(null);
-                  setCropOpen(false);
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div
-              className={styles.cropBox}
-              style={{ width: cropBoxSize, height: cropBoxSize }}
-            >
-              <img
-                src={cropUrl}
-                alt="Crop source"
-                className={styles.cropImg}
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  setImgNat({ w: img.naturalWidth, h: img.naturalHeight });
-                }}
-                draggable={false}
-                style={{ transform: `translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px)) scale(${cropZoom})` }}
-              />
-
-              {/* drag layer */}
-              <div
-                className={styles.cropDragLayer}
-                onMouseDown={(downEvt) => {
-                  downEvt.preventDefault();
-                  const start = { x: downEvt.clientX, y: downEvt.clientY };
-                  const startOff = { ...cropOffset };
-
-                  const onMove = (moveEvt: MouseEvent) => {
-                    const dx = moveEvt.clientX - start.x;
-                    const dy = moveEvt.clientY - start.y;
-                    setCropOffset({ x: startOff.x + dx, y: startOff.y + dy });
-                  };
-                  const onUp = () => {
-                    window.removeEventListener("mousemove", onMove);
-                    window.removeEventListener("mouseup", onUp);
-                  };
-                  window.addEventListener("mousemove", onMove);
-                  window.addEventListener("mouseup", onUp);
-                }}
-              />
-            </div>
-
-            <div className={styles.cropControls}>
-              <label className={styles.cropLabel}>
-                Zoom
-                <input
-                  type="range"
-                  min={1}
-                  max={2.5}
-                  step={0.01}
-                  value={cropZoom}
-                  onChange={(e) => setCropZoom(parseFloat(e.target.value))}
-                />
-              </label>
-            </div>
-
-            <div className={styles.cropActions}>
-              <button
-                type="button"
-                className={styles.cropBtn}
-                onClick={() => {
-                  // Cancel
-                  URL.revokeObjectURL(cropUrl);
-                  setCropUrl(null);
-                  setCropOpen(false);
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className={styles.cropBtnPrimary}
-                onClick={async () => {
-                  if (!cropUrl || !imgNat.w || !imgNat.h) return;
-
-                  const img = new Image();
-                  img.src = cropUrl;
-                  await new Promise<void>((res) => (img.onload = () => res()));
-
-                  const Cw = cropBoxSize;
-                  const Ch = cropBoxSize;
-
-                  // cover scale (ให้รูปเต็มกรอบก่อน) แล้วคูณ zoom
-                  const baseScale = Math.max(Cw / imgNat.w, Ch / imgNat.h);
-                  const s = baseScale * cropZoom;
-
-                  const rw = imgNat.w * s;
-                  const rh = imgNat.h * s;
-
-                  // ตำแหน่งรูปในกรอบ (center + offset)
-                  const left = (Cw - rw) / 2 + cropOffset.x;
-                  const top = (Ch - rh) / 2 + cropOffset.y;
-
-                  // แปลงกลับเป็นพิกัดบนภาพจริง
-                  let sx = (0 - left) / s;
-                  let sy = (0 - top) / s;
-                  let sw = Cw / s;
-                  let sh = Ch / s;
-
-                  // clamp ให้อยู่ในภาพ
-                  sx = Math.max(0, Math.min(imgNat.w - sw, sx));
-                  sy = Math.max(0, Math.min(imgNat.h - sh, sy));
-
-                  const out = 512; // ไฟล์ output (px)
-                  const canvas = document.createElement("canvas");
-                  canvas.width = out;
-                  canvas.height = out;
-                  const ctx = canvas.getContext("2d")!;
-                  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, out, out);
-
-                  const blob: Blob = await new Promise((resolve) =>
-                    canvas.toBlob((b) => resolve(b!), "image/png", 0.92)
-                  );
-
-                  const file = new File([blob], "logo.png", { type: "image/png" });
-
-                  // set เป็น logoFile ที่ crop แล้ว
-                  setForm((p) => ({ ...p, logoFile: file }));
-
-                  // ปิด modal + cleanup
-                  URL.revokeObjectURL(cropUrl);
-                  setCropUrl(null);
-                  setCropOpen(false);
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

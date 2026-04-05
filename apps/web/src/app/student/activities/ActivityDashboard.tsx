@@ -3,6 +3,9 @@
 import { useMemo } from "react";
 import styles from "./ActivityDashboard.module.css";
 import Link from "next/link";
+import StudentCalendar, {
+    type StudentCalendarSiteEvent,
+} from "@/components/shared/student/StudentCalendar";
 
 type StatCard = {
     label: string;
@@ -29,23 +32,6 @@ type ActivityRow = {
     status: "can join" | "ended" | "pending";
 };
 
-type CalendarEvent =
-    | "pink"
-    | "yellow"
-    | "green"
-    | "softPink"
-    | "blue"
-    | "orange"
-    | "rose"
-    | "greenWide";
-
-type CalendarDayItem = {
-    day: string;
-    weekend?: boolean;
-    otherMonth?: boolean;
-    muted?: boolean;
-    events: CalendarEvent[];
-};
 
 const STATS: StatCard[] = [
     {
@@ -117,7 +103,14 @@ const COMPANIES: Company[] = [
     { id: "c9", name: "NextDynamics", subtitle: "Curiosity turns effort into results.", logoText: "ND", accent: "#efc36f" },
 ];
 
-const ACTIVITIES: ActivityRow[] = [
+const MOCK_SITE_EVENTS: StudentCalendarSiteEvent[] = [
+    { id: "a1", title: "Frontend Basics & Web Terminology Quiz", startAt: new Date().toISOString(), calendarColor: "blue" },
+    { id: "a2", title: "UI Layout Explanation Task", startAt: new Date().toISOString(), calendarColor: "yellow" },
+    { id: "a3", title: "Responsive Web Page Workshop", startAt: new Date(Date.now() + 2 * 86400000).toISOString(), calendarColor: "pink" },
+    { id: "a4", title: "Frontend Performance Analysis Case", startAt: new Date(Date.now() + 5 * 86400000).toISOString(), calendarColor: "orange" },
+];
+
+const ACTIVITIES: ActivityRow [] =[
     { id: "a1", title: "Frontend Basics & Web Terminology Quiz", difficulty: "Beginner", category: "Course", xp: 20, status: "can join" },
     { id: "a2", title: "UI Layout Explanation Task", difficulty: "Beginner", category: "Course", xp: 15, status: "can join" },
     { id: "a3", title: "Responsive Web Page Workshop", difficulty: "Intermediate", category: "Challenge", xp: 50, status: "can join" },
@@ -141,7 +134,7 @@ export default function ActivityDashboard() {
 
             <div className={styles.rightRail}>
                 <CompanyPanel />
-                <CalendarCard title="October" />
+                <StudentCalendar siteEvents={MOCK_SITE_EVENTS} />
             </div>
         </div>
     );
@@ -335,123 +328,4 @@ function ActivityOverviewTable() {
     );
 }
 
-function CalendarCard({ title }: { title: string }) {
-    const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-    const weeks: CalendarDayItem[][] = [
-        [
-            { day: "28", otherMonth: true, events: [] },
-            { day: "29", otherMonth: true, events: [] },
-            { day: "30", otherMonth: true, events: [] },
-            { day: "1", events: ["green", "orange"] },
-            { day: "2", events: ["orange"] },
-            { day: "3", events: ["rose"] },
-            { day: "4", weekend: true, events: [] },
-        ],
-        [
-            { day: "5", weekend: true, events: ["pink", "yellow", "green"] },
-            { day: "6", events: ["softPink", "blue"] },
-            { day: "7", events: [] },
-            { day: "8", events: ["greenWide", "pink"] },
-            { day: "9", events: [] },
-            { day: "10", events: [] },
-            { day: "11", weekend: true, events: [] },
-        ],
-        [
-            { day: "12", weekend: true, muted: true, events: [] },
-            { day: "13", muted: true, events: [] },
-            { day: "14", muted: true, events: [] },
-            { day: "15", muted: true, events: [] },
-            { day: "16", muted: true, events: [] },
-            { day: "17", muted: true, events: [] },
-            { day: "18", weekend: true, muted: true, events: [] },
-        ],
-        [
-            { day: "19", weekend: true, muted: true, events: [] },
-            { day: "20", muted: true, events: [] },
-            { day: "21", muted: true, events: [] },
-            { day: "22", muted: true, events: [] },
-            { day: "23", muted: true, events: [] },
-            { day: "24", muted: true, events: [] },
-            { day: "25", weekend: true, muted: true, events: [] },
-        ],
-        [
-            { day: "26", weekend: true, muted: true, events: [] },
-            { day: "27", muted: true, events: [] },
-            { day: "28", muted: true, events: [] },
-            { day: "29", muted: true, events: [] },
-            { day: "30", muted: true, events: [] },
-            { day: "31", muted: true, events: [] },
-            { day: "1", otherMonth: true, muted: true, events: [] },
-        ],
-        [
-            { day: "2", otherMonth: true, events: [] },
-            { day: "3", otherMonth: true, events: [] },
-            { day: "4", otherMonth: true, events: [] },
-            { day: "5", otherMonth: true, events: [] },
-            { day: "6", otherMonth: true, events: [] },
-            { day: "7", otherMonth: true, events: [] },
-            { day: "8", otherMonth: true, events: [] },
-        ],
-    ];
-
-    return (
-        <section className={styles.calendarCard}>
-            <div className={styles.calendarPanel}>
-                <div className={styles.calendarHeader}>
-                    <div className={styles.calendarMonthChip}>
-                        <div className={styles.calendarTitle}>{title}</div>
-                    </div>
-                </div>
-
-                <div className={styles.calendarGrid}>
-                    <div className={styles.calendarRow}>
-                        {weekDays.map((day, idx) => (
-                            <div key={day} className={cx(styles.calendarWeekDay, (idx === 0 || idx === 6) && styles.calendarWeekEnd)}>
-                                {day}
-                            </div>
-                        ))}
-                    </div>
-
-                    {weeks.map((week, rowIdx) => (
-                        <div key={rowIdx} className={styles.calendarRow}>
-                            {week.map((item, idx) => (
-                                <div
-                                    key={`${rowIdx}-${idx}-${item.day}`}
-                                    className={cx(
-                                        styles.calendarCell,
-                                        item.weekend && styles.calendarWeekEnd,
-                                        item.otherMonth && styles.calendarOtherMonth,
-                                        item.muted && styles.calendarMutedCell
-                                    )}
-                                >
-                                    <div className={styles.calendarCellInner}>
-                                        <div className={styles.calendarDay}>{item.day}</div>
-                                        <div className={styles.calendarEvents}>
-                                            {item.events.map((event, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={cx(
-                                                        styles.trackBar,
-                                                        event === "pink" && styles.trackPink,
-                                                        event === "yellow" && styles.trackYellow,
-                                                        event === "green" && styles.trackGreen,
-                                                        event === "softPink" && styles.trackSoftPink,
-                                                        event === "blue" && styles.trackBlue,
-                                                        event === "orange" && styles.trackOrange,
-                                                        event === "rose" && styles.trackRose,
-                                                        event === "greenWide" && styles.trackGreenWide
-                                                    )}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
-}

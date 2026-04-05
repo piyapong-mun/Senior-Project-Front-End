@@ -210,9 +210,11 @@ const TYPE_DONUT_LABELS = [
 ];
 
 export default function OrgDashboardPage() {
-
     const [isEditOrgOpen, setIsEditOrgOpen] = useState(false);
     const [isSavedOpen, setIsSavedOpen] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
+    const [pageError, setPageError] = useState("");
+    const [orgSaving, setOrgSaving] = useState(false);
 
     const [orgDraft, setOrgDraft] = useState<OrgForm>({
         orgName: "PeakSystems",
@@ -221,20 +223,44 @@ export default function OrgDashboardPage() {
         location: "Philadelphia, PA",
         aboutUs:
             "Quality work requires attention to detail. The best solutions often come from collaboration. Simple ideas can have profound impacts. Every challenge presents an opportunity for growth.",
-
         logoFile: null,
         logoPreview: null,
-
         email: "emmadavis@hotmail.com",
         phone: "(746) 807-2977",
         website: "https://peaksystems.example",
-
         linkedin: "",
         facebook: "",
         instagram: "",
         youtube: "",
         tiktok: "",
     });
+
+    const [summary, setSummary] = useState({
+        totalActivities: 15,
+        totalParticipants: 32,
+        meetings: 4,
+        courses: 8,
+        challenges: 3,
+        published: 15,
+        draft: 2,
+    });
+
+    const [employees, setEmployees] = useState<Employee[]>([
+        {
+            id: "e1",
+            firstName: "Sophia",
+            lastName: "Brown",
+            position: "HR",
+            phone: "0812345678",
+            email: "sophia@company.com",
+            canCheckChallenge: true,
+            avatarIndex: 0,
+        },
+    ]);
+
+    const [participantRows, setParticipantRows] = useState(PARTICIPANTS);
+    const [activityRows, setActivityRows] = useState<OrgActivityRow[]>(ORG_ACTIVITY_ROWS);
+    const [activeEmployeeEmail, setActiveEmployeeEmail] = useState<string>("");
 
     const setOrgField =
         (key: keyof OrgForm) =>
@@ -326,22 +352,7 @@ export default function OrgDashboardPage() {
     };
 
     const closeSaved = () => setIsSavedOpen(false);
-    // ====== mock data (เดี๋ยวค่อยเปลี่ยนเป็น fetch จาก API) ======
-    const [employees, setEmployees] = useState<Employee[]>([
-        {
-            id: "e1",
-            firstName: "Sophia",
-            lastName: "Brown",
-            position: "HR",
-            phone: "0812345678",
-            email: "sophia@company.com",
-            canCheckChallenge: true,
-            avatarIndex: 0,
-        },
-    ]);
 
-
-    // ====== modal add employee ======
     const [isOpen, setIsOpen] = useState(false);
     const [draft, setDraft] = useState<Employee>(() => emptyEmp("draft"));
     const [saving, setSaving] = useState(false);
@@ -371,6 +382,202 @@ export default function OrgDashboardPage() {
         setIsOpen(false);
     };
 
+    const [statsTab, setStatsTab] = useState<StatsTab>("participants");
+    const [selectedActivityKind, setSelectedActivityKind] = useState<ActivityFilter>("all");
+    const [isActivityTypeOpen, setIsActivityTypeOpen] = useState(false);
+
+    function toStringValue(value: unknown, fallback = "") {
+        const text = String(value ?? "").trim();
+        return text || fallback;
+    }
+
+    function toNumber(value: unknown, fallback = 0) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function toAvatarIndex(value: unknown) {
+        const raw = String(value ?? "").trim();
+        if (!raw) return 0;
+        const match = raw.match(/(\d+)/);
+        if (!match) return 0;
+        return Math.max(0, (Number(match[1]) || 1) - 1) % 3;
+    }
+
+    function deriveActivityKind(value: unknown): Exclude<ActivityFilter, "all"> {
+        const raw = String(value ?? "").trim().toLowerCase();
+        if (raw.includes("meeting")) return "Meetings";
+        if (raw.includes("course")) return "Courses";
+        return "Challenges";
+    }
+
+    function deriveStatusTone(value: unknown): ActivityStatusTone {
+        const raw = String(value ?? "").trim().toLowerCase();
+        if (
+            raw.includes("end") ||
+            raw.includes("close") ||
+            raw.includes("complete") ||
+            raw.includes("finish")
+        ) {
+            return "ended";
+        }
+
+        if (
+            raw.includes("join") ||
+            raw.includes("open") ||
+            raw.includes("active") ||
+            raw.includes("publish") ||
+            raw.includes("public")
+        ) {
+            return "join";
+        }
+
+        return "pending";
+    }
+
+    async function refreshDashboard() {
+        try {
+            setPageLoading(true);
+            setPageError("");
+
+            const response = await fetch("/api/organization/dashboard", {
+                method: "GET",
+                cache: "no-store",
+                credentials: "include",
+            });
+
+            const json = await response.json().catch(() => ({}));
+
+            if (!response.ok || !json?.ok) {
+                throw new Error(json?.message || "Failed to load organization dashboard");
+            }
+
+            const data = json?.data ?? {};
+            const org = data?.org ?? {};
+            const summaryData = data?.summary ?? {};
+
+            setOrgDraft((prev) => ({
+                ...prev,
+                orgName: toStringValue(org?.orgName, prev.orgName),
+                companySize: toStringValue(org?.companySize, prev.companySize),
+                businessType: toStringValue(org?.businessType, prev.businessType),
+                location: toStringValue(org?.location, prev.location),
+                aboutUs: toStringValue(org?.aboutUs, prev.aboutUs),
+                logoPreview: org?.logoPreview ?? prev.logoPreview,
+                email: toStringValue(org?.email, prev.email),
+                phone: toStringValue(org?.phone, prev.phone),
+                website: toStringValue(org?.website, prev.website),
+                linkedin: toStringValue(org?.linkedin, prev.linkedin),
+                facebook: toStringValue(org?.facebook, prev.facebook),
+                instagram: toStringValue(org?.instagram, prev.instagram),
+                youtube: toStringValue(org?.youtube, prev.youtube),
+                tiktok: toStringValue(org?.tiktok, prev.tiktok),
+            }));
+
+            setSummary({
+                totalActivities: toNumber(summaryData?.totalActivities, ORG_ACTIVITY_ROWS.length),
+                totalParticipants: toNumber(summaryData?.totalParticipants, PARTICIPANTS.length),
+                meetings: toNumber(summaryData?.meetings, ORG_ACTIVITY_ROWS.filter((item) => item.kind === "Meetings").length),
+                courses: toNumber(summaryData?.courses, ORG_ACTIVITY_ROWS.filter((item) => item.kind === "Courses").length),
+                challenges: toNumber(summaryData?.challenges, ORG_ACTIVITY_ROWS.filter((item) => item.kind === "Challenges").length),
+                published: toNumber(summaryData?.published, ORG_ACTIVITY_ROWS.filter((item) => item.statusTone === "join").length),
+                draft: toNumber(summaryData?.draft, ORG_ACTIVITY_ROWS.filter((item) => item.statusTone === "pending").length),
+            });
+
+            const nextActivities: OrgActivityRow[] = Array.isArray(data?.activities) && data.activities.length > 0
+                ? data.activities.map((item: any, index: number) => ({
+                    id: toStringValue(item?.id, `activity-${index}`),
+                    title: toStringValue(item?.title, "Activity"),
+                    difficulty: toStringValue(item?.difficulty, "-"),
+                    category: toStringValue(item?.category, deriveActivityKind(item?.kind || item?.category)),
+                    kind: deriveActivityKind(item?.kind || item?.category),
+                    xp: toNumber(item?.xp, 0),
+                    statusTone: deriveStatusTone(item?.statusTone || item?.status),
+                }))
+                : ORG_ACTIVITY_ROWS;
+            setActivityRows(nextActivities);
+
+            const nextParticipants = Array.isArray(data?.participants) && data.participants.length > 0
+                ? data.participants.map((person: any, index: number) => ({
+                    id: toStringValue(person?.id, `participant-${index}`),
+                    name: toStringValue(person?.name, `Participant ${index + 1}`),
+                    subtitle: toStringValue(person?.subtitle, "Participant"),
+                    score: toNumber(person?.score, 0),
+                    avatarBg: toStringValue(person?.avatarBg, PARTICIPANTS[index % PARTICIPANTS.length]?.avatarBg || "#f1d6d8"),
+                    initials: toStringValue(person?.initials, "PT"),
+                }))
+                : PARTICIPANTS;
+            setParticipantRows(nextParticipants);
+
+            const nextEmployees: Employee[] = Array.isArray(data?.employees) && data.employees.length > 0
+                ? data.employees.map((emp: any, index: number) => ({
+                    id: toStringValue(emp?.id ?? emp?.empId, `employee-${index}`),
+                    firstName: toStringValue(emp?.firstName),
+                    lastName: toStringValue(emp?.lastName),
+                    position: toStringValue(emp?.position),
+                    phone: toStringValue(emp?.phone),
+                    email: toStringValue(emp?.email),
+                    canCheckChallenge: Boolean(emp?.canCheckChallenge),
+                    avatarIndex: toAvatarIndex(emp?.avatarChoice ?? emp?.avatarIndex),
+                }))
+                : employees;
+            setEmployees(nextEmployees);
+
+            const activeEmail = toStringValue(data?.account?.email).toLowerCase();
+            if (activeEmail) {
+                setActiveEmployeeEmail(activeEmail);
+            }
+        } catch (e: any) {
+            setPageError(e?.message || "Failed to load organization dashboard");
+        } finally {
+            setPageLoading(false);
+        }
+    }
+
+    //     const handleSaveOrg = async () => {
+    //         try {
+    //             setOrgSaving(true);
+
+    //             const response = await fetch("/api/organization", {
+    //                 method: "POST",
+    //                 headers: {
+    //                     "Content-Type": "application/json",
+    //                 },
+    //                 credentials: "include",
+    //                 body: JSON.stringify({
+    //                     orgName: orgDraft.orgName,
+    //                     companySize: orgDraft.companySize,
+    //                     businessType: orgDraft.businessType,
+    //                     location: orgDraft.location,
+    //                     aboutUs: orgDraft.aboutUs,
+    //                     email: orgDraft.email,
+    //                     phone: orgDraft.phone,
+    //                     website: orgDraft.website,
+    //                     linkedin: orgDraft.linkedin,
+    //                     facebook: orgDraft.facebook,
+    //                     instagram: orgDraft.instagram,
+    //                     youtube: orgDraft.youtube,
+    //                     tiktok: orgDraft.tiktok,
+    //                     logo: orgDraft.logoPreview,
+    //                 }),
+    //             });
+
+    //             const json = await response.json().catch(() => ({}));
+
+    //             if (!response.ok || !json?.ok) {
+    //                 throw new Error(json?.message || "Failed to save organization");
+    //             }
+
+    //             await refreshDashboard();
+    //             setIsEditOrgOpen(false);
+    //             setIsSavedOpen(true);
+    //         } catch (e: any) {
+    //             alert(e?.message || "Failed to save organization");
+    //         } finally {
+    //             setOrgSaving(false);
+    //         }
+    //     };
+
     const submitAdd = async () => {
         setError("");
 
@@ -385,9 +592,11 @@ export default function OrgDashboardPage() {
 
         setSaving(true);
         try {
+            // const r = await fetch("/api/organization/employees/invite", {
             const r = await fetch("/api/organization/employees/invite", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     email: draft.email.trim().toLowerCase(),
                     firstName: draft.firstName.trim(),
@@ -396,7 +605,6 @@ export default function OrgDashboardPage() {
                     phone: draft.phone.trim(),
                     canCheckChallenge: draft.canCheckChallenge,
                     avatarIndex: draft.avatarIndex,
-                    employeeSlot: employees.length + 1, // 2 หรือ 3
                 }),
             });
 
@@ -406,14 +614,7 @@ export default function OrgDashboardPage() {
                 return;
             }
 
-            // อัปเดต UI (ชั่วคราว) — จริง ๆ ควร refetch จาก DB เมื่อ DB พร้อม
-            const newEmp: Employee = {
-                ...draft,
-                id: d?.empId || `e${Date.now()}`, // ถ้า API คืน id ก็ใช้
-                email: draft.email.trim().toLowerCase(),
-            };
-
-            setEmployees((prev) => [...prev, newEmp]);
+            await refreshDashboard();
             setIsOpen(false);
         } catch (e: any) {
             setError(e?.message || "Failed to add employee");
@@ -425,12 +626,6 @@ export default function OrgDashboardPage() {
     const MAX_EMP = 3;
     const shownEmployees = employees.slice(0, MAX_EMP);
     const canAddMore = shownEmployees.length < MAX_EMP;
-
-    const [activeEmployeeEmail, setActiveEmployeeEmail] = useState<string>("");
-
-    const [statsTab, setStatsTab] = useState<StatsTab>("participants");
-    const [selectedActivityKind, setSelectedActivityKind] = useState<ActivityFilter>("all");
-    const [isActivityTypeOpen, setIsActivityTypeOpen] = useState(false);
 
     // const filteredOrgActivities = useMemo(() => {
     //     // if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
@@ -810,10 +1005,10 @@ export default function OrgDashboardPage() {
                     <div className={styles.summaryOfActivitiesInner}>
                         <div className={`${styles.summaryActivityBox} ${styles.summaryActivityBoxDual}`}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityTopValue}>15</div>
+                            <div className={styles.summaryActivityTopValue}>{summary.published}</div>
                             <div className={styles.summaryActivityTopLabel}>Published</div>
                             <div className={styles.summaryActivitySplit} />
-                            <div className={styles.summaryActivityBottomValue}>2</div>
+                            <div className={styles.summaryActivityBottomValue}>{summary.draft}</div>
                             <div className={styles.summaryActivityBottomLabel}>Draft</div>
                         </div>
 

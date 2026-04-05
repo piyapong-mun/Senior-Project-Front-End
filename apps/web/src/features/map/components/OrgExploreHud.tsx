@@ -176,45 +176,13 @@ export default function OrgExploreHud({
         <OrgSidebar items={navItems} onNavigate={onNavigate} onLogout={onLogout} style={{ height: "100%" }} />
       </div>
 
-      {/* <div
-        style={{
-          position: "absolute",
-          left: 150,
-          top: 28,
-          width: 520,
-          height: 46,
-          borderRadius: 5,
-          background: C.white,
-          border: `2px solid ${C.strokeDark}`,
-          boxShadow: "0 18px 40px rgba(0,0,0,0.10)",
-          backdropFilter: "blur(10px)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 16px",
-          gap: 10,
-          zIndex: 40,
-        }}
-      >
-        <span style={{ opacity: 0.7 }}>🔎</span>
-        <input
-          placeholder="Search activities or participants"
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            fontSize: 14,
-          }}
-        />
-      </div> */}
-
       <button
         onClick={onToggleView}
         title="Toggle camera view"
         type="button"
         style={{
           position: "absolute",
-          left: 150 + 520 + 12,
+          right: 460,
           top: 31,
           zIndex: 41,
           width: 40,
@@ -242,8 +210,8 @@ export default function OrgExploreHud({
           minHeight: 108,
           borderRadius: 4,
           background: C.panel,
-          border: `2px solid ${C.strokeDark}`,
-          boxShadow: "0 18px 40px rgba(0,0,0,0.10)",
+          border: `1px solid ${C.strokeDark}`,
+          boxShadow: "2px 2px 4px rgba(0, 0, 0, 0.1)",
           display: "flex",
           alignItems: "center",
           padding: 16,
@@ -254,7 +222,7 @@ export default function OrgExploreHud({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              fontWeight: 800,
+              fontWeight: 600,
               fontSize: 27,
               letterSpacing: 0.2,
               color: C.text,
@@ -303,52 +271,13 @@ export default function OrgExploreHud({
                 minWidth: 0,
               }}
             >
-              <div style={{ display: "flex", gap: 12, minWidth: 0, alignItems: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: C.text, whiteSpace: "nowrap" }}>
-                  {summary.participants} Participants
-                </span>
-                <span style={{ width: 1, height: 16, background: "rgba(0,0,0,0.18)", flex: "0 0 auto" }} />
-                <span style={{ fontSize: 13, fontWeight: 800, color: C.text, whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted, whiteSpace: "nowrap" }}>
+                {summary.draft} Draft
+              </span> 
+              <span style={{ width: 1, height: 16, background: "rgba(0,0,0,0.18)", flex: "0 0 auto" }} />
+              <span style={{ fontSize: 12, fontWeight: 400, color: C.text, whiteSpace: "nowrap" }}>
                   {summary.published} Published
                 </span>
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, whiteSpace: "nowrap" }}>
-                {summary.draft} Draft
-              </span>
-            </div>
-
-            <div
-              style={{
-                position: "absolute",
-                left: 72,
-                top: -6,
-                width: 45,
-                height: 45,
-                borderRadius: 999,
-                background: C.gold,
-                border: "3px solid #fff",
-                boxShadow: "0 10px 18px rgba(0,0,0,0.18)",
-                display: "grid",
-                placeItems: "center",
-                pointerEvents: "none",
-              }}
-              aria-hidden
-            >
-              <div
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.35)",
-                  border: "2px solid rgba(0,0,0,0.15)",
-                  display: "grid",
-                  placeItems: "center",
-                  fontWeight: 900,
-                  color: C.text,
-                }}
-              >
-                🏢
-              </div>
             </div>
           </div>
         </div>
@@ -398,7 +327,7 @@ export default function OrgExploreHud({
       <div
         style={{
           position: "absolute",
-          left: "32%",
+          left: "50%",
           top: 28,
           transform: "translateX(-50%)",
           zIndex: 50,
@@ -418,8 +347,7 @@ export default function OrgExploreHud({
       >
         <span>👁</span>
         คุณกำลังดูแผนที่ในโหมดองค์กร
-        <span style={{ color: "rgba(0,0,0,0.18)" }}>|</span>
-        <span style={{ fontWeight: 800, color: C.chipText }}>วาง layout ให้ใกล้เคียงฝั่ง student และดูข้อมูลได้เฉพาะองค์กรของคุณ</span>
+        {/* <span style={{ color: "rgba(0,0,0,0.18)" }}>|</span> */}
       </div>
 
       {isOwnBuildingSelected ? (
@@ -636,7 +564,7 @@ export default function OrgExploreHud({
           }}
         >
 
-          คลิกตึกป้ายชื่อขององค์กรคุณเพื่อดูข้อมูลกิจกรรมแบบเดียวกับฝั่ง student
+          คลิกอาคารขององค์กรคุณเพื่อดูข้อมูลกิจกรรม
         </div>
       )}
     </>

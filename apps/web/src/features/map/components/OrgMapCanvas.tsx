@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -9,6 +10,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type MutableRefObject,
 } from "react";
 import * as THREE from "three";
@@ -146,14 +148,18 @@ function YawAnimator({
 function CinematicRig({
   controlsRef,
   isAnimatingRef,
+  focusObject,
 }: {
   controlsRef: MutableRefObject<OrbitControlsImpl | null>;
   isAnimatingRef: MutableRefObject<boolean>;
+  focusObject: THREE.Object3D | null;
 }) {
-  const { camera, scene } = useThree();
+  const { camera } = useThree();
 
   useEffect(() => {
-    const box = new THREE.Box3().setFromObject(scene);
+    if (!focusObject) return;
+
+    const box = new THREE.Box3().setFromObject(focusObject);
     if (!Number.isFinite(box.min.x)) return;
 
     const center = new THREE.Vector3();
@@ -161,7 +167,9 @@ function CinematicRig({
     box.getCenter(center);
     box.getSize(size);
 
-    const dist = Math.max(size.x, size.y, size.z) * 2.2;
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const dist = maxDim * 2.2;
+
     const dir = new THREE.Vector3(
       Math.cos(CAMERA_PITCH) * Math.cos(CAMERA_YAW_A),
       Math.sin(CAMERA_PITCH),
@@ -179,7 +187,7 @@ function CinematicRig({
       controlsRef.current.target.copy(center);
       controlsRef.current.update();
     }
-  }, [camera, scene, controlsRef]);
+  }, [camera, controlsRef, focusObject]);
 
   useFrame(() => {
     const ctrls = controlsRef.current;
@@ -220,21 +228,18 @@ function CinematicRig({
   );
 }
 
-function tintMaterialTowardWhite(material: any, amount: number) {
-  if (!material?.color) return;
-  material.color.lerp(new THREE.Color("#ffffff"), amount);
-}
-
 function OrgMapModel({
   ownBuildingMeshNames,
   occupiedBuildingMeshNames,
   onPickBuilding,
   onHoverBuilding,
+  onSceneReady,
 }: {
   ownBuildingMeshNames: string[];
   occupiedBuildingMeshNames: string[];
   onPickBuilding: (payload: OrgPickBuildingPayload) => void;
   onHoverBuilding: (payload: OrgHoverPayload) => void;
+  onSceneReady?: (sceneObject: THREE.Object3D) => void;
 }) {
   const { scene } = useGLTF(MAP_GLB);
   const { camera, gl } = useThree();
@@ -249,6 +254,10 @@ function OrgMapModel({
     });
   }, [scene]);
 
+  useEffect(() => {
+    onSceneReady?.(scene);
+  }, [scene, onSceneReady]);
+
   const ownSet = useMemo(
     () => new Set(ownBuildingMeshNames.map((name) => name.toLowerCase())),
     [ownBuildingMeshNames]
@@ -259,65 +268,18 @@ function OrgMapModel({
     [occupiedBuildingMeshNames]
   );
 
-  const { buildingMeshes, emptyBuildingMeshes } = useMemo(() => {
+  const buildingMeshes = useMemo(() => {
     const all: THREE.Mesh[] = [];
-    const empty: THREE.Mesh[] = [];
 
     scene.traverse((obj: any) => {
       if (!obj?.isMesh || typeof obj.name !== "string") return;
       const name = obj.name.toLowerCase();
       if (!name.startsWith("building-model-")) return;
-
       all.push(obj as THREE.Mesh);
-      if (!occupiedSet.has(name)) {
-        empty.push(obj as THREE.Mesh);
-      }
     });
 
-    return { buildingMeshes: all, emptyBuildingMeshes: empty };
-  }, [scene, occupiedSet]);
-
-  useEffect(() => {
-    const originalMaterialByMesh = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
-    const createdMaterials: THREE.Material[] = [];
-
-    emptyBuildingMeshes.forEach((mesh) => {
-      originalMaterialByMesh.set(mesh, mesh.material);
-
-      if (Array.isArray(mesh.material)) {
-        const clonedMaterials = mesh.material.map((material) => {
-          const cloned = material.clone();
-          createdMaterials.push(cloned);
-          tintMaterialTowardWhite(cloned as any,0.55);
-          if (typeof (cloned as any).opacity === "number") {
-            (cloned as any).transparent = true;
-            (cloned as any).opacity = Math.min((cloned as any).opacity, 0.72);
-          }
-          cloned.needsUpdate = true;
-          return cloned;
-        });
-        mesh.material = clonedMaterials;
-        return;
-      }
-
-      const clonedMaterial = mesh.material.clone();
-      createdMaterials.push(clonedMaterial);
-      tintMaterialTowardWhite(clonedMaterial as any, 0.55);
-      if (typeof (clonedMaterial as any).opacity === "number") {
-        (clonedMaterial as any).transparent = true;
-        (clonedMaterial as any).opacity = Math.min((clonedMaterial as any).opacity, 0.72);
-      }
-      clonedMaterial.needsUpdate = true;
-      mesh.material = clonedMaterial;
-    });
-
-    return () => {
-      originalMaterialByMesh.forEach((originalMaterial, mesh) => {
-        mesh.material = originalMaterial;
-      });
-      createdMaterials.forEach((material) => material.dispose());
-    };
-  }, [emptyBuildingMeshes]);
+    return all;
+  }, [scene]);
 
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const ndc = useMemo(() => new THREE.Vector2(), []);
@@ -423,7 +385,6 @@ function OrgBuildingLabel({ meshNames, orgName }: { meshNames: string[]; orgName
           position: "relative",
         }}
       >
-
         {orgName}
         <div
           style={{
@@ -445,7 +406,7 @@ function OrgBuildingLabel({ meshNames, orgName }: { meshNames: string[]; orgName
 
 const RemoteAvatar = React.memo(function RemoteAvatar({ student }: { student: RemoteStudent }) {
   const groupRef = useRef<THREE.Group | null>(null);
-  const gltf = useGLTF(student.modelUrl || "/models/boy.glb");
+  const gltf = useGLTF(student.modelUrl || "");
   const clonedScene = useMemo(() => SkeletonUtils.clone(gltf.scene), [gltf.scene]);
   const { actions, names, mixer } = useAnimations(gltf.animations, groupRef);
 
@@ -492,7 +453,7 @@ const RemoteAvatar = React.memo(function RemoteAvatar({ student }: { student: Re
             padding: "4px 11px",
             background: "#FEFEFE",
             border: "1px solid #E0D6CD",
-            borderRadius: 999,
+            borderRadius: 5,
             fontSize: 11,
             fontWeight: 600,
             color: "#333",
@@ -521,6 +482,7 @@ export default function OrgMapCanvas({
   onHoverBuilding,
   onCameraAnimDone,
 }: OrgMapCanvasProps) {
+  const [mapRoot, setMapRoot] = useState<THREE.Object3D | null>(null);
   return (
     <Canvas
       shadows
@@ -528,7 +490,7 @@ export default function OrgMapCanvas({
         gl.domElement.style.touchAction = "none";
       }}
     >
-      <ambientLight intensity={0.85} />
+      <ambientLight intensity={0.75} />
       <directionalLight position={[30, 50, 20]} intensity={1.1} castShadow />
       <hemisphereLight intensity={0.35} />
 
@@ -541,7 +503,11 @@ export default function OrgMapCanvas({
           }}
         />
 
-        <CinematicRig controlsRef={controlsRef} isAnimatingRef={isAnimatingRef} />
+        <CinematicRig
+          controlsRef={controlsRef}
+          isAnimatingRef={isAnimatingRef}
+          focusObject={mapRoot}
+        />
 
         <CameraAnimator
           animRef={camAnimRef}
@@ -562,6 +528,7 @@ export default function OrgMapCanvas({
           occupiedBuildingMeshNames={occupiedBuildingMeshNames}
           onPickBuilding={onPickBuilding}
           onHoverBuilding={onHoverBuilding}
+          onSceneReady={setMapRoot}
         />
 
         <OrgBuildingLabel meshNames={ownBuildingMeshNames} orgName={orgName} />
@@ -575,4 +542,3 @@ export default function OrgMapCanvas({
 }
 
 useGLTF.preload(MAP_GLB);
-useGLTF.preload("/models/boy.glb");
