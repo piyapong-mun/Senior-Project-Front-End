@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import styles from "./ActivityDashboard.module.css";
 import Link from "next/link";
 import StudentCalendar, {
@@ -34,87 +34,72 @@ type ActivityRow = {
 
 
 const STATS: StatCard[] = [
-    {
-        label: "Totals",
-        value: 15,
-        breakdown: [
-            { label: "course", value: 3 },
-            { label: "task", value: 8 },
-            { label: "meeting", value: 4 },
-        ],
-    },
-    {
-        label: "Success",
-        value: 3,
-        breakdown: [
-            { label: "course", value: 0 },
-            { label: "task", value: 3 },
-            { label: "meeting", value: 0 },
-        ],
-    },
-    {
-        label: "In progress",
-        value: 11,
-        breakdown: [
-            { label: "course", value: 3 },
-            { label: "task", value: 5 },
-            { label: "meeting", value: 4 },
-        ],
-    },
-    {
-        label: "Unsuccessful",
-        value: 1,
-        breakdown: [
-            { label: "course", value: 0 },
-            { label: "task", value: 0 },
-            { label: "meeting", value: 0 },
-        ],
-    },
+    // {
+    //     label: "Totals",
+    //     value: 15,
+    //     breakdown: [
+    //         { label: "course", value: 3 },
+    //         { label: "task", value: 8 },
+    //         { label: "meeting", value: 4 },
+    //     ],
+    // },
+    // {
+    //     label: "Success",
+    //     value: 3,
+    //     breakdown: [
+    //         { label: "course", value: 0 },
+    //         { label: "task", value: 3 },
+    //         { label: "meeting", value: 0 },
+    //     ],
+    // },
+    // {
+    //     label: "In progress",
+    //     value: 11,
+    //     breakdown: [
+    //         { label: "course", value: 3 },
+    //         { label: "task", value: 5 },
+    //         { label: "meeting", value: 4 },
+    //     ],
+    // },
+    // {
+    //     label: "Unsuccessful",
+    //     value: 1,
+    //     breakdown: [
+    //         { label: "course", value: 0 },
+    //         { label: "task", value: 0 },
+    //         { label: "meeting", value: 0 },
+    //     ],
+    // },
 ];
 
 const MOCK_SKILLS: Skill[] = [
-    { id: "s1", name: "HTML", percent: 85 },
-    { id: "s2", name: "CSS", percent: 70 },
-    { id: "s3", name: "JavaScript", percent: 55 },
-    { id: "s4", name: "React", percent: 42 },
-    { id: "s5", name: "TypeScript", percent: 35 },
-    { id: "s6", name: "UI/UX", percent: 60 },
-    { id: "s7", name: "Git", percent: 50 },
-    { id: "s8", name: "API", percent: 40 },
-    { id: "s9", name: "Testing", percent: 25 },
-    { id: "s10", name: "SQL", percent: 45 },
-    { id: "s11", name: "Cloud", percent: 20 },
-    { id: "s12", name: "Soft Skills", percent: 65 },
-    { id: "s13", name: "TypeScript", percent: 35 },
-    { id: "s14", name: "UI/UX", percent: 60 },
-    { id: "s15", name: "Git", percent: 50 },
-    { id: "s16", name: "API", percent: 40 },
+    // { id: "s1", name: "HTML", percent: 85 },
 ];
 
 const COMPANIES: Company[] = [
-    { id: "c1", name: "NextDynamics", subtitle: "Quality work requires attention to detail.", logoText: "ND", accent: "#efc36f" },
-    { id: "c2", name: "BlueTechnologies", subtitle: "Knowledge grows when wisdom meets experience.", logoText: "BT", accent: "#f28c28" },
-    { id: "c3", name: "TechIndustries", subtitle: "You are not too early. Strokes arrive at the right street.", logoText: "TI", accent: "#4e86ff" },
-    { id: "c4", name: "CyberIndustries", subtitle: "Every challenge presents an opportunity for growth.", logoText: "CI", accent: "#9acb7d" },
-    { id: "c5", name: "PeakSystems", subtitle: "Great design balances form and function.", logoText: "PS", accent: "#f7aa8d" },
-    { id: "c6", name: "NextDynamics", subtitle: "Curiosity turns effort into results.", logoText: "ND", accent: "#efc36f" },
-    { id: "c7", name: "CyberIndustries", subtitle: "Every challenge presents an opportunity for growth.", logoText: "CI", accent: "#9acb7d" },
-    { id: "c8", name: "PeakSystems", subtitle: "Great design balances form and function.", logoText: "PS", accent: "#f7aa8d" },
-    { id: "c9", name: "NextDynamics", subtitle: "Curiosity turns effort into results.", logoText: "ND", accent: "#efc36f" },
+    // { id: "c1", name: "NextDynamics", subtitle: "Quality work requires attention to detail.", logoText: "ND", accent: "#efc36f" },
+    // { id: "c2", name: "BlueTechnologies", subtitle: "Knowledge grows when wisdom meets experience.", logoText: "BT", accent: "#f28c28" },
+    // { id: "c3", name: "TechIndustries", subtitle: "You are not too early. Strokes arrive at the right street.", logoText: "TI", accent: "#4e86ff" },
+    // { id: "c4", name: "CyberIndustries", subtitle: "Every challenge presents an opportunity for growth.", logoText: "CI", accent: "#9acb7d" },
+    // { id: "c5", name: "PeakSystems", subtitle: "Great design balances form and function.", logoText: "PS", accent: "#f7aa8d" },
+    // { id: "c6", name: "NextDynamics", subtitle: "Curiosity turns effort into results.", logoText: "ND", accent: "#efc36f" },
+    // { id: "c7", name: "CyberIndustries", subtitle: "Every challenge presents an opportunity for growth.", logoText: "CI", accent: "#9acb7d" },
+    // { id: "c8", name: "PeakSystems", subtitle: "Great design balances form and function.", logoText: "PS", accent: "#f7aa8d" },
+    // { id: "c9", name: "NextDynamics", subtitle: "Curiosity turns effort into results.", logoText: "ND", accent: "#efc36f" },
 ];
 
 const MOCK_SITE_EVENTS: StudentCalendarSiteEvent[] = [
-    { id: "a1", title: "Frontend Basics & Web Terminology Quiz", startAt: new Date().toISOString(), calendarColor: "blue" },
-    { id: "a2", title: "UI Layout Explanation Task", startAt: new Date().toISOString(), calendarColor: "yellow" },
-    { id: "a3", title: "Responsive Web Page Workshop", startAt: new Date(Date.now() + 2 * 86400000).toISOString(), calendarColor: "pink" },
-    { id: "a4", title: "Frontend Performance Analysis Case", startAt: new Date(Date.now() + 5 * 86400000).toISOString(), calendarColor: "orange" },
+    // { id: "a1", title: "Frontend Basics & Web Terminology Quiz", startAt: "2026-04-09T05:00:00Z", calendarColor: "blue" },
+    // { id: "a2", title: "UI Layout Explanation Task", startAt: "2026-04-09T05:00:00Z", calendarColor: "yellow" },
+    // { id: "a3", title: "Responsive Web Page Workshop", startAt: "2026-04-11T05:00:00Z", calendarColor: "pink" },
+    // { id: "a4", title: "Frontend Performance Analysis Case", startAt: "2026-04-14T05:00:00Z", calendarColor: "orange" },
 ];
 
-const ACTIVITIES: ActivityRow [] =[
-    { id: "a1", title: "Frontend Basics & Web Terminology Quiz", difficulty: "Beginner", category: "Course", xp: 20, status: "can join" },
-    { id: "a2", title: "UI Layout Explanation Task", difficulty: "Beginner", category: "Course", xp: 15, status: "can join" },
-    { id: "a3", title: "Responsive Web Page Workshop", difficulty: "Intermediate", category: "Challenge", xp: 50, status: "can join" },
-    { id: "a4", title: "Frontend Performance Analysis Case", difficulty: "Advanced", category: "Challenge", xp: 65, status: "pending" },
+const ACTIVITIES: ActivityRow[] = [
+    // { id: "a1", title: "Frontend Basics & Web Terminology Quiz", difficulty: "Beginner", category: "Course", xp: 20, status: "can join" },
+    // { id: "a2", title: "UI Layout Explanation Task", difficulty: "Beginner", category: "Course", xp: 15, status: "can join" },
+    // { id: "a3", title: "Responsive Web Page Workshop", difficulty: "Intermediate", category: "Challenge", xp: 50, status: "can join" },
+    // { id: "a4", title: "Frontend Performance Analysis Case", difficulty: "Advanced", category: "Challenge", xp: 65, status: "pending" },
 ];
 
 function cx(...parts: Array<string | false | null | undefined>) {
@@ -122,29 +107,137 @@ function cx(...parts: Array<string | false | null | undefined>) {
 }
 
 export default function ActivityDashboard() {
-    const skills = useMemo(() => MOCK_SKILLS, []);
+    const [data, setData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function load() {
+            try {
+                setLoading(true);
+                setError(null);
+                const res = await fetch("/api/student/activitystats");
+                const json = await res.json();
+
+                if (!res.ok || !json.ok) {
+                    throw new Error(json.message || "Failed to load activity stats");
+                }
+
+                setData(json.data);
+            } catch (err: any) {
+                console.error("Failed to load activity stats", err);
+                setError(err?.message || "Failed to load dashboard");
+            } finally {
+                setLoading(false);
+            }
+        }
+        load();
+    }, []);
+
+    const stats = useMemo(() => {
+        if (!data) return STATS;
+        const totalValue = data.total_activity_stats?.reduce((acc: number, cur: any) => acc + (cur.total_count || 0), 0) || 0;
+        const totalBreakdown = data.total_activity_stats?.map((s: any) => ({ label: s.activity_type, value: s.total_count })) || [];
+
+        const compValue = data.completed_activity_stats?.reduce((acc: number, cur: any) => acc + (cur.completed_count || 0), 0) || 0;
+        const compBreakdown = data.completed_activity_stats?.map((s: any) => ({ label: s.activity_type, value: s.completed_count })) || [];
+
+        const uncompValue = data.incomplete_activity_stats?.reduce((acc: number, cur: any) => acc + (cur.incomplete_count || 0), 0) || 0;
+        const uncompBreakdown = data.incomplete_activity_stats?.map((s: any) => ({ label: s.activity_type, value: s.incomplete_count })) || [];
+
+        return [
+            { label: "Totals", value: totalValue, breakdown: totalBreakdown.length ? totalBreakdown : [{ label: "N/A", value: 0 }] },
+            { label: "Success", value: compValue, breakdown: compBreakdown.length ? compBreakdown : [{ label: "N/A", value: 0 }] },
+            { label: "In progress", value: uncompValue, breakdown: uncompBreakdown.length ? uncompBreakdown : [{ label: "N/A", value: 0 }] },
+            { label: "Unsuccessful", value: 0, breakdown: [{ label: "N/A", value: 0 }] },
+        ];
+    }, [data]);
+
+    const skills = useMemo(() => {
+        if (!data?.skill_levels || data.skill_levels.length === 0) return MOCK_SKILLS;
+        return data.skill_levels.map((s: any, i: number) => {
+            //string -> number, skill_level 1-6 -> % 
+            const skillLevel = parseInt(s.skill_level, 10);
+            const pct = Math.min(100, Math.max(10, skillLevel * 15));
+
+            return {
+                id: s.skill_id || `s${i}`,
+                name: s.skill_name || "Unknown",
+                percent: pct
+            };
+        });
+    }, [data]);
+
+    const companies = useMemo(() => {
+        if (!data?.organizations || data.organizations.length === 0) return COMPANIES;
+        return data.organizations.map((org: any, i: number) => ({
+            id: `org-${i}`,
+            name: org.org_name || "Unknown",
+            subtitle: org.org_profile || "Organization profile",
+            logoText: (org.org_name || "U").substring(0, 2).toUpperCase(),
+            accent: COMPANIES[i % COMPANIES.length]?.accent || "#efc36f"
+        }));
+    }, [data]);
+
+    const siteEvents = useMemo(() => {
+        if (!data?.schedules || data.schedules.length === 0) return MOCK_SITE_EVENTS;
+        const colors = ["blue", "yellow", "pink", "orange"];
+        return data.schedules.map((s: any, i: number) => ({
+            id: s.activity_id || `evt-${i}`,
+            title: s.activity_name || "Scheduled Event",
+            startAt: s.run_start_at || new Date().toISOString(),
+            calendarColor: colors[i % colors.length]
+        }));
+    }, [data]);
+
+    const activities = useMemo(() => {
+        if (!data?.registered_activities || data.registered_activities.length === 0) return ACTIVITIES;
+        return data.registered_activities.map((a: any, i: number) => ({
+            id: a.activityID || `act-${i}`,
+            title: a.activityName || "Activity",
+            difficulty: "Beginner",
+            category: a.activityType || "Course",
+            xp: a.hours ? a.hours * 10 : 20,
+            status: a.status === "Publish" ? "can join" : "pending"
+        }));
+    }, [data]);
+    if (loading) {
+        return (
+            <div className={styles.dash}>
+                <div style={{ padding: 24 }}>Loading dashboard...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className={styles.dash}>
+                <div style={{ padding: 24, color: "#b42318" }}>{error}</div>
+            </div>
+        );
+    }
 
     return (
         <div className={styles.dash}>
             <div className={styles.leftRail}>
-                <StatSummary />
+                <StatSummary stats={stats} />
                 <SkillProgressGraph skills={skills} />
-                <ActivityOverviewTable />
+                <ActivityOverviewTable activities={activities} />
             </div>
 
             <div className={styles.rightRail}>
-                <CompanyPanel />
-                <StudentCalendar siteEvents={MOCK_SITE_EVENTS} />
+                <CompanyPanel companies={companies} />
+                <StudentCalendar siteEvents={siteEvents} />
             </div>
         </div>
     );
 }
 
-function StatSummary() {
+function StatSummary({ stats }: { stats: StatCard[] }) {
     return (
         <section className={styles.statsShell}>
             <div className={styles.statsGrid}>
-                {STATS.map((card, index) => (
+                {stats.map((card, index) => (
                     <div key={card.label} className={styles.statWrap}>
                         <article className={styles.statCard}>
                             <div className={styles.statValue}>{card.value}</div>
@@ -160,7 +253,7 @@ function StatSummary() {
                             </div>
                         </article>
 
-                        {index < STATS.length - 1 && <div className={styles.statDivider} />}
+                        {index < stats.length - 1 && <div className={styles.statDivider} />}
                     </div>
                 ))}
             </div>
@@ -186,22 +279,22 @@ function SkillProgressGraph({ skills }: { skills: Skill[] }) {
                                     <div
                                         className={cx(
                                             styles.skillFill,
-                                            i === 0 && styles.trackGreenWide,
-                                            i === 1 && styles.trackPink,
-                                            i === 2 && styles.trackYellow,
-                                            i === 3 && styles.trackGreen,
-                                            i === 4 && styles.trackSoftPink,
-                                            i === 5 && styles.trackBlue,
-                                            i === 6 && styles.trackOrange,
-                                            i === 7 && styles.trackRose,
-                                            i === 8 && styles.trackSoftPink,
-                                            i === 9 && styles.trackBlue,
-                                            i === 10 && styles.trackOrange,
-                                            i === 11 && styles.trackRose,
-                                            i === 12 && styles.trackSoftPink,
-                                            i === 13 && styles.trackBlue,
-                                            i === 14 && styles.trackOrange,
-                                            i === 15 && styles.trackRose
+                                            i % 16 === 0 && styles.trackGreenWide,
+                                            i % 16 === 1 && styles.trackPink,
+                                            i % 16 === 2 && styles.trackYellow,
+                                            i % 16 === 3 && styles.trackGreen,
+                                            i % 16 === 4 && styles.trackSoftPink,
+                                            i % 16 === 5 && styles.trackBlue,
+                                            i % 16 === 6 && styles.trackOrange,
+                                            i % 16 === 7 && styles.trackRose,
+                                            i % 16 === 8 && styles.trackSoftPink,
+                                            i % 16 === 9 && styles.trackBlue,
+                                            i % 16 === 10 && styles.trackOrange,
+                                            i % 16 === 11 && styles.trackRose,
+                                            i % 16 === 12 && styles.trackSoftPink,
+                                            i % 16 === 13 && styles.trackBlue,
+                                            i % 16 === 14 && styles.trackOrange,
+                                            i % 16 === 15 && styles.trackRose
                                         )}
                                         style={{ height: `${skill.percent}%` }}
                                     />
@@ -219,11 +312,11 @@ function SkillProgressGraph({ skills }: { skills: Skill[] }) {
     );
 }
 
-function CompanyPanel() {
+function CompanyPanel({ companies }: { companies: Company[] }) {
     return (
         <section className={styles.companyCard}>
             <div className={styles.companyList}>
-                {COMPANIES.map((company) => (
+                {companies.map((company) => (
                     <div key={company.id} className={styles.companyItem}>
                         <div className={styles.companyLogo} style={{ borderColor: company.accent }}>
                             <div className={styles.companyLogoInner} style={{ background: company.accent }}>
@@ -242,7 +335,7 @@ function CompanyPanel() {
     );
 }
 
-function ActivityOverviewTable() {
+function ActivityOverviewTable({ activities }: { activities: ActivityRow[] }) {
     return (
         <section className={styles.activityCard}>
             <div className={styles.activityHead}>
@@ -254,7 +347,7 @@ function ActivityOverviewTable() {
 
             <div className={styles.activityScrollArea}>
                 <div className={styles.activityTable}>
-                    {ACTIVITIES.map((row) => (
+                    {activities.map((row) => (
                         <article key={row.id} className={styles.activityRow}>
                             <div className={styles.activityRowBg} />
 
@@ -327,5 +420,4 @@ function ActivityOverviewTable() {
         </section>
     );
 }
-
 

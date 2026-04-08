@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import styles from "./overview.module.css";
 
 type ActivityStatus = "Incomplete" | "In progress" | "Submitted" | "Complete";
@@ -31,178 +31,7 @@ const CHALLENGE_DETAIL_PATH = "/student/activities/challenge-progress";
 const COURSE_DETAIL_PATH = "/student/activities/course-progress";
 const MEETING_DETAIL_PATH = "/student/activities/meeting-progress";
 
-const ALL_ACTIVITIES: ActivityItem[] = [
-  {
-    id: "challenge-build-calculator-python",
-    title: "Build Calculator with Python",
-    organization: "Limbus Company",
-    dueDate: "25 Jan 2026",
-    dueDateValue: "2026-01-25",
-    status: "Incomplete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "challenge-build-calculator-cpp",
-    title: "Build Calculator with C++",
-    organization: "Limbus Company",
-    dueDate: "26 Jan 2026",
-    dueDateValue: "2026-01-26",
-    status: "Complete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-nextgen-kickoff",
-    title: "NextGen Developer Kickoff",
-    organization: "Limbus Company",
-    dueDate: "27 Jan 2026",
-    dueDateValue: "2026-01-27",
-    status: "Incomplete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "meeting-nextgen-review",
-    title: "NextGen Developer Review",
-    organization: "Limbus Company",
-    dueDate: "28 Jan 2026",
-    dueDateValue: "2026-01-28",
-    status: "Complete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "course-basic-python",
-    title: "Basic Python",
-    organization: "Limbus Company",
-    dueDate: "29 Jan 2026",
-    dueDateValue: "2026-01-29",
-    status: "In progress",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "challenge-responsive-web-page",
-    title: "Responsive Web Page Workshop",
-    organization: "PeakSystems",
-    dueDate: "30 Jan 2026",
-    dueDateValue: "2026-01-30",
-    status: "Submitted",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "course-ui-layout-fundamentals",
-    title: "UI Layout Fundamentals",
-    organization: "BlueTechnologies",
-    dueDate: "31 Jan 2026",
-    dueDateValue: "2026-01-31",
-    status: "Complete",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "course-frontend-basics",
-    title: "Frontend Basics & Web Terminology",
-    organization: "NextDynamics",
-    dueDate: "01 Feb 2026",
-    dueDateValue: "2026-02-01",
-    status: "Complete",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-cyber-threat-modeling",
-    title: "Cyber Threat Modeling Session",
-    organization: "CyberIndustries",
-    dueDate: "02 Feb 2026",
-    dueDateValue: "2026-02-02",
-    status: "Incomplete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "course-cloud-fundamentals",
-    title: "Cloud Fundamentals",
-    organization: "TechIndustries",
-    dueDate: "03 Feb 2026",
-    dueDateValue: "2026-02-03",
-    status: "In progress",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "challenge-performance-analysis-case",
-    title: "Performance Analysis Case",
-    organization: "PeakSystems",
-    dueDate: "05 Feb 2026",
-    dueDateValue: "2026-02-05",
-    status: "Incomplete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-weekly-standup",
-    title: "Weekly Standup",
-    organization: "BlueTechnologies",
-    dueDate: "06 Feb 2026",
-    dueDateValue: "2026-02-06",
-    status: "Complete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "challenge-api-integration-practice",
-    title: "API Integration Practice",
-    organization: "NextDynamics",
-    dueDate: "08 Feb 2026",
-    dueDateValue: "2026-02-08",
-    status: "Submitted",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "course-sql-basics",
-    title: "SQL Basics",
-    organization: "TechIndustries",
-    dueDate: "10 Feb 2026",
-    dueDateValue: "2026-02-10",
-    status: "Complete",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-design-critique",
-    title: "Design Critique Meeting",
-    organization: "PeakSystems",
-    dueDate: "12 Feb 2026",
-    dueDateValue: "2026-02-12",
-    status: "Incomplete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "challenge-react-component-lab",
-    title: "React Component Lab",
-    organization: "BlueTechnologies",
-    dueDate: "13 Feb 2026",
-    dueDateValue: "2026-02-13",
-    status: "Complete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "course-git-collaboration",
-    title: "Git Collaboration",
-    organization: "NextDynamics",
-    dueDate: "15 Feb 2026",
-    dueDateValue: "2026-02-15",
-    status: "In progress",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-];
+// Mock data removed. Component fetches real data on mount.
 
 const EMPTY_FILTERS: FilterState = {
   name: "",
@@ -236,16 +65,76 @@ function getActivityHref(item: ActivityItem) {
 export default function AllActivities() {
   const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch activities from the Backend via proxy
+  useEffect(() => {
+      async function fetchActivities() {
+          setLoading(true);
+          try {
+            // passing appliedFilters.status into body for backend
+            // Alternatively, leaving it empty returns all activities and we filter client-side
+            const res = await fetch("/api/student/filteractivity", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(appliedFilters) // sending it off to pass downstream options
+            });
+
+            const json = await res.json();
+            if (json && json.ok) {
+                // Map returned structure
+                const rawList = Array.isArray(json.data) ? json.data : [];
+                const mapped: ActivityItem[] = rawList.map((a: any, i: number) => {
+                    // Dates typically look like 2026-01-26T... 
+                    let parsedDate = "Unknown Date";
+                    let parsedVal = "2099-12-31";
+                    const dateField = a.run_end_at || a.runEndAt || a.enroll_end_at || "";
+                    if (dateField) {
+                        const dt = new Date(dateField);
+                        if (!isNaN(dt.getTime())) {
+                          parsedDate = dt.toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' });
+                          parsedVal = typeof dateField === 'string' ? dateField.split("T")[0] : parsedVal;
+                        }
+                    }
+                    
+                    const type: ActivityType = ["Challenge", "Course", "Meeting"].includes(a.activityType || a.activity_type) ? (a.activityType || a.activity_type) : "Course";
+                    let detPath = COURSE_DETAIL_PATH;
+                    if (type === "Challenge") detPath = CHALLENGE_DETAIL_PATH;
+                    if (type === "Meeting") detPath = MEETING_DETAIL_PATH;
+
+                    return {
+                        id: a.activityID || a.activity_id || String(i),
+                        title: a.activityName || a.activity_name || "Unknown Activity",
+                        organization: a.creatorOrgID || a.creator_org_id || a.organization || "No Organization",
+                        dueDate: parsedDate,
+                        dueDateValue: parsedVal,
+                        status: ["Incomplete", "In progress", "Submitted", "Complete"].includes(a.status) ? a.status : "Incomplete",
+                        type,
+                        detailPath: detPath,
+                    };
+                });
+                setActivities(mapped);
+            }
+          } catch (err) {
+            console.error("Filter Activity Fetch Failed:", err);
+          } finally {
+            setLoading(false);
+          }
+      }
+      fetchActivities();
+  }, [appliedFilters]); // Re-fetch from the proxy when user applies filters
+
 
   const organizations = useMemo(
-    () => Array.from(new Set(ALL_ACTIVITIES.map((item) => item.organization))),
-    []
+    () => Array.from(new Set(activities.map((item) => item.organization))),
+    [activities]
   );
 
   const filteredActivities = useMemo(() => {
     const keyword = appliedFilters.name.trim().toLowerCase();
 
-    return ALL_ACTIVITIES.filter((item) => {
+    return activities.filter((item) => {
       const matchesName =
         !keyword ||
         item.title.toLowerCase().includes(keyword) ||
@@ -254,6 +143,7 @@ export default function AllActivities() {
       const matchesOrganization =
         !appliedFilters.organization || item.organization === appliedFilters.organization;
 
+      // The backend may have already filtered by type/status based on appliedFilters payload!
       const matchesType = !appliedFilters.type || item.type === appliedFilters.type;
       const matchesStatus = !appliedFilters.status || item.status === appliedFilters.status;
       const matchesDate = matchesDateRange(
@@ -270,7 +160,7 @@ export default function AllActivities() {
         matchesDate
       );
     });
-  }, [appliedFilters]);
+  }, [appliedFilters, activities]);
 
   return (
     <div className={styles.panel}>
@@ -412,7 +302,9 @@ export default function AllActivities() {
         </div>
 
         <div className={styles.tableBody}>
-          {filteredActivities.length > 0 ? (
+          {loading ? (
+             <div className={styles.emptyState}>Loading activities...</div>
+          ) : filteredActivities.length > 0 ? (
             filteredActivities.map((item, index) => (
               <Link
                 key={item.id}
