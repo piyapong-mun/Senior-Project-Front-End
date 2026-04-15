@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import styles from "./overview.module.css";
 
-type ActivityStatus = "Incomplete" | "In progress" | "Submitted" | "Complete";
-type ActivityType = "Challenge" | "Course" | "Meeting";
+type ActivityStatus = "Incomplete" | "In progress" | "Submitted" | "Completed";
+type ActivityType = "challenge" | "course" | "meeting";
 
 type ActivityItem = {
   id: string;
@@ -18,203 +18,41 @@ type ActivityItem = {
   detailPath: string;
 };
 
+// {
+//   "activity_name": "string",
+//   "activity_type": "string",
+//   "org_id": "string",
+//   "run_end_at": "string",
+//   "run_start_at": "string",
+//   "status": "string"
+// }
+
 type FilterState = {
-  name: string;
-  fromDate: string;
-  toDate: string;
-  organization: string;
-  type: "" | ActivityType;
-  status: "" | ActivityStatus;
+  activity_name: string;
+  activity_type: string;
+  org_id: string;
+  run_end_at: string;
+  run_start_at: string;
+  status: string;
 };
 
 const CHALLENGE_DETAIL_PATH = "/student/activities/challenge-progress";
 const COURSE_DETAIL_PATH = "/student/activities/course-progress";
 const MEETING_DETAIL_PATH = "/student/activities/meeting-progress";
 
-const ALL_ACTIVITIES: ActivityItem[] = [
-  {
-    id: "challenge-build-calculator-python",
-    title: "Build Calculator with Python",
-    organization: "Limbus Company",
-    dueDate: "25 Jan 2026",
-    dueDateValue: "2026-01-25",
-    status: "Incomplete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "challenge-build-calculator-cpp",
-    title: "Build Calculator with C++",
-    organization: "Limbus Company",
-    dueDate: "26 Jan 2026",
-    dueDateValue: "2026-01-26",
-    status: "Complete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-nextgen-kickoff",
-    title: "NextGen Developer Kickoff",
-    organization: "Limbus Company",
-    dueDate: "27 Jan 2026",
-    dueDateValue: "2026-01-27",
-    status: "Incomplete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "meeting-nextgen-review",
-    title: "NextGen Developer Review",
-    organization: "Limbus Company",
-    dueDate: "28 Jan 2026",
-    dueDateValue: "2026-01-28",
-    status: "Complete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "course-basic-python",
-    title: "Basic Python",
-    organization: "Limbus Company",
-    dueDate: "29 Jan 2026",
-    dueDateValue: "2026-01-29",
-    status: "In progress",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "challenge-responsive-web-page",
-    title: "Responsive Web Page Workshop",
-    organization: "PeakSystems",
-    dueDate: "30 Jan 2026",
-    dueDateValue: "2026-01-30",
-    status: "Submitted",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "course-ui-layout-fundamentals",
-    title: "UI Layout Fundamentals",
-    organization: "BlueTechnologies",
-    dueDate: "31 Jan 2026",
-    dueDateValue: "2026-01-31",
-    status: "Complete",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "course-frontend-basics",
-    title: "Frontend Basics & Web Terminology",
-    organization: "NextDynamics",
-    dueDate: "01 Feb 2026",
-    dueDateValue: "2026-02-01",
-    status: "Complete",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-cyber-threat-modeling",
-    title: "Cyber Threat Modeling Session",
-    organization: "CyberIndustries",
-    dueDate: "02 Feb 2026",
-    dueDateValue: "2026-02-02",
-    status: "Incomplete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "course-cloud-fundamentals",
-    title: "Cloud Fundamentals",
-    organization: "TechIndustries",
-    dueDate: "03 Feb 2026",
-    dueDateValue: "2026-02-03",
-    status: "In progress",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "challenge-performance-analysis-case",
-    title: "Performance Analysis Case",
-    organization: "PeakSystems",
-    dueDate: "05 Feb 2026",
-    dueDateValue: "2026-02-05",
-    status: "Incomplete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-weekly-standup",
-    title: "Weekly Standup",
-    organization: "BlueTechnologies",
-    dueDate: "06 Feb 2026",
-    dueDateValue: "2026-02-06",
-    status: "Complete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "challenge-api-integration-practice",
-    title: "API Integration Practice",
-    organization: "NextDynamics",
-    dueDate: "08 Feb 2026",
-    dueDateValue: "2026-02-08",
-    status: "Submitted",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "course-sql-basics",
-    title: "SQL Basics",
-    organization: "TechIndustries",
-    dueDate: "10 Feb 2026",
-    dueDateValue: "2026-02-10",
-    status: "Complete",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-  {
-    id: "meeting-design-critique",
-    title: "Design Critique Meeting",
-    organization: "PeakSystems",
-    dueDate: "12 Feb 2026",
-    dueDateValue: "2026-02-12",
-    status: "Incomplete",
-    type: "Meeting",
-    detailPath: MEETING_DETAIL_PATH,
-  },
-  {
-    id: "challenge-react-component-lab",
-    title: "React Component Lab",
-    organization: "BlueTechnologies",
-    dueDate: "13 Feb 2026",
-    dueDateValue: "2026-02-13",
-    status: "Complete",
-    type: "Challenge",
-    detailPath: CHALLENGE_DETAIL_PATH,
-  },
-  {
-    id: "course-git-collaboration",
-    title: "Git Collaboration",
-    organization: "NextDynamics",
-    dueDate: "15 Feb 2026",
-    dueDateValue: "2026-02-15",
-    status: "In progress",
-    type: "Course",
-    detailPath: COURSE_DETAIL_PATH,
-  },
-];
+// Mock data removed. Component fetches real data on mount.
 
 const EMPTY_FILTERS: FilterState = {
-  name: "",
-  fromDate: "",
-  toDate: "",
-  organization: "",
-  type: "",
+  activity_name: "",
+  activity_type: "",
+  org_id: "",
+  run_end_at: "",
+  run_start_at: "",
   status: "",
 };
 
 function statusClass(status: ActivityStatus, stylesObj: typeof styles) {
-  if (status === "Complete") return stylesObj.statusComplete;
+  if (status === "Completed") return stylesObj.statusComplete;
   if (status === "In progress" || status === "Submitted") return stylesObj.statusProgress;
   return stylesObj.statusIncomplete;
 }
@@ -236,30 +74,123 @@ function getActivityHref(item: ActivityItem) {
 export default function AllActivities() {
   const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch activities from the Backend via proxy
+  useEffect(() => {
+    async function fetchActivities() {
+      setLoading(true);
+      try {
+        // passing appliedFilters.status into body for backend
+        // Alternatively, leaving it empty returns all activities and we filter client-side
+        // {
+        //   "activity_name": "string",
+        //   "activity_type": "string",
+        //   "org_id": "string",
+        //   "run_end_at": "string",
+        //   "run_start_at": "string",
+        //   "status": "string"
+        // }
+        const res = await fetch("/api/student/filteractivity", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(appliedFilters) // sending it off to pass downstream options
+        });
+
+        const json = await res.json();
+        if (json && json.ok) {
+          console.log("json", json);
+          // Map returned structure
+          const rawList = Array.isArray(json.data.activities) ? json.data.activities : [];
+          console.log("rawList", rawList);
+          const mapped: ActivityItem[] = rawList.map((a: any, i: number) => {
+            // Dates typically look like 2026-01-26T... 
+            let parsedDate = "Unknown Date";
+            let parsedVal = "2099-12-31";
+            const dateField = a.run_end_at || a.RunEndAt || a.enroll_end_at || "";
+            console.log("Condition", a.run_end_at || a.RunEndAt || a.enroll_end_at || "")
+            console.log("dateField", dateField);
+            if (dateField) {
+              const dt = new Date(dateField);
+              if (!isNaN(dt.getTime())) {
+                parsedDate = dt.toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' });
+                parsedVal = typeof dateField === 'string' ? dateField.split("T")[0] : parsedVal;
+              }
+            }
+
+            const typeValue = String(a.ActivityType || a.Activity_type || "course").toLowerCase();
+            const type: ActivityType = (["challenge", "course", "meeting"].includes(typeValue) ? typeValue : "course") as ActivityType;
+            let detPath = COURSE_DETAIL_PATH;
+            if (type === "challenge") detPath = CHALLENGE_DETAIL_PATH;
+            if (type === "meeting") detPath = MEETING_DETAIL_PATH;
+
+            if (a.CreatorOrgID || a.Creator_org_id || a.organization) {
+              const org = json.data.org_list.find((org: any) => org.org_id === a.CreatorOrgID || org.org_id === a.Creator_org_id || org.org_id === a.organization);
+              if (org) {
+                a.organization = org.org_name;
+              }
+            }
+
+            return {
+              id: a.ActivityID || a.Activity_id || String(i),
+              title: a.ActivityName || a.Activity_name || "Unknown Activity",
+              organization: a.organization,
+              dueDate: parsedDate,
+              dueDateValue: parsedVal,
+              status: ["Incomplete", "In progress", "Submitted", "Completed"].find(s => s.toLowerCase() === String(a.SubmissionStatus).toLowerCase()) as ActivityStatus || "In progress",
+              type,
+              detailPath: detPath,
+            };
+          });
+          console.log("mapped", mapped);
+
+          // Remove duplicates based on string ID to prevent React key collision errors
+          const uniqueMapped = Array.from(new Map(mapped.map(item => [item.id, item])).values());
+
+          setActivities(uniqueMapped);
+        }
+      } catch (err) {
+        console.error("Filter Activity Fetch Failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchActivities();
+  }, [appliedFilters]); // Re-fetch from the proxy when user applies filters
+
 
   const organizations = useMemo(
-    () => Array.from(new Set(ALL_ACTIVITIES.map((item) => item.organization))),
-    []
+    () => Array.from(new Set(activities.map((item) => item.organization))),
+    [activities]
   );
 
   const filteredActivities = useMemo(() => {
-    const keyword = appliedFilters.name.trim().toLowerCase();
+    const keyword = appliedFilters.activity_name.trim().toLowerCase();
 
-    return ALL_ACTIVITIES.filter((item) => {
+    // Bypass Filter
+    // console.log("activities", activities);
+    // return activities;
+
+    console.log("appliedFilters", appliedFilters);
+    console.log("activities", activities);
+
+    return activities.filter((item) => {
       const matchesName =
         !keyword ||
         item.title.toLowerCase().includes(keyword) ||
         item.organization.toLowerCase().includes(keyword);
 
       const matchesOrganization =
-        !appliedFilters.organization || item.organization === appliedFilters.organization;
+        !appliedFilters.org_id || item.organization === appliedFilters.org_id;
 
-      const matchesType = !appliedFilters.type || item.type === appliedFilters.type;
+      // The backend may have already filtered by type/status based on appliedFilters payload!
+      const matchesType = !appliedFilters.activity_type || item.type === appliedFilters.activity_type;
       const matchesStatus = !appliedFilters.status || item.status === appliedFilters.status;
       const matchesDate = matchesDateRange(
         item.dueDateValue,
-        appliedFilters.fromDate,
-        appliedFilters.toDate
+        appliedFilters.run_start_at,
+        appliedFilters.run_end_at
       );
 
       return (
@@ -270,7 +201,7 @@ export default function AllActivities() {
         matchesDate
       );
     });
-  }, [appliedFilters]);
+  }, [appliedFilters, activities]);
 
   return (
     <div className={styles.panel}>
@@ -295,11 +226,11 @@ export default function AllActivities() {
             <input
               className={styles.filterInput}
               placeholder="Activity or organization name"
-              value={draftFilters.name}
+              value={draftFilters.activity_name}
               onChange={(event) =>
                 setDraftFilters((previous) => ({
                   ...previous,
-                  name: event.target.value,
+                  activity_name: event.target.value,
                 }))
               }
             />
@@ -309,11 +240,11 @@ export default function AllActivities() {
             <input
               type="date"
               className={styles.filterInputSmall}
-              value={draftFilters.fromDate}
+              value={draftFilters.run_start_at}
               onChange={(event) =>
                 setDraftFilters((previous) => ({
                   ...previous,
-                  fromDate: event.target.value,
+                  run_start_at: event.target.value,
                 }))
               }
             />
@@ -321,11 +252,11 @@ export default function AllActivities() {
             <input
               type="date"
               className={styles.filterInputSmall}
-              value={draftFilters.toDate}
+              value={draftFilters.run_end_at}
               onChange={(event) =>
                 setDraftFilters((previous) => ({
                   ...previous,
-                  toDate: event.target.value,
+                  run_end_at: event.target.value,
                 }))
               }
             />
@@ -334,11 +265,11 @@ export default function AllActivities() {
           <div className={styles.organizationField}>
             <select
               className={styles.filterSelect}
-              value={draftFilters.organization}
+              value={draftFilters.org_id}
               onChange={(event) =>
                 setDraftFilters((previous) => ({
                   ...previous,
-                  organization: event.target.value,
+                  org_id: event.target.value,
                 }))
               }
             >
@@ -355,18 +286,18 @@ export default function AllActivities() {
           <div className={styles.typeField}>
             <select
               className={styles.filterSelect}
-              value={draftFilters.type}
+              value={draftFilters.activity_type}
               onChange={(event) =>
                 setDraftFilters((previous) => ({
                   ...previous,
-                  type: event.target.value as FilterState["type"],
+                  activity_type: event.target.value as FilterState["activity_type"],
                 }))
               }
             >
               <option value="">Type</option>
-              <option value="Challenge">Challenge</option>
-              <option value="Course">Course</option>
-              <option value="Meeting">Meeting</option>
+              <option value="challenge">Challenge</option>
+              <option value="course">Course</option>
+              <option value="meeting">Meeting</option>
             </select>
             <span className={styles.selectArrow}>V</span>
           </div>
@@ -386,7 +317,7 @@ export default function AllActivities() {
               <option value="Incomplete">Incomplete</option>
               <option value="In progress">In progress</option>
               <option value="Submitted">Submitted</option>
-              <option value="Complete">Complete</option>
+              <option value="Completed">Completed</option>
             </select>
             <span className={styles.selectArrow}>V</span>
           </div>
@@ -412,7 +343,9 @@ export default function AllActivities() {
         </div>
 
         <div className={styles.tableBody}>
-          {filteredActivities.length > 0 ? (
+          {loading ? (
+            <div className={styles.emptyState}>Loading activities...</div>
+          ) : filteredActivities.length > 0 ? (
             filteredActivities.map((item, index) => (
               <Link
                 key={item.id}

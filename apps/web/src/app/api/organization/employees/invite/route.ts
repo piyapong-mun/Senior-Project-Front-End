@@ -61,7 +61,7 @@ function getSessionTokens(req: Request) {
         refreshToken?: string;
       };
       if (parsed?.idToken) return parsed;
-    } catch {}
+    } catch { }
   }
 
   const idToken = readCookie(cookieHeader, "vcep_id");
@@ -557,10 +557,10 @@ async function upsertEmployeeRow(args: {
              phone,
              avatar_choice,
              ${employeeColumns.has("can_check_challenge")
-               ? "can_check_challenge"
-               : employeeColumns.has("is_reviewer")
-                 ? "is_reviewer AS can_check_challenge"
-                 : "false AS can_check_challenge"}
+      ? "can_check_challenge"
+      : employeeColumns.has("is_reviewer")
+        ? "is_reviewer AS can_check_challenge"
+        : "false AS can_check_challenge"}
       FROM employees
       WHERE user_id = $1
       LIMIT 1
@@ -668,7 +668,7 @@ export async function POST(req: Request) {
     if (client) {
       try {
         await client.query("ROLLBACK");
-      } catch {}
+      } catch { }
     }
 
     const message = error?.message || "Failed to invite employee";

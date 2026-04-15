@@ -185,8 +185,7 @@ async function findBackendUserByCognitoSub(
 
   return (
     users.find(
-      (u: any) =>
-        u?.cognito_user_id === cognitoSub || u?.cognitoUserId === cognitoSub
+      (u: any) => u?.cognito_user_id === cognitoSub || u?.cognitoUserId === cognitoSub
     ) ?? null
   );
 }
@@ -426,10 +425,61 @@ export async function PUT(req: Request) {
     const student = await findStudentByUserId(backendUser.user_id, accessToken);
 
     if (!student?.std_id) {
-      return NextResponse.json(
-        { ok: false, message: "Student profile not found" },
-        { status: 404 }
-      );
+      // return NextResponse.json(
+      //   { ok: false, message: "Student profile not found" },
+      //   { status: 404 }
+      // );
+
+      // If no student profile, create one
+
+      // Backend template json
+      // {
+      // "avatar_choice": "string",
+      // "birth_date": "string",
+      // "faculty": "string",
+      // "first_name": "string",
+      // "last_name": "string",
+      // "major": "string",
+      // "phone": "string",
+      // "university": "string",
+      // "user_id": "string",
+      // "year": 0
+      // }
+      const student_new_body = {
+        user_id: backendUser.user_id,
+        first_name: "",
+        last_name: "",
+        phone: "",
+        university: "",
+        faculty: "",
+        major: "",
+        year: 0,
+        avatar_choice: "a38f38c4-9562-47c2-9646-887520bc236b",
+      }
+
+      const res = await fetch(`${process.env.BACKEND_URL}/student`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(student_new_body),
+      });
+
+      if (!res.ok) {
+        return NextResponse.json(
+          { ok: false, message: "Failed to create student profile" },
+          { status: 500 }
+        );
+      }
+
+      // Backend Respnse Json
+      // {
+      // "std_id": "string"
+      // }
+      const res_json = await res.json();
+      const std_id = res_json.std_id;
+      student.std_id = std_id;
     }
 
     const body = await req.json();

@@ -46,7 +46,7 @@ function getSessionTokens(req: Request): SessionTokens | null {
           idToken: parsed.idToken,
         };
       }
-    } catch {}
+    } catch { }
   }
 
   const accessToken = readCookie(cookieHeader, "vcep_access");
@@ -72,7 +72,7 @@ function safeObject(value: unknown): Record<string, any> {
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         return parsed as Record<string, any>;
       }
-    } catch {}
+    } catch { }
   }
   return {};
 }
@@ -134,8 +134,7 @@ async function fetchJson(url: string, accessToken: string) {
 
   if (!res.ok) {
     throw new Error(
-      `${url} failed: ${res.status} ${
-        typeof json === "string" ? json : JSON.stringify(json)
+      `${url} failed: ${res.status} ${typeof json === "string" ? json : JSON.stringify(json)
       }`
     );
   }
@@ -231,10 +230,10 @@ async function getStdId(accessToken: string, idToken: string) {
     Array.isArray(userJson)
       ? userJson
       : Array.isArray(userJson?.data)
-      ? userJson.data
-      : Array.isArray(userJson?.users)
-      ? userJson.users
-      : []
+        ? userJson.data
+        : Array.isArray(userJson?.users)
+          ? userJson.users
+          : []
   );
 
   const user = users.find(
@@ -248,10 +247,10 @@ async function getStdId(accessToken: string, idToken: string) {
     Array.isArray(studentJson)
       ? studentJson
       : Array.isArray(studentJson?.data)
-      ? studentJson.data
-      : Array.isArray(studentJson?.students)
-      ? studentJson.students
-      : []
+        ? studentJson.data
+        : Array.isArray(studentJson?.students)
+          ? studentJson.students
+          : []
   );
 
   return students.find((s) => s?.user_id === user.user_id)?.std_id ?? null;
@@ -285,9 +284,9 @@ function normalizeStudentInfo(portfolioRoot: any, dashboardRoot: any) {
     ),
     birth_date: normalizeDate(
       rootObj?.birth_date ??
-        rootObj?.birthDate ??
-        dashboardInfo?.birth_date ??
-        dashboardInfo?.birthDate
+      rootObj?.birthDate ??
+      dashboardInfo?.birth_date ??
+      dashboardInfo?.birthDate
     ),
     phone: pickString(
       rootObj?.phone,
@@ -331,9 +330,9 @@ function normalizeEducation(portfolioRoot: any) {
 
   const list = safeArray<any>(
     portfolioObj?.Education ??
-      portfolioObj?.education ??
-      rootObj?.education ??
-      rootObj?.Education
+    portfolioObj?.education ??
+    rootObj?.education ??
+    rootObj?.Education
   );
 
   return list.map((item, index) => ({
@@ -365,10 +364,10 @@ function normalizeSkills(portfolioRoot: any) {
 
   const list = safeArray<any>(
     portfolioObj?.Skills ??
-      portfolioObj?.skills ??
-      rootObj?.skills ??
-      rootObj?.Skills ??
-      rootObj?.skill
+    portfolioObj?.skills ??
+    rootObj?.skills ??
+    rootObj?.Skills ??
+    rootObj?.skill
   );
 
   return list.map((item, index) => ({
@@ -387,16 +386,16 @@ function normalizeCertificates(portfolioRoot: any) {
 
   const certificates = safeArray<any>(
     portfolioObj?.Certificates ??
-      portfolioObj?.certificates ??
-      rootObj?.certificates ??
-      rootObj?.Certificates
+    portfolioObj?.certificates ??
+    rootObj?.certificates ??
+    rootObj?.Certificates
   );
 
   const badges = safeArray<any>(
     portfolioObj?.Badges ??
-      portfolioObj?.badges ??
-      rootObj?.badges ??
-      rootObj?.Badges
+    portfolioObj?.badges ??
+    rootObj?.badges ??
+    rootObj?.Badges
   );
 
   const merged = [...badges, ...certificates];
@@ -440,13 +439,13 @@ function normalizeExperiences(portfolioRoot: any) {
 
   const list = safeArray<any>(
     portfolioObj?.Experience ??
-      portfolioObj?.experience ??
-      portfolioObj?.Experiences ??
-      portfolioObj?.experiences ??
-      rootObj?.experience ??
-      rootObj?.Experience ??
-      rootObj?.experiences ??
-      rootObj?.Experiences
+    portfolioObj?.experience ??
+    portfolioObj?.Experiences ??
+    portfolioObj?.experiences ??
+    rootObj?.experience ??
+    rootObj?.Experience ??
+    rootObj?.experiences ??
+    rootObj?.Experiences
   );
 
   return list.map((item, index) => ({
@@ -660,6 +659,7 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  console.log("PUT /api/student/portfolio");
   try {
     const sess = getSessionTokens(req);
     if (!sess) {
@@ -671,6 +671,7 @@ export async function PUT(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") as PortfolioType | null;
+    console.log("type: ", type);
 
     if (!type) {
       return NextResponse.json(
@@ -687,8 +688,12 @@ export async function PUT(req: Request) {
       );
     }
 
+    console.log("stdId: ", stdId);
+
     const body = await req.json();
     const payload = buildBackendPayload(type, body);
+
+    console.log("payload: ", payload);
 
     const result = await updatePortfolioBackend(
       stdId,
@@ -696,6 +701,8 @@ export async function PUT(req: Request) {
       type,
       payload
     );
+
+    console.log("result: ", result);
 
     return NextResponse.json(
       {
