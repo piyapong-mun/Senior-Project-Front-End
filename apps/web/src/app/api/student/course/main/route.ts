@@ -115,13 +115,23 @@ async function getStdId(accessToken: string, idToken: string) {
   return students.find((s) => s?.user_id === user.user_id)?.std_id ?? null;
 }
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   try {
     const sess = getSessionTokens(req);
     if (!sess) {
       return NextResponse.json(
         { ok: false, message: "Unauthorized" },
         { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const activityId = searchParams.get("activity_id");
+
+    if (!activityId) {
+      return NextResponse.json(
+        { ok: false, message: "activity_id is required" },
+        { status: 400 }
       );
     }
 
@@ -133,55 +143,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // Parse incoming filter body parameters, defaults to empty object.
-    const body = await req.json().catch(() => ({}));
+    console.log("url", `${BACKEND}/activity/student/course/main/${activityId}/${stdId}`)
 
-    // If filed = '' delete it from body
-    Object.keys(body).forEach((key) => {
-      if (body[key] === "") {
-        delete body[key];
-      }
-    });
-    console.log("body", body);
-
-    // Example payload for POST /activity/filter/student/{std_id}
-    // {
-    //   "category": "string",
-    //   "diffculty": "string",
-    //   "is_open_ended": true,
-    //   "skills": ["string"],
-    //   "status": "string"
-    // }
-
-    console.log("body", body);
-    console.log("BACKEND", BACKEND);
-    console.log("stdId", stdId);
-    console.log("URL", `${BACKEND}/activity/filter/student/${stdId}`);
-
-    const res = await fetch(`${BACKEND}/activity/filter/student/${stdId}`, {
-      method: "POST",
+    const res = await fetch(`${BACKEND}/activity/student/course/main/${activityId}/${stdId}`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${sess.accessToken}`,
         "Content-Type": "application/json",
       },
       cache: "no-store",
-      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`Failed to filter activities: ${errText}`);
+      throw new Error(`Failed to fetch main course progress: ${errText}`);
     }
 
     const data = await res.json();
-    console.log(data);
 
     return NextResponse.json({
       ok: true,
-      data: data || [],
+      data: data || {},
     });
   } catch (e: any) {
-    console.error("Error filtering activities:", e);
+    console.error("Error fetching main course progress:", e);
     return NextResponse.json(
       { ok: false, message: e?.message || "Server Error" },
       { status: 500 }

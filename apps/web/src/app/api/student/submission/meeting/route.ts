@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { decodeJwt } from "jose";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const BACKEND = process.env.BACKEND_URL!;
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "vcep_session";
+const S3_BUCKET = process.env.S3_BUCKET_NAME || process.env.S3_BUCKET!;
+const S3_PUBLIC_BASE_URL = process.env.S3_PUBLIC_BASE_URL || process.env.ASSETS_PUBLIC_BASE!;
+const S3_REGION = process.env.S3_REGION || process.env.AWS_REGION!;
 
 type SessionTokens = {
   accessToken: string;
   idToken: string;
 };
+
+const s3 = new S3Client({
+  region: S3_REGION,
+});
 
 function readCookie(cookieHeader: string | null, name: string) {
   if (!cookieHeader) return null;
@@ -133,55 +141,74 @@ export async function POST(req: Request) {
       );
     }
 
-    // Parse incoming filter body parameters, defaults to empty object.
-    const body = await req.json().catch(() => ({}));
+    const formData = await req.formData();
 
-    // If filed = '' delete it from body
-    Object.keys(body).forEach((key) => {
-      if (body[key] === "") {
-        delete body[key];
+    const activityId = formData.get("activity_id") as string;
+    const textSubmission = formData.get("description") as string || "";
+    const qrData = formData.get("qrdata") as string || "";
+    const isFileUpdateStr = formData.get("is_file_update") as string;
+    const isFileUpdate = isFileUpdateStr === "true";
+    let fileSubmissionUrl = formData.get("file_submission") as string || "";
+    const file = formData.get("file") as File | null;
+
+    if (isFileUpdate) {
+      if (file && file.size > 0) {
+        const jwt = decodeJwt(sess.idToken);
+        const cognitoUserId = jwt.sub;
+        const key = `student-files/${cognitoUserId}/${Date.now()}_${file.name}`;
+        const buffer = Buffer.from(await file.arrayBuffer());
+
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: key,
+            Body: buffer,
+            ContentType: file.type,
+            CacheControl: "no-cache, no-store, must-revalidate",
+          })
+        );
+
+        const version = Date.now();
+        fileSubmissionUrl = `${S3_PUBLIC_BASE_URL.replace(/\/+$/, "")}/${key}?v=${version}`;
       }
-    });
-    console.log("body", body);
+    }
 
-    // Example payload for POST /activity/filter/student/{std_id}
+    // example payload
     // {
-    //   "category": "string",
-    //   "diffculty": "string",
-    //   "is_open_ended": true,
-    //   "skills": ["string"],
-    //   "status": "string"
+    //   "activity_id": "123e4567-e89b-12d3-a456-426614174000",
+    //   "qrcode_checkin": "X123",
+    //   "std_id": "123e4567-e89b-12d3-a456-426614174000"
     // }
 
-    console.log("body", body);
-    console.log("BACKEND", BACKEND);
-    console.log("stdId", stdId);
-    console.log("URL", `${BACKEND}/activity/filter/student/${stdId}`);
+    const payload = {
+      activity_id: activityId,
+      qrcode_checkin: qrData,
+      std_id: stdId,
+    };
 
-    const res = await fetch(`${BACKEND}/activity/filter/student/${stdId}`, {
+    const res = await fetch(`${BACKEND}/activity/submission/meeting`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${sess.accessToken}`,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify(payload),
       cache: "no-store",
-      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`Failed to filter activities: ${errText}`);
+      throw new Error(`Failed to submit meeting: ${errText}`);
     }
 
     const data = await res.json();
-    console.log(data);
 
     return NextResponse.json({
       ok: true,
-      data: data || [],
+      data: data || {},
     });
   } catch (e: any) {
-    console.error("Error filtering activities:", e);
+    console.error("Error submitting meeting:", e);
     return NextResponse.json(
       { ok: false, message: e?.message || "Server Error" },
       { status: 500 }

@@ -133,55 +133,39 @@ export async function POST(req: Request) {
       );
     }
 
-    // Parse incoming filter body parameters, defaults to empty object.
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json();
+    const payload = {
+      ...body,
+      std_id: stdId,
+    };
 
-    // If filed = '' delete it from body
-    Object.keys(body).forEach((key) => {
-      if (body[key] === "") {
-        delete body[key];
-      }
-    });
-    console.log("body", body);
+    console.log("payload", payload)
 
-    // Example payload for POST /activity/filter/student/{std_id}
-    // {
-    //   "category": "string",
-    //   "diffculty": "string",
-    //   "is_open_ended": true,
-    //   "skills": ["string"],
-    //   "status": "string"
-    // }
-
-    console.log("body", body);
-    console.log("BACKEND", BACKEND);
-    console.log("stdId", stdId);
-    console.log("URL", `${BACKEND}/activity/filter/student/${stdId}`);
-
-    const res = await fetch(`${BACKEND}/activity/filter/student/${stdId}`, {
+    const res = await fetch(`${BACKEND}/activity/submission/lesson`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${sess.accessToken}`,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify(payload),
       cache: "no-store",
-      body: JSON.stringify(body),
     });
+
+
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`Failed to filter activities: ${errText}`);
+      throw new Error(`Failed to submit lesson: ${errText}`);
     }
 
     const data = await res.json();
-    console.log(data);
 
     return NextResponse.json({
       ok: true,
-      data: data || [],
+      data: data || {},
     });
   } catch (e: any) {
-    console.error("Error filtering activities:", e);
+    console.error("Error submitting lesson:", e);
     return NextResponse.json(
       { ok: false, message: e?.message || "Server Error" },
       { status: 500 }

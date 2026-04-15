@@ -25,10 +25,10 @@ type Company = {
 
 type ActivityRow = {
     id: string;
-    title: string;
+    activity_name: string;
     difficulty: string;
-    category: string;
-    xp: number;
+    activity_type: string;
+    hours: number;
     status: "can join" | "ended" | "pending";
 };
 
@@ -124,6 +124,7 @@ export default function ActivityDashboard() {
                 }
 
                 setData(json.data);
+                console.log(json.data);
             } catch (err: any) {
                 console.error("Failed to load activity stats", err);
                 setError(err?.message || "Failed to load dashboard");
@@ -193,12 +194,12 @@ export default function ActivityDashboard() {
     const activities = useMemo(() => {
         if (!data?.registered_activities || data.registered_activities.length === 0) return ACTIVITIES;
         return data.registered_activities.map((a: any, i: number) => ({
-            id: a.activityID || `act-${i}`,
-            title: a.activityName || "Activity",
+            id: a.ActivityID || `act-${i}`,
+            activity_name: a.ActivityName || "Activity",
             difficulty: "Beginner",
-            category: a.activityType || "Course",
-            xp: a.hours ? a.hours * 10 : 20,
-            status: a.status === "Publish" ? "can join" : "pending"
+            activity_type: a.ActivityType || "Course",
+            hours: a.Hours,
+            status: a.Status === "Publish" ? "can join" : "pending"
         }));
     }, [data]);
     if (loading) {
@@ -360,10 +361,10 @@ function ActivityOverviewTable({ activities }: { activities: ActivityRow[] }) {
                             </div>
 
                             <div className={styles.activityTitleCell}>
-                                <div className={styles.activityName}>{row.title}</div>
+                                <div className={styles.activityName}>{row.activity_name}</div>
                             </div>
 
-                            <div className={styles.activityMetaCol}>
+                            {/* <div className={styles.activityMetaCol}>
                                 <div className={styles.activityMetaLabel}>difficulty</div>
                                 <div
                                     className={
@@ -374,16 +375,16 @@ function ActivityOverviewTable({ activities }: { activities: ActivityRow[] }) {
                                 >
                                     {row.difficulty}
                                 </div>
-                            </div>
+                            </div> */}
 
                             <div className={styles.activityMetaCol}>
                                 <div className={styles.activityMetaLabel}>Category</div>
-                                <div className={styles.activityMetaValue}>{row.category}</div>
+                                <div className={styles.activityMetaValue}>{row.activity_type}</div>
                             </div>
 
                             <div className={styles.activityMetaCol}>
-                                <div className={styles.activityMetaLabel}>XP</div>
-                                <div className={styles.activityMetaValue}>{row.xp}</div>
+                                <div className={styles.activityMetaLabel}>Hours</div>
+                                <div className={styles.activityMetaValue}>{row.hours}</div>
                             </div>
 
                             <div className={styles.activityStatusCol}>
