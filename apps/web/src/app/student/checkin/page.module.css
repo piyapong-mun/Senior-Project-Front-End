@@ -1,0 +1,299 @@
+.page {
+  min-height: 100dvh;
+  background: #EEEAE4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 48px;
+  font-family: "Rounded Mplus 1c", sans-serif;
+}
+
+.logoArea {
+  margin-bottom: 32px;
+  align-self: flex-start;
+  padding-left: 4px;
+}
+
+.logoText {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #3a3530;
+}
+
+/* ── Shared state card ──────────────────────────── */
+.stateCard {
+  width: 100%;
+  max-width: 420px;
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  padding: 40px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.stateCardSuccess {
+  background: #d4ede8;
+  border-color: #a8dadc;
+}
+
+.stateCardError {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.stateIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #f3ede7;
+  border: 1.5px solid #CFAE83;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #7a6a5a;
+  margin-bottom: 4px;
+}
+
+.stateCardError .stateIcon {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.stateTitle {
+  font-size: 20px;
+  font-weight: 500;
+  color: #1f1f1f;
+}
+
+.stateText {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #6b6560;
+}
+
+/* ── Loading spinner ────────────────────────────── */
+.loadingSpinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e0d8d0;
+  border-top-color: #CFAE83;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Success state ──────────────────────────────── */
+.successIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #347464;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.activityNameSuccess {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1f1f1f;
+}
+
+.successMeta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.successMetaItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.successMetaLabel {
+  font-size: 11px;
+  color: #5a7a72;
+}
+
+.successMetaValue {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1f1f1f;
+}
+
+.xpValue {
+  color: #347464;
+  font-weight: 700;
+}
+
+.successNote {
+  font-size: 12px;
+  color: #5a7a72;
+  margin-top: 4px;
+}
+
+/* ── Error state ────────────────────────────────── */
+.retryButton {
+  margin-top: 8px;
+  padding: 10px 24px;
+  background: #fff;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.retryButton:hover {
+  background: #fee2e2;
+}
+
+/* ── Confirm card ───────────────────────────────── */
+.confirmCard {
+  width: 100%;
+  max-width: 420px;
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.confirmHeader {
+  padding: 28px 24px 22px;
+  background: #D9D2C9;
+}
+
+.confirmEyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: #6f665f;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.confirmActivityName {
+  font-size: 22px;
+  font-weight: 500;
+  color: #1f1f1f;
+  line-height: 1.25;
+}
+
+.confirmDivider {
+  height: 1px;
+  background: #d5bdaf;
+}
+
+.confirmDetails {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.confirmDetailRow {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.confirmDetailLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7a6a5a;
+  padding-top: 1px;
+}
+
+.confirmDetailValue {
+  font-size: 13px;
+  color: #2f2f2f;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.confirmXp {
+  font-weight: 700;
+  color: #347464;
+}
+
+.codeRow {
+  padding: 16px 24px;
+  background: #f7f4f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.codeLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: #7a6a5a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.codeValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f1f1f;
+  word-break: break-all;
+  text-align: right;
+}
+
+.checkinButton {
+  display: block;
+  width: calc(100% - 48px);
+  margin: 20px 24px;
+  height: 52px;
+  background: #347464;
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.18s, transform 0.12s;
+}
+
+.checkinButton:hover:not(:disabled) {
+  background: #2a5e50;
+  transform: translateY(-1px);
+}
+
+.checkinButton:disabled {
+  background: #a8c5bc;
+  cursor: not-allowed;
+}
+
+.confirmNote {
+  padding: 0 24px 22px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #8a7e76;
+  text-align: center;
+}

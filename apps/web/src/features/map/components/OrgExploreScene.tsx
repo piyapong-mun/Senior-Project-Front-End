@@ -148,17 +148,8 @@ const FALLBACK_ORG: CurrentOrg = {
 
 const FALLBACK_REMOTE_STUDENTS: RemoteStudent[] = [
   { id: "p1", name: "Charlotte Garcia", position: new THREE.Vector3(10, 5, -4), modelUrl: "/models/boy.glb" },
-  { id: "p2", name: "Emma Williams", position: new THREE.Vector3(-7, 5, -2), modelUrl: "/models/boy.glb" },
-  { id: "p3", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
-  { id: "p4", name: "Alexander Davis", position: new THREE.Vector3(18, 5, 12), modelUrl: "/models/boy.glb" },
-  { id: "p5", name: "Olivia Davis", position: new THREE.Vector3(28, 5, -18), modelUrl: "/models/boy.glb" },
-  { id: "p6", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
-  { id: "p7", name: "Alexander Davis", position: new THREE.Vector3(18, 5, 12), modelUrl: "/models/boy.glb" },
-  { id: "p8", name: "Olivia Davis", position: new THREE.Vector3(28, 5, -18), modelUrl: "/models/boy.glb" },
-    { id: "p9", name: "Charlotte Garcia", position: new THREE.Vector3(10, 5, -4), modelUrl: "/models/boy.glb" },
-  { id: "p10", name: "Emma Williams", position: new THREE.Vector3(-7, 5, -2), modelUrl: "/models/boy.glb" },
-  { id: "p11", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
-  { id: "p12", name: "Alexander Davis", position: new THREE.Vector3(18, 5, 12), modelUrl: "/models/boy.glb" },
+  // { id: "p2", name: "Emma Williams", position: new THREE.Vector3(-7, 5, -2), modelUrl: "/models/boy.glb" },
+  // { id: "p3", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
 ];
 
 function normalizeActivities(input: unknown): OrgActivity[] {

@@ -188,7 +188,7 @@
 }
 
 .segmentButton {
-  border: 5px solid #a8dadc;
+  border: 5px solid #C7BED4;
   background: #fff;
   font-family: inherit;
   font-size: 20px;
@@ -202,11 +202,11 @@
 }
 
 .segmentButtonActive {
-  background: #a8dadc;
+  background: #C7BED4;
 }
 
 .segmentButton:hover {
-  background: #edf9f9;
+  background: #e9e5f0;
 }
 
 /* =========================
@@ -306,7 +306,7 @@
 }
 
 .placeSuggestionButton:hover {
-  background: #edf9f9;
+  background: #e9e5f0;
 }
 
 .placeSuggestionTitle {
@@ -478,7 +478,7 @@
 
 .actionButton {
   min-height: 92px;
-  border: 5px solid #a8dadc;
+  border: 5px solid #C7BED4;
   background: #fff;
   display: flex;
   flex-direction: column;
@@ -493,17 +493,17 @@
 }
 
 .statusButtonActive {
-  background: #a8dadc;
-  border-color: #a8dadc;
+  background: #C7BED4;
+  border-color: #C7BED4;
 }
 
 .statusButtonInactive {
   background: #fff;
-  border-color: #a8dadc;
+  border-color: #C7BED4;
 }
 
 .actionButton:hover {
-  background: #edf9f9;
+  background: #e9e5f0;
 }
 
 .actionIcon {
@@ -524,33 +524,138 @@
   padding: 0 11px;
 }
 
+.rewardsHeaderEmpty {
+  padding: 0 11px;
+  margin-bottom: 8px;
+}
+
+.skillListEmpty {
+  height: 171px;
+  margin: 0 11px;
+  border: 2px dashed rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addSkillButtonCenter {
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.addSkillButtonCenter:hover {
+  opacity: 1;
+}
+
 .rewardsTitle {
   font-size: 16px;
   line-height: 26px;
   text-align: left;
 }
 
-.smallIcon {
-  width: 26px;
-  height: 19px;
-  color: #000;
-}
-
 .addSkillButton {
-  border: 0;
-  background: transparent;
-  padding: 0;
+  /* height: 32px; */
+  /* padding: 0 14px; */
+  /* border: 1.5px solid #84a59d; */
+  border-radius: 4px;
+  background: #fff;
+  color: #84a59d;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+  transition: background 0.15s, color 0.15s;
 }
 
-.addSkillIcon {
-  width: 26px;
-  height: 19px;
-  object-fit: contain;
-  display: block;
+.addSkillButton:hover {
+  background: #84a59d;
+  color: #fff;
+}
+
+/* Level custom dropdown */
+.levelDropdownWrap {
+  position: relative;
+  width: 100%;
+}
+
+.levelDropdownTrigger {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #f7f7f7;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  color: rgba(0, 0, 0, 0.75);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.levelDropdownTriggerOpen {
+  border-color: rgba(0, 0, 0, 0.85);
+  background: #fff;
+}
+
+.levelDropdownChevron {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+
+.levelDropdownList {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1.5px solid rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.levelDropdownItem {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.8);
+  transition: background 0.12s;
+}
+
+.levelDropdownItem:hover {
+  background: #f0f5f4;
+}
+
+.levelDropdownItemActive {
+  background: #84a59d;
+  color: #fff;
+  font-weight: 500;
+}
+
+.levelDropdownItemActive:hover {
+  background: #6e9189;
 }
 
 .skillList {
@@ -615,7 +720,7 @@
 .skillRow {
   min-height: 48px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 60px 34px;
+  grid-template-columns: minmax(0, 1fr) 120px 60px;
   align-items: center;
   background: #f7f7f7;
   border: 1px solid #b3b3b3;
@@ -666,7 +771,7 @@
 }
 
 .removeSkillButton:hover {
-  background: #fdecec;
+  background: #e89898;
 }
 
 .skillLevel,
@@ -709,7 +814,7 @@
 }
 
 .skillSearchItem:hover {
-  background: #edf9f9;
+  background: #e9e5f0;
 }
 
 .skillSearchItemActive {
@@ -786,11 +891,19 @@
 .xpValueBox {
   width: 63px;
   height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 16px;
   font-weight: 300;
+  text-align: center;
+  padding: 0;
+  line-height: 36px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.xpValueBox::-webkit-outer-spin-button,
+.xpValueBox::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .uploadButton {
@@ -984,7 +1097,7 @@
 
 .skillModalPrimaryButton {
   border: 1.5px solid #000;
-  background: #a8dadc;
+  background: #C7BED4;
 }
 
 /* =========================
@@ -1009,7 +1122,7 @@
 
 .accessCard {
   min-height: 106px;
-  border: 5px solid #a8dadc;
+  border: 5px solid #C7BED4;
   background: #fff;
   cursor: pointer;
   font-family: inherit;
@@ -1024,11 +1137,11 @@
 }
 
 .accessCardActive {
-  background: #a8dadc;
+  background: #C7BED4;
 }
 
 .accessCard:hover {
-  background: #edf9f9;
+  background: #e9e5f0;
 }
 
 .accessTitle {
@@ -1061,7 +1174,7 @@
 
 .joinModeButton {
   min-height: 45px;
-  border: 5px solid #a8dadc;
+  border: 5px solid #C7BED4;
   background: #fff;
   font-family: inherit;
   font-size: 16px;
@@ -1071,11 +1184,11 @@
 }
 
 .joinModeButtonActive {
-  background: #a8dadc;
+  background: #C7BED4;
 }
 
 .joinModeButton:hover {
-  background: #edf9f9;
+  background: #e9e5f0;
 }
 
 .maxParticipantRow {
@@ -1128,7 +1241,7 @@
   display: grid;
   grid-template-columns: 1fr 36px 1fr;
   gap: 20px;
-  align-items: end;
+  align-items: center;
   position: relative;
 }
 
@@ -1138,10 +1251,30 @@
   gap: 8px;
 }
 
+.periodLabelRow {
+  display: grid;
+  grid-template-columns: 122px 69px 36px 122px 69px;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+
 .periodLabel {
   font-size: 13px;
   line-height: 13px;
-  text-align: left;
+  grid-column: 1 / 3;
+}
+
+.periodLabelEnd {
+  font-size: 13px;
+  line-height: 13px;
+  grid-column: 4 / 6;
+}
+
+.periodInputRow {
+  display: grid;
+  grid-template-columns: 122px 69px 36px 122px 69px;
+  gap: 7px;
+  align-items: center;
 }
 
 .periodFieldGrid {
@@ -1152,15 +1285,12 @@
 }
 
 .periodArrow {
-  align-self: end;
-  height: 25px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 20px;
   line-height: 1;
   color: #000;
-  transform: translateY(-3px);
 }
 
 .dateTriggerButton,
@@ -1176,6 +1306,7 @@
   color: rgba(0, 0, 0, 0.75);
   font-family: inherit;
   cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .periodFieldWrap {
@@ -1199,6 +1330,79 @@
   right: 0;
 }
 
+.floatingPickerUp {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+/* =========================
+   Chained Date→Time Picker
+========================= */
+.chainedPickerPopup {
+  width: 316px;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.chainedPickerHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fafaf8;
+}
+
+.chainedPickerBack {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #b3b3b3;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+  font-family: inherit;
+}
+
+.chainedPickerBack:hover {
+  background: #f0f0f0;
+}
+
+.chainedPickerTitle {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  line-height: 1.3;
+}
+
+/* Calendar inside chained popup — no outer border/shadow, just inner padding */
+.chainedPickerPopup .calendarPopup {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+}
+
+/* Time list inside chained popup */
+.chainedPickerPopup .timePopup {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+}
+
+/* =========================
+   Calendar
+========================= */
 .calendarPopup {
   width: 316px;
   border: 1.5px solid rgba(0, 0, 0, 0.5);
@@ -1224,6 +1428,7 @@
   background: #fff;
   font-size: 18px;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .calendarMonthTitle {
@@ -1232,12 +1437,15 @@
   text-align: center;
 }
 
+/* Support both naming conventions */
+.calendarWeekRow,
 .calendarWeekHeader {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   margin-bottom: 8px;
 }
 
+.calendarWeekLabel,
 .calendarWeekDay {
   font-size: 12px;
   text-align: center;
@@ -1254,10 +1462,12 @@
   gap: 4px;
 }
 
+/* calendarCell = JSX name; calendarDayButton = legacy CSS name */
+.calendarCell,
 .calendarDayButton {
   height: 34px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 5px;
   background: transparent;
   font-family: inherit;
   font-size: 14px;
@@ -1265,23 +1475,31 @@
   cursor: pointer;
 }
 
+.calendarCellOtherMonth,
 .calendarDayMuted {
   color: rgba(0, 0, 0, 0.35);
 }
 
+.calendarCellWeekend,
 .calendarDayWeekend {
   color: #1e90ff;
 }
 
+.calendarCellRange,
 .calendarDayInRange {
   background: rgba(132, 165, 157, 0.2);
 }
 
+.calendarCellStart,
+.calendarCellEnd,
 .calendarDaySelected {
   background: #84a59d;
   color: #fff;
 }
 
+/* =========================
+   Time Popup
+========================= */
 .timePopup {
   width: 296px;
   border: 1.5px solid rgba(0, 0, 0, 0.5);
@@ -1306,6 +1524,8 @@
   gap: 8px;
 }
 
+/* timeOption / timeOptionSelected = JSX names; timeOptionButton/Active = legacy */
+.timeOption,
 .timeOptionButton {
   height: 34px;
   border: 1px solid #b3b3b3;
@@ -1316,9 +1536,10 @@
   cursor: pointer;
 }
 
+.timeOptionSelected,
 .timeOptionButtonActive {
-  background: #a8dadc;
-  border-color: #a8dadc;
+  background: #C7BED4;
+  border-color: #C7BED4;
 }
 
 /* =========================
@@ -1341,7 +1562,7 @@
 }
 
 .checkBoxChecked {
-  background: #a8dadc;
+  background: #C7BED4;
 }
 
 /* =========================
@@ -1373,6 +1594,20 @@
   .periodGrid,
   .locationRow {
     grid-template-columns: 1fr;
+  }
+
+  .periodLabelRow,
+  .periodInputRow {
+    grid-template-columns: 1fr 1fr 24px 1fr 1fr;
+    gap: 4px;
+  }
+
+  .periodLabel {
+    grid-column: 1 / 3;
+  }
+
+  .periodLabelEnd {
+    grid-column: 4 / 6;
   }
 
   .accessGrid::before,

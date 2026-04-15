@@ -57,7 +57,7 @@ const C = {
   orangeBg: "rgba(245, 158, 11, 0.18)",
   orangeText: "#8a4b00",
   chipBg: "rgba(59,130,246,0.10)",
-  chipText: "#1d4ed8",
+  chipText: "#0c1019",
 };
 
 function MetricCard({ value, label }: { value: number | string; label: string }) {

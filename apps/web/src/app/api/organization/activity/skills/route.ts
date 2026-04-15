@@ -3,6 +3,33 @@ import { NextResponse } from "next/server";
 const BACKEND_URL =
   (process.env.BACKEND_URL || "https://vcep-platform.duckdns.org").replace(/\/$/, "");
 
+function normalizeSkill(item: any) {
+  return {
+    skillId: String(
+      item?.skillId ??
+      item?.skillID ??
+      item?.SkillID ??
+      item?.skill_id ??
+      item?.id ??
+      ""
+    ),
+    skillName: String(
+      item?.skillName ??
+      item?.SkillName ??
+      item?.skill_name ??
+      item?.name ??
+      ""
+    ),
+    skillCategory: String(
+      item?.skillCategory ??
+      item?.SkillCategory ??
+      item?.skill_category ??
+      item?.category ??
+      ""
+    ),
+  };
+}
+
 export async function GET() {
   try {
     const response = await fetch(`${BACKEND_URL}/activity/skills`, {
@@ -33,7 +60,13 @@ export async function GET() {
       );
     }
 
-    if (!Array.isArray(parsedBody)) {
+    const rawSkills = Array.isArray(parsedBody)
+      ? parsedBody
+      : Array.isArray(parsedBody?.skills)
+      ? parsedBody.skills
+      : [];
+
+    if (!Array.isArray(rawSkills)) {
       return NextResponse.json(
         {
           ok: false,
@@ -44,11 +77,9 @@ export async function GET() {
       );
     }
 
-    const normalized = parsedBody.map((item: any) => ({
-      skillId: String(item?.SkillID ?? ""),
-      skillName: String(item?.SkillName ?? ""),
-      skillCategory: String(item?.SkillCategory ?? ""),
-    }));
+    const normalized = rawSkills
+      .map((item: any) => normalizeSkill(item))
+      .filter((item) => item.skillId && item.skillName);
 
     return NextResponse.json({
       ok: true,

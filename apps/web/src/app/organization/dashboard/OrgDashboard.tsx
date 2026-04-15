@@ -1,9 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { Fragment, useMemo, useState, useEffect, type ChangeEvent } from "react";
+import { useMemo, useState, useEffect, useRef, type ChangeEvent, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { ORGANIZATION_SIDEBAR_ITEMS } from "@/lib/config/organization/routes";
 import styles from "./OrgDashboard.module.css";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useAnimations, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 
 type OrgForm = {
@@ -27,32 +32,38 @@ type OrgForm = {
     tiktok: string;
 };
 
+type AvatarOption = {
+    id: string;
+    modelUrl: string;
+    unlockLevel: number;
+};
+
 type Employee = {
     id: string;
+    userId: string;
+    orgId: string;
     firstName: string;
     lastName: string;
     position: string;
     phone: string;
     email: string;
     canCheckChallenge: boolean;
-    avatarIndex: number; // 0..n
+    avatarId: string | null;
+    legacyAvatarIndex: number | null;
 };
 
-const AVATARS = [
-    "/images/avatar%20picture/avatar1.png",
-    "/images/avatar%20picture/avatar2.png",
-    "/images/avatar%20picture/avatar3.png",
-];
-
-const emptyEmp = (id: string): Employee => ({
+const emptyEmp = (id: string, userId = "", orgId = ""): Employee => ({
     id,
+    userId,
+    orgId,
     firstName: "",
     lastName: "",
     position: "",
     phone: "",
     email: "",
     canCheckChallenge: false,
-    avatarIndex: 0,
+    avatarId: null,
+    legacyAvatarIndex: null,
 });
 
 
@@ -72,6 +83,8 @@ type OrgActivityRow = {
     category: string;
     kind: Exclude<ActivityFilter, "all">;
     xp: number;
+    status: string;
+    statusLabel: string;
     statusTone: ActivityStatusTone;
 };
 
@@ -91,63 +104,6 @@ const SKILL_BARS: GraphBar[] = [
     { label: "UX/UI", value: 6 },
     { label: "Frontend", value: 9 },
     { label: "Backend", value: 8 },
-];
-
-const ORG_ACTIVITY_ROWS: OrgActivityRow[] = [
-    {
-        id: "a1",
-        title: "Frontend Basics & Web Terminology Quiz",
-        difficulty: "Beginner",
-        category: "Course",
-        kind: "Courses",
-        xp: 20,
-        statusTone: "join",
-    },
-    {
-        id: "a2",
-        title: "UI Layout Explanation Task",
-        difficulty: "Beginner",
-        category: "Course",
-        kind: "Courses",
-        xp: 15,
-        statusTone: "pending",
-    },
-    {
-        id: "a3",
-        title: "Responsive Web Page Workshop",
-        difficulty: "Intermediate",
-        category: "Challenge",
-        kind: "Challenges",
-        xp: 50,
-        statusTone: "join",
-    },
-    {
-        id: "a4",
-        title: "Frontend Performance Analysis Case",
-        difficulty: "Advanced",
-        category: "Challenge",
-        kind: "Challenges",
-        xp: 65,
-        statusTone: "pending",
-    },
-    {
-        id: "a5",
-        title: "UX Feedback Review Meeting",
-        difficulty: "Beginner",
-        category: "Meeting",
-        kind: "Meetings",
-        xp: 10,
-        statusTone: "ended",
-    },
-    {
-        id: "a6",
-        title: "Design Handoff Review Session",
-        difficulty: "Intermediate",
-        category: "Meeting",
-        kind: "Meetings",
-        xp: 18,
-        statusTone: "join",
-    },
 ];
 
 const PARTICIPANTS = [
@@ -206,25 +162,205 @@ const TYPE_DONUT_LABELS = [
     { label: "Challenges", value: 3 },
 ];
 
+
+// ─── Employee Avatar Viewer ───────────────────────────────────────────────────
+
+function pickIdleClip(names: string[]) {
+    const lowered = names.map((name) => name.toLowerCase());
+    const idleIndex = lowered.findIndex((name) => name.includes("idle"));
+    if (idleIndex >= 0) return names[idleIndex];
+    const loopIndex = lowered.findIndex((name) => name.includes("walk") || name.includes("run"));
+    if (loopIndex >= 0) return names[loopIndex];
+    return names[0];
+}
+
+function AnimatedAvatarGLB({ url }: { url: string }) {
+    const group = useRef<THREE.Group>(null);
+    const gltf = useGLTF(url);
+    const clonedScene = useMemo(() => cloneSkinned(gltf.scene), [gltf.scene]);
+    const { actions, names, mixer } = useAnimations(gltf.animations, group);
+
+    useEffect(() => {
+        if (!names?.length) return;
+
+        names.forEach((name) => {
+            const action = actions[name];
+            if (!action) return;
+            action.stop();
+            action.reset();
+        });
+
+        const idleName = pickIdleClip(names);
+        const activeAction = actions[idleName];
+        if (!activeAction) return;
+
+        activeAction.reset();
+        activeAction.setLoop(THREE.LoopRepeat, Infinity);
+        activeAction.setEffectiveWeight(1);
+        activeAction.setEffectiveTimeScale(1);
+        activeAction.fadeIn(0.2);
+        activeAction.play();
+
+        return () => {
+            activeAction.stop();
+        };
+    }, [actions, names, url]);
+
+    useFrame((_, delta) => mixer?.update(delta));
+
+    return (
+        <group ref={group}>
+            <primitive object={clonedScene as any} />
+        </group>
+    );
+}
+
+function EmployeeAvatarViewer({ modelUrl }: { modelUrl: string | null }) {
+    if (!modelUrl) {
+        return (
+            <div
+                style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#f7f7f7",
+                    color: "#9ca3af",
+                    fontSize: 10,
+                    fontWeight: 600,
+                }}
+            >
+                No avatar
+            </div>
+        );
+    }
+
+    return (
+        <Canvas
+            camera={{ position: [0, 1.25, 1.8] as [number, number, number], fov: 42 }}
+            gl={{ alpha: true, antialias: true }}
+            dpr={[1, 1.5]}
+            onCreated={({ gl }) => {
+                gl.setClearColor(0x000000, 0);
+            }}
+            style={{ width: "100%", height: "100%", display: "block" }}
+        >
+            <ambientLight intensity={0.9} />
+            <directionalLight position={[3, 5, 3]} intensity={1.1} />
+            <Suspense fallback={null}>
+                <group position={[0, -1.3, 0]} scale={2.0} rotation={[-0.5, -0.5, 0]}>
+                    <AnimatedAvatarGLB key={modelUrl} url={modelUrl} />
+                </group>
+            </Suspense>
+        </Canvas>
+    );
+}
+
+function EmployeeAvatarOptionPreview({ modelUrl }: { modelUrl: string | null }) {
+    return (
+        <div
+            style={{
+                position: "relative",
+                width: "100%",
+                height: "100%",
+                minWidth: 0,
+                minHeight: 0,
+                overflow: "hidden",
+                borderRadius: 12,
+                background: "#f7f7f7",
+                pointerEvents: "none",
+            }}
+        >
+            <div style={{ position: "absolute", inset: 0 }}>
+                <EmployeeAvatarViewer modelUrl={modelUrl} />
+            </div>
+        </div>
+    );
+}
+
+// ─── 3D Building Viewer ──────────────────────────────────────────────────────
+
+// FALLBACK_GLB: ไฟล์เล็กที่โหลดได้เสมอ ป้องกัน useGLTF hook เรียกแบบ conditional
+const FALLBACK_GLB = "https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/building-models/building-model-typeB.glb";
+
+function NormalizedBuildingInner({ url }: { url: string }) {
+  // useGLTF ต้องเรียกเสมอ (ไม่ conditional) — ใช้ fallback ถ้า url ว่าง
+  const { scene } = useGLTF(url || FALLBACK_GLB);
+  const normalized = useMemo(() => {
+    const root = scene.clone(true);
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const scale = 2.2 / Math.max(size.y, 0.0001);
+    root.scale.setScalar(scale);
+    root.updateMatrixWorld(true);
+    const scaledBox = new THREE.Box3().setFromObject(root);
+    const center = scaledBox.getCenter(new THREE.Vector3());
+    root.position.set(-center.x, -scaledBox.min.y, -center.z);
+    return root;
+  }, [scene]);
+  return <primitive object={normalized as any} />;
+}
+
+function OrgBuildingViewer({ modelUrl }: { modelUrl: string | null }) {
+  if (!modelUrl) {
+    return (
+      <div style={{
+        width: "100%", height: "100%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "#f7f7f7",
+        color: "#9ca3af", fontSize: 12, fontWeight: 500,
+      }}>
+        No building
+      </div>
+    );
+  }
+  return (
+    <Canvas
+      frameloop="demand"
+      // กล้องห่างขึ้น fov เล็กลง = model ดูพอดีใน frame 220px
+      camera={{ position: [0, 1.6, 7.2] as [number,number,number], fov: 25 }}
+      gl={{ alpha: true, antialias: true }}
+      onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
+      style={{ width: "100%", height: "100%" }}
+    >
+      {/* แสงนุ่ม เหมือน card อื่น — ambient สว่าง + directional อ่อน */}
+      <ambientLight intensity={1.4} />
+      <directionalLight position={[5, 10, 6]} intensity={0.7} />
+      <directionalLight position={[-4, 4, -4]} intensity={0.25} />
+      <Suspense fallback={null}>
+        {/* ขยับ model ลงเล็กน้อย + หมุนมุมเดียวกับ fill-more-info */}
+        <group position={[0, -0.85, 0] as [number,number,number]} rotation={[-0.06, -0.5, 0] as [number,number,number]}>
+          <NormalizedBuildingInner url={modelUrl} />
+        </group>
+      </Suspense>
+    </Canvas>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function OrgDashboardPage() {
+    const router = useRouter();
     const [isEditOrgOpen, setIsEditOrgOpen] = useState(false);
     const [isSavedOpen, setIsSavedOpen] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [pageError, setPageError] = useState("");
     const [orgSaving, setOrgSaving] = useState(false);
+    const [logoUploading, setLogoUploading] = useState(false);
 
     const [orgDraft, setOrgDraft] = useState<OrgForm>({
-        orgName: "PeakSystems",
-        companySize: "50-100 employees",
-        businessType: "Technology / Software",
-        location: "Philadelphia, PA",
-        aboutUs:
-            "Quality work requires attention to detail. The best solutions often come from collaboration. Simple ideas can have profound impacts. Every challenge presents an opportunity for growth.",
+        orgName: "",
+        companySize: "",
+        businessType: "",
+        location: "",
+        aboutUs: "",
         logoFile: null,
         logoPreview: null,
-        email: "emmadavis@hotmail.com",
-        phone: "(746) 807-2977",
-        website: "https://peaksystems.example",
+        email: "",
+        phone: "",
+        website: "",
         linkedin: "",
         facebook: "",
         instagram: "",
@@ -233,31 +369,26 @@ export default function OrgDashboardPage() {
     });
 
     const [summary, setSummary] = useState({
-        totalActivities: 15,
-        totalParticipants: 32,
-        meetings: 4,
-        courses: 8,
-        challenges: 3,
-        published: 15,
-        draft: 2,
+        totalActivities: 0,
+        totalParticipants: 0,
+        meetings: 0,
+        courses: 0,
+        challenges: 0,
+        published: 0,
+        draft: 0,
     });
 
-    const [employees, setEmployees] = useState<Employee[]>([
-        {
-            id: "e1",
-            firstName: "Sophia",
-            lastName: "Brown",
-            position: "HR",
-            phone: "0812345678",
-            email: "sophia@company.com",
-            canCheckChallenge: true,
-            avatarIndex: 0,
-        },
-    ]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [building, setBuilding] = useState<{ buildingId: string; buildingName: string; modelUrl: string | null; previewUrl: string | null } | null>(null);
+    const [participantRows, setParticipantRows] = useState<typeof PARTICIPANTS>([]);
+    const [activityRows, setActivityRows] = useState<OrgActivityRow[]>([]);
+    const [participantBars, setParticipantBars] = useState<GraphBar[]>([]);
+    const [skillBars, setSkillBars] = useState<GraphBar[]>([]);
 
-    const [participantRows, setParticipantRows] = useState(PARTICIPANTS);
-    const [activityRows, setActivityRows] = useState<OrgActivityRow[]>(ORG_ACTIVITY_ROWS);
     const [activeEmployeeEmail, setActiveEmployeeEmail] = useState<string>("");
+    const [activeOrgId, setActiveOrgId] = useState<string>("");
+    const [avatarOptions, setAvatarOptions] = useState<AvatarOption[]>([]);
+    const [loadingAvatarOptions, setLoadingAvatarOptions] = useState(true);
 
     const setOrgField =
         (key: keyof OrgForm) =>
@@ -292,6 +423,7 @@ export default function OrgDashboardPage() {
 
     const [isOpen, setIsOpen] = useState(false);
     const [draft, setDraft] = useState<Employee>(() => emptyEmp("draft"));
+    const [employeeModalMode, setEmployeeModalMode] = useState<"add" | "edit">("add");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>("");
 
@@ -306,11 +438,26 @@ export default function OrgDashboardPage() {
                 setDraft((prev) => ({ ...prev, [k]: v } as Employee));
             };
 
-    const setDraftAvatar = (i: number) => setDraft((p) => ({ ...p, avatarIndex: i }));
+    const setDraftAvatar = (avatarId: string) => setDraft((prev) => ({ ...prev, avatarId }));
 
     const openAdd = () => {
         setError("");
-        setDraft(emptyEmp("draft"));
+        setEmployeeModalMode("add");
+        setDraft({
+            ...emptyEmp("draft", "", activeOrgId),
+            avatarId: avatarOptions[0]?.id ?? null,
+        });
+        setIsOpen(true);
+    };
+
+    const openEditEmployee = (employee: Employee) => {
+        setError("");
+        setEmployeeModalMode("edit");
+        setDraft({
+            ...employee,
+            orgId: employee.orgId || activeOrgId,
+            avatarId: employee.avatarId || resolveAvatarOption(employee)?.id || avatarOptions[0]?.id || null,
+        });
         setIsOpen(true);
     };
 
@@ -333,12 +480,41 @@ export default function OrgDashboardPage() {
         return Number.isFinite(parsed) ? parsed : fallback;
     }
 
-    function toAvatarIndex(value: unknown) {
+    function resolveLegacyAvatarIndex(value: unknown) {
         const raw = String(value ?? "").trim();
-        if (!raw) return 0;
+        if (!raw) return null;
         const match = raw.match(/(\d+)/);
-        if (!match) return 0;
-        return Math.max(0, (Number(match[1]) || 1) - 1) % 3;
+        if (!match) return null;
+        const numeric = Number(match[1]);
+        if (!Number.isFinite(numeric)) return null;
+        return Math.max(0, (numeric || 1) - 1);
+    }
+
+    function resolveAvatarOption(employee: Pick<Employee, "avatarId" | "legacyAvatarIndex">) {
+        if (!avatarOptions.length) return null;
+
+        const avatarRef = String(employee.avatarId ?? "").trim();
+
+        if (avatarRef) {
+            const exact = avatarOptions.find(
+                (option) => option.id === avatarRef || option.modelUrl === avatarRef
+            );
+            if (exact) return exact;
+
+            const refIndex = resolveLegacyAvatarIndex(avatarRef);
+            if (refIndex !== null) {
+                return avatarOptions[refIndex % avatarOptions.length] ?? avatarOptions[0];
+            }
+        }
+
+        if (
+            typeof employee.legacyAvatarIndex === "number" &&
+            employee.legacyAvatarIndex >= 0
+        ) {
+            return avatarOptions[employee.legacyAvatarIndex % avatarOptions.length] ?? avatarOptions[0];
+        }
+
+        return avatarOptions[0];
     }
 
     function deriveActivityKind(value: unknown): Exclude<ActivityFilter, "all"> {
@@ -372,6 +548,58 @@ export default function OrgDashboardPage() {
         return "pending";
     }
 
+
+    function formatStatusLabel(value: unknown, fallbackTone?: ActivityStatusTone) {
+        const raw = String(value ?? "").trim();
+        if (raw) {
+            return raw
+                .replace(/[_-]+/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .split(" ")
+                .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+                .join(" ");
+        }
+
+        if (fallbackTone === "join") return "Published";
+        if (fallbackTone === "ended") return "Ended";
+        return "Pending";
+    }
+
+    function getStatusBadgeClass(statusTone: ActivityStatusTone) {
+        if (statusTone === "join") return `${styles.activityStatusBadge} ${styles.activityStatusBadgeJoin}`;
+        if (statusTone === "ended") return `${styles.activityStatusBadge} ${styles.activityStatusBadgeEnded}`;
+        return `${styles.activityStatusBadge} ${styles.activityStatusBadgePending}`;
+    }
+
+    async function loadAvatarOptions() {
+        try {
+            setLoadingAvatarOptions(true);
+            const response = await fetch("/api/options/avatars/employee", {
+                method: "GET",
+                cache: "no-store",
+                credentials: "include",
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to load employee avatars");
+            }
+
+            const options = (await response.json().catch(() => [])) as AvatarOption[];
+            const safeOptions = Array.isArray(options) ? options : [];
+            setAvatarOptions(safeOptions);
+            safeOptions.forEach((option) => {
+                if (option?.modelUrl) {
+                    useGLTF.preload(option.modelUrl);
+                }
+            });
+        } catch {
+            setAvatarOptions([]);
+        } finally {
+            setLoadingAvatarOptions(false);
+        }
+    }
+
     async function refreshDashboard() {
         try {
             setPageLoading(true);
@@ -395,75 +623,110 @@ export default function OrgDashboardPage() {
 
             setOrgDraft((prev) => ({
                 ...prev,
-                orgName: toStringValue(org?.orgName, prev.orgName),
-                companySize: toStringValue(org?.companySize, prev.companySize),
-                businessType: toStringValue(org?.businessType, prev.businessType),
-                location: toStringValue(org?.location, prev.location),
-                aboutUs: toStringValue(org?.aboutUs, prev.aboutUs),
-                logoPreview: org?.logoPreview ?? prev.logoPreview,
-                email: toStringValue(org?.email, prev.email),
-                phone: toStringValue(org?.phone, prev.phone),
-                website: toStringValue(org?.website, prev.website),
-                linkedin: toStringValue(org?.linkedin, prev.linkedin),
-                facebook: toStringValue(org?.facebook, prev.facebook),
-                instagram: toStringValue(org?.instagram, prev.instagram),
-                youtube: toStringValue(org?.youtube, prev.youtube),
-                tiktok: toStringValue(org?.tiktok, prev.tiktok),
+                orgName: toStringValue(org?.orgName),
+                companySize: toStringValue(org?.companySize),
+                businessType: toStringValue(org?.businessType),
+                location: toStringValue(org?.location),
+                aboutUs: toStringValue(org?.aboutUs),
+                logoPreview: org?.logoPreview ?? null,
+                email: toStringValue(org?.email),
+                phone: toStringValue(org?.phone),
+                website: toStringValue(org?.website),
+                linkedin: toStringValue(org?.linkedin),
+                facebook: toStringValue(org?.facebook),
+                instagram: toStringValue(org?.instagram),
+                youtube: toStringValue(org?.youtube),
+                tiktok: toStringValue(org?.tiktok),
             }));
 
             setSummary({
-                totalActivities: toNumber(summaryData?.totalActivities, ORG_ACTIVITY_ROWS.length),
-                totalParticipants: toNumber(summaryData?.totalParticipants, PARTICIPANTS.length),
-                meetings: toNumber(summaryData?.meetings, ORG_ACTIVITY_ROWS.filter((item) => item.kind === "Meetings").length),
-                courses: toNumber(summaryData?.courses, ORG_ACTIVITY_ROWS.filter((item) => item.kind === "Courses").length),
-                challenges: toNumber(summaryData?.challenges, ORG_ACTIVITY_ROWS.filter((item) => item.kind === "Challenges").length),
-                published: toNumber(summaryData?.published, ORG_ACTIVITY_ROWS.filter((item) => item.statusTone === "join").length),
-                draft: toNumber(summaryData?.draft, ORG_ACTIVITY_ROWS.filter((item) => item.statusTone === "pending").length),
+                totalActivities: toNumber(summaryData?.totalActivities, 0),
+                totalParticipants: toNumber(summaryData?.totalParticipants, 0),
+                meetings: toNumber(summaryData?.meetings, 0),
+                courses: toNumber(summaryData?.courses, 0),
+                challenges: toNumber(summaryData?.challenges, 0),
+                published: toNumber(summaryData?.published, 0),
+                draft: toNumber(summaryData?.draft, 0),
             });
 
-            const nextActivities: OrgActivityRow[] = Array.isArray(data?.activities) && data.activities.length > 0
-                ? data.activities.map((item: any, index: number) => ({
-                    id: toStringValue(item?.id, `activity-${index}`),
-                    title: toStringValue(item?.title, "Activity"),
-                    difficulty: toStringValue(item?.difficulty, "-"),
-                    category: toStringValue(item?.category, deriveActivityKind(item?.kind || item?.category)),
-                    kind: deriveActivityKind(item?.kind || item?.category),
-                    xp: toNumber(item?.xp, 0),
-                    statusTone: deriveStatusTone(item?.statusTone || item?.status),
-                }))
-                : ORG_ACTIVITY_ROWS;
+            const nextActivities: OrgActivityRow[] = Array.isArray(data?.activities)
+                ? data.activities.map((item: any, index: number) => {
+                    const statusTone = deriveStatusTone(item?.statusTone || item?.status);
+                    return {
+                        id: toStringValue(item?.id, `activity-${index}`),
+                        title: toStringValue(item?.title, "Activity"),
+                        difficulty: toStringValue(item?.difficulty, "-"),
+                        category: toStringValue(
+                            item?.category,
+                            deriveActivityKind(item?.kind || item?.category)
+                        ),
+                        kind: deriveActivityKind(item?.kind || item?.category),
+                        xp: toNumber(item?.xp, 0),
+                        status: toStringValue(item?.status, "pending"),
+                        statusLabel: formatStatusLabel(item?.statusLabel || item?.status, statusTone),
+                        statusTone,
+                    };
+                })
+                : [];
             setActivityRows(nextActivities);
 
-            const nextParticipants = Array.isArray(data?.participants) && data.participants.length > 0
+            const nextParticipants = Array.isArray(data?.participants)
                 ? data.participants.map((person: any, index: number) => ({
                     id: toStringValue(person?.id, `participant-${index}`),
                     name: toStringValue(person?.name, `Participant ${index + 1}`),
-                    subtitle: toStringValue(person?.subtitle, "Participant"),
+                    subtitle: toStringValue(person?.subtitle, ""),
                     score: toNumber(person?.score, 0),
-                    avatarBg: toStringValue(person?.avatarBg, PARTICIPANTS[index % PARTICIPANTS.length]?.avatarBg || "#f1d6d8"),
+                    avatarBg: toStringValue(person?.avatarBg, "#f1d6d8"),
                     initials: toStringValue(person?.initials, "PT"),
                 }))
-                : PARTICIPANTS;
+                : [];
             setParticipantRows(nextParticipants);
 
-            const nextEmployees: Employee[] = Array.isArray(data?.employees) && data.employees.length > 0
+            const nextEmployees: Employee[] = Array.isArray(data?.employees)
                 ? data.employees.map((emp: any, index: number) => ({
                     id: toStringValue(emp?.id ?? emp?.empId, `employee-${index}`),
+                    userId: toStringValue(emp?.userId ?? emp?.user_id),
+                    orgId: toStringValue(emp?.orgId ?? emp?.org_id ?? data?.account?.orgId),
                     firstName: toStringValue(emp?.firstName),
                     lastName: toStringValue(emp?.lastName),
                     position: toStringValue(emp?.position),
                     phone: toStringValue(emp?.phone),
-                    email: toStringValue(emp?.email),
+                    email: toStringValue(emp?.email).toLowerCase(),
                     canCheckChallenge: Boolean(emp?.canCheckChallenge),
-                    avatarIndex: toAvatarIndex(emp?.avatarChoice ?? emp?.avatarIndex),
+                    avatarId: toStringValue(emp?.avatarChoice ?? emp?.avatarId) || null,
+                    legacyAvatarIndex: resolveLegacyAvatarIndex(emp?.avatarIndex),
                 }))
-                : employees;
+                : [];
             setEmployees(nextEmployees);
 
+            const nextParticipantBars: GraphBar[] = Array.isArray(data?.participantBars)
+                ? data.participantBars.map((item: any, index: number) => ({
+                    label: toStringValue(item?.label, `University ${index + 1}`),
+                    value: toNumber(item?.value, 0),
+                }))
+                : [];
+            setParticipantBars(nextParticipantBars);
+
+            const nextSkillBars: GraphBar[] = Array.isArray(data?.skillBars)
+                ? data.skillBars.map((item: any, index: number) => ({
+                    label: toStringValue(item?.label, `Skill ${index + 1}`),
+                    value: toNumber(item?.value, 0),
+                }))
+                : [];
+            setSkillBars(nextSkillBars);
+
+            // Building info
+            const buildingData = data?.building ?? null;
+            setBuilding(buildingData ? {
+                buildingId: toStringValue(buildingData?.buildingId),
+                buildingName: toStringValue(buildingData?.buildingName),
+                modelUrl: buildingData?.modelUrl ?? null,
+                previewUrl: buildingData?.previewUrl ?? null,
+            } : null);
+
             const activeEmail = toStringValue(data?.account?.email).toLowerCase();
-            if (activeEmail) {
-                setActiveEmployeeEmail(activeEmail);
-            }
+            setActiveEmployeeEmail(activeEmail);
+            setActiveOrgId(toStringValue(data?.account?.orgId));
         } catch (e: any) {
             setPageError(e?.message || "Failed to load organization dashboard");
         } finally {
@@ -475,11 +738,40 @@ export default function OrgDashboardPage() {
         try {
             setOrgSaving(true);
 
+            // Step 1: Upload logo to S3 if a new file was selected
+            let logoKey: string | undefined;
+            if (orgDraft.logoFile) {
+                setLogoUploading(true);
+                const formData = new FormData();
+                formData.append("file", orgDraft.logoFile);
+
+                const uploadRes = await fetch("/api/organization/logo", {
+                    method: "POST",
+                    body: formData,
+                    credentials: "include",
+                });
+
+                const uploadJson = await uploadRes.json().catch(() => ({}));
+                setLogoUploading(false);
+
+                if (!uploadRes.ok || !uploadJson?.ok || !uploadJson?.key) {
+                    throw new Error(uploadJson?.message || "Failed to upload logo");
+                }
+
+                logoKey = uploadJson.key;
+
+                // Update preview to show the S3 public URL
+                setOrgDraft((prev) => ({
+                    ...prev,
+                    logoPreview: uploadJson.url,
+                    logoFile: null,
+                }));
+            }
+
+            // Step 2: Save org info (with logo key if uploaded)
             const response = await fetch("/api/organization", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 credentials: "include",
                 body: JSON.stringify({
                     orgName: orgDraft.orgName,
@@ -495,7 +787,8 @@ export default function OrgDashboardPage() {
                     instagram: orgDraft.instagram,
                     youtube: orgDraft.youtube,
                     tiktok: orgDraft.tiktok,
-                    logo: orgDraft.logoPreview,
+                    // ส่ง S3 key เมื่อมีการ upload ใหม่ มิฉะนั้นส่ง preview URL เดิม
+                    logo: logoKey ?? orgDraft.logoPreview ?? undefined,
                 }),
             });
 
@@ -509,13 +802,14 @@ export default function OrgDashboardPage() {
             setIsEditOrgOpen(false);
             setIsSavedOpen(true);
         } catch (e: any) {
+            setLogoUploading(false);
             alert(e?.message || "Failed to save organization");
         } finally {
             setOrgSaving(false);
         }
     };
 
-    const submitAdd = async () => {
+    const submitEmployee = async () => {
         setError("");
 
         if (!draft.firstName.trim() || !draft.lastName.trim()) {
@@ -529,31 +823,61 @@ export default function OrgDashboardPage() {
 
         setSaving(true);
         try {
-            const r = await fetch("/api/organization/employees/invite", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                    email: draft.email.trim().toLowerCase(),
-                    firstName: draft.firstName.trim(),
-                    lastName: draft.lastName.trim(),
-                    position: draft.position.trim(),
-                    phone: draft.phone.trim(),
-                    canCheckChallenge: draft.canCheckChallenge,
-                    avatarIndex: draft.avatarIndex,
-                }),
-            });
+            if (employeeModalMode === "edit") {
+                if (!draft.userId.trim()) {
+                    setError("Missing employee user id.");
+                    return;
+                }
 
-            const d = await r.json().catch(() => ({}));
-            if (!r.ok || !d?.ok) {
-                setError(d?.message || "Invite failed");
-                return;
+                const r = await fetch("/api/organization/employees/save-self", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        userId: draft.userId,
+                        orgId: draft.orgId || activeOrgId,
+                        firstName: draft.firstName.trim(),
+                        lastName: draft.lastName.trim(),
+                        position: draft.position.trim(),
+                        phone: draft.phone.trim(),
+                        avatarId: draft.avatarId,
+                        canCheckChallenge: draft.canCheckChallenge,
+                        email: draft.email.trim().toLowerCase(),
+                    }),
+                });
+
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d?.ok) {
+                    setError(d?.message || "Save failed");
+                    return;
+                }
+            } else {
+                const r = await fetch("/api/organization/employees/invite", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        email: draft.email.trim().toLowerCase(),
+                        firstName: draft.firstName.trim(),
+                        lastName: draft.lastName.trim(),
+                        position: draft.position.trim(),
+                        phone: draft.phone.trim(),
+                        canCheckChallenge: draft.canCheckChallenge,
+                        avatarId: draft.avatarId,
+                    }),
+                });
+
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d?.ok) {
+                    setError(d?.message || "Invite failed");
+                    return;
+                }
             }
 
             await refreshDashboard();
             setIsOpen(false);
         } catch (e: any) {
-            setError(e?.message || "Failed to add employee");
+            setError(e?.message || (employeeModalMode === "edit" ? "Failed to update employee" : "Failed to add employee"));
         } finally {
             setSaving(false);
         }
@@ -561,7 +885,8 @@ export default function OrgDashboardPage() {
 
     const MAX_EMP = 3;
     const shownEmployees = employees.slice(0, MAX_EMP);
-    const canAddMore = shownEmployees.length < MAX_EMP;
+    // ปุ่มเพิ่มหายเมื่อครบ 3 คน
+    const canAddMore = employees.length < MAX_EMP;
 
     const filteredOrgActivities = useMemo(() => {
         if (selectedActivityKind === "all") return activityRows;
@@ -569,6 +894,7 @@ export default function OrgDashboardPage() {
     }, [activityRows, selectedActivityKind]);
 
     useEffect(() => {
+        loadAvatarOptions();
         refreshDashboard();
     }, []);
 
@@ -590,7 +916,7 @@ export default function OrgDashboardPage() {
 
     return (
 
-            <main className={styles.main}>
+        <main className={styles.main}>
             {/* ===== Row 1: Org profile + summary cards + avatar box ===== */}
             <section className={styles.topGrid}>
                 {/* Org profile card */}
@@ -689,49 +1015,85 @@ export default function OrgDashboardPage() {
                 {/* Avatar box */}
                 <div className={styles.avatarBox}>
                     <div className={styles.buildingWrap}>
-                        <img
-                            className={styles.buildingImg}
-                            src="/images/buildings/building1.png"
-                            alt="Organization building"
-                            onError={(e) => {
-                                // กันกรณีไม่มีไฟล์รูปในโปรเจกต์: จะไม่พัง layout
-                                (e.currentTarget as HTMLImageElement).style.opacity = "0";
-                            }}
-                        />
+                        <div className={styles.buildingImg}>
+                            <OrgBuildingViewer modelUrl={building?.modelUrl ?? null} />
+                        </div>
+                        {building?.buildingName && (
+                            <div className={styles.buildingLabel}>
+                               {building.buildingName}
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.avatarRow}>
-                        {shownEmployees.map((emp) => {
-                            const isActive = emp.email === activeEmployeeEmail; // หรือเทียบ id/sub ก็ได้
-                            return (
-                                <button
-                                    key={emp.id}
-                                    type="button"
-                                    className={styles.avatarTile}
-                                    onClick={() => {
-                                        // setActiveEmployeeEmail(emp.email);
-                                    }}
-                                    aria-label={`${emp.firstName} ${emp.lastName}`}
-                                    title={`${emp.firstName} ${emp.lastName}`}
-                                >
-                                    <img
-                                        src={AVATARS[emp.avatarIndex] || AVATARS[0]}
-                                        alt={`${emp.firstName} avatar`}
-                                        className={`${styles.avatarThumb} ${isActive ? styles.avatarThumbActive : ""}`}
+                        {/* Employee slots — always 3 columns */}
+                        {Array.from({ length: MAX_EMP }, (_, i) => {
+                            const emp = shownEmployees[i];
+                            if (!emp) {
+                                // Slot ว่าง — กดเพื่อเพิ่มพนักงาน
+                                return (
+                                    <button
+                                        key={`empty-${i}`}
+                                        type="button"
+                                        className={styles.avatarTileEmpty}
+                                        onClick={openAdd}
+                                        aria-label="Add employee"
                                     />
-                                    <div className={styles.avatarName}>
-                                        {emp.firstName} {emp.lastName}
+                                );
+                            }
+                            const isActive = emp.email === activeEmployeeEmail;
+                            const avatarOption = resolveAvatarOption(emp);
+
+                            return (
+                                <div
+                                    key={emp.id}
+                                    className={styles.avatarTile}
+                                    title={`Edit ${emp.firstName} ${emp.lastName}`}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => openEditEmployee(emp)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            openEditEmployee(emp);
+                                        }
+                                    }}
+                                    style={{ cursor: "pointer" }}
+                                >
+                                    <div style={{ position: "relative", display: "inline-block" }}>
+                                        <div
+                                            className={`${styles.avatarThumb} ${isActive ? styles.avatarThumbActive : ""}`}
+                                            style={{ overflow: "hidden" }}
+                                        >
+                                            <EmployeeAvatarViewer modelUrl={avatarOption?.modelUrl ?? null} />
+                                        </div>
+                                        {isActive && (
+                                            <span style={{
+                                                position: "absolute", top: -4, right: -4,
+                                                background: "#10b981", borderRadius: "50%",
+                                                width: 10, height: 10,
+                                                border: "2px solid white", display: "block",
+                                            }} />
+                                        )}
+                                        {emp.canCheckChallenge && (
+                                            <span style={{
+                                                position: "absolute", bottom: -2, right: -4,
+                                                background: "#f59e0b", borderRadius: 4,
+                                                fontSize: 8, fontWeight: 700, color: "white",
+                                                padding: "1px 3px",
+                                            }}>★</span>
+                                        )}
                                     </div>
-                                </button>
+                                    <div className={styles.avatarName}>{emp.firstName}</div>
+                                    {emp.position && (
+                                        <div style={{ fontSize: 9, color: "#6b7280", marginTop: 1, textAlign: "center" }}>
+                                            {emp.position}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
 
-                        {/* ปุ่ม + แสดงเมื่อยังไม่ครบ 3 คน */}
-                        {canAddMore && (
-                            <button type="button" className={styles.addEmpBtn} onClick={openAdd} aria-label="Add employee">
-                                +
-                            </button>
-                        )}
                     </div>
                 </div>
 
@@ -829,7 +1191,7 @@ export default function OrgDashboardPage() {
                                                     "conic-gradient(#a8dcb3 0 40%, #ffd286 40% 66%, #66bdce 66% 86%, #cdb4db 86% 100%)",
                                             }}
                                         >
-                                            <div className={styles.donutHole}>15</div>
+                                            <div className={styles.donutHole}>{summary.totalActivities}</div>
                                         </div>
 
                                         <div className={styles.donutLegendGrid}>
@@ -856,7 +1218,11 @@ export default function OrgDashboardPage() {
                                         </div>
 
                                         <div className={styles.donutLegendGridSingle}>
-                                            {TYPE_DONUT_LABELS.map((item) => (
+                                            {[
+                                                { label: "Meetings", value: summary.meetings },
+                                                { label: "Courses", value: summary.courses },
+                                                { label: "Challenges", value: summary.challenges },
+                                            ].map((item) => (
                                                 <div key={item.label} className={styles.donutLegendItemWide}>
                                                     <span className={styles.donutLegendValue}>{item.value}</span>
                                                     <span className={styles.donutLegendLabel}>{item.label}</span>
@@ -871,8 +1237,9 @@ export default function OrgDashboardPage() {
                                 <div className={styles.statisticsBarsBaseline} />
 
                                 <div className={styles.statisticsBarsRow}>
-                                    {(statsTab === "participants" ? PARTICIPANT_BARS : SKILL_BARS).map((item, index) => {
-                                        const max = statsTab === "participants" ? 80 : 12;
+                                    {(statsTab === "participants" ? participantBars : skillBars).map((item, index) => {
+                                        const currentBars = statsTab === "participants" ? participantBars : skillBars;
+                                        const max = Math.max(1, ...currentBars.map((bar) => bar.value || 0));
                                         const barHeight = Math.max(42, (item.value / max) * 120);
                                         return (
                                             <div key={`${item.label}-${index}`} className={styles.statisticsBarItem}>
@@ -900,16 +1267,39 @@ export default function OrgDashboardPage() {
                             <button
                                 type="button"
                                 className={styles.activityOverviewAddBtn}
-                                aria-label="Select activity type"
+                                aria-label="Create new activity"
                                 onClick={() => setIsActivityTypeOpen(true)}
                             >
-                                +
+                                <Image
+                                    src="/images/icons/button05-icon.png"
+                                    alt=""
+                                    width={50}
+                                    height={50}
+                                    className={styles.activityOverviewAddIcon}
+                                />
                             </button>
                         </div>
 
                         <div className={styles.activityOverviewScroll}>
-                            {filteredOrgActivities.map((item) => (
-                                <div key={item.id} className={styles.activityTableRow}>
+                            {filteredOrgActivities.length === 0 ? (
+                                <div className={styles.activityEmptyState}>
+                                    No activities created yet.
+                                </div>
+                            ) : filteredOrgActivities.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className={styles.activityTableRow}
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => router.push(`/organization/activities/${item.id}`)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            router.push(`/organization/activities/${item.id}`);
+                                        }
+                                    }}
+                                >
                                     <div className={styles.activityThumbWrap}>
                                         <div className={styles.activityThumbCard}>
                                             <div className={styles.activityThumbPieceTop} />
@@ -917,7 +1307,7 @@ export default function OrgDashboardPage() {
                                         </div>
                                     </div>
 
-                                    <div className={styles.activityNameCell}>{item.title}</div>
+                                    <div className={styles.activityNameCell} title={item.title}>{item.title}</div>
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityInfoCell}>
@@ -939,14 +1329,8 @@ export default function OrgDashboardPage() {
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityStatusColumn}>
-                                        <div className={`${styles.activityStatusBadge} ${item.statusTone === "pending" ? styles.activityStatusBadgePending : ""}`}>
-                                            pending
-                                        </div>
-                                        <div className={`${styles.activityStatusBadge} ${item.statusTone === "join" ? styles.activityStatusBadgeJoin : ""}`}>
-                                            Can join
-                                        </div>
-                                        <div className={`${styles.activityStatusBadge} ${item.statusTone === "ended" ? styles.activityStatusBadgeEnded : ""}`}>
-                                            ended
+                                        <div className={getStatusBadgeClass(item.statusTone)}>
+                                            {item.statusLabel}
                                         </div>
                                     </div>
                                 </div>
@@ -996,43 +1380,75 @@ export default function OrgDashboardPage() {
             </section>
 
             {isActivityTypeOpen && (
-                <div className={styles.figmaPopupOverlay} onClick={() => setIsActivityTypeOpen(false)}>
+                <div
+                    className={styles.activityCreateOverlay}
+                    onClick={() => setIsActivityTypeOpen(false)}
+                >
                     <div
-                        className={styles.activityTypePopup}
+                        className={styles.activityCreateModal}
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
                         aria-label="Select activity type"
                     >
-                        <div className={styles.activityTypePopupBg} />
-                        <div className={styles.activityTypePopupInner}>
-                            {(["Meetings", "Courses", "Challenges"] as const).map((item, index) => (
-                                    <Fragment key={item}>
-                                        {index > 0 && <div className={styles.activityTypePopupDivider} />}
-                                        <button
-                                            type="button"
-                                            className={styles.activityTypePopupItem}
-                                            onClick={() => {
-                                                setSelectedActivityKind(item);
-                                                setIsActivityTypeOpen(false);
-                                            }}
-                                        >
-                                            <div className={styles.activityTypePopupItemBox} />
-                                            <div className={styles.activityTypePopupItemText}>{item}</div>
-                                        </button>
-                                    </Fragment>
-                                ))}
+                        <button
+                            type="button"
+                            className={styles.activityCreateClose}
+                            onClick={() => setIsActivityTypeOpen(false)}
+                            aria-label="Close"
+                        >
+                            ×
+                        </button>
+
+                        <div className={styles.activityCreateHeader}>
+                            <div className={styles.activityCreateTitle}>Create activity</div>
+                            <div className={styles.activityCreateSubtitle}>
+                                Choose the type of activity you want to create.
+                            </div>
+                        </div>
+
+                        <div className={styles.activityCreateGrid}>
+                            {([
+                                {
+                                    label: "Meetings",
+                                    description: "Live sessions, mentoring, interviews, or discussion-based activities.",
+                                    route: "meeting",
+                                },
+                                {
+                                    label: "Courses",
+                                    description: "Structured learning with modules, lessons, and guided progress.",
+                                    route: "course",
+                                },
+                                {
+                                    label: "Challenges",
+                                    description: "Hands-on tasks, case work, and portfolio-based submissions.",
+                                    route: "challenge",
+                                },
+                            ] as const).map((item) => (
+                                <button
+                                    key={item.label}
+                                    type="button"
+                                    className={styles.activityCreateCard}
+                                    onClick={() => {
+                                        setIsActivityTypeOpen(false);
+                                        router.push(`/organization/activities/${item.route}`);
+                                    }}
+                                >
+                                    <span className={styles.activityCreateCardAccent} />
+                                    <div className={styles.activityCreateCardTitle}>{item.label}</div>
+                                    <div className={styles.activityCreateCardText}>{item.description}</div>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
             )}
-
             {/* ===== Modal: Add employee ===== */}
             {isOpen && (
                 <div className={styles.modalOverlay} role="dialog" aria-modal="true">
                     <div className={styles.modal}>
                         <div className={styles.modalHeader}>
-                            <h2 className={styles.modalTitle}>Add employee</h2>
+                            <h2 className={styles.modalTitle}>{employeeModalMode === "edit" ? "Edit employee" : "Add employee"}</h2>
                             <button className={styles.modalClose} type="button" onClick={closeAdd} aria-label="Close">
                                 ✕
                             </button>
@@ -1073,8 +1489,14 @@ export default function OrgDashboardPage() {
                                 className={styles.input}
                                 placeholder="Email"
                                 value={draft.email}
-                                onChange={setDraftField("email")}
+                                onChange={employeeModalMode === "edit" ? undefined : setDraftField("email")}
+                                readOnly={employeeModalMode === "edit"}
                             />
+                            {employeeModalMode === "edit" && (
+                                <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, marginBottom: 8 }}>
+                                    Email is read-only here.
+                                </div>
+                            )}
 
                             <div className={styles.hr} />
 
@@ -1090,20 +1512,33 @@ export default function OrgDashboardPage() {
 
                             <div className={styles.avatarPickTitle}>Avatar</div>
                             <div className={styles.avatarPickRow}>
-                                {AVATARS.map((src, i) => {
-                                    const on = draft.avatarIndex === i;
-                                    return (
-                                        <button
-                                            key={src}
-                                            type="button"
-                                            className={`${styles.avatarPickBtn} ${on ? styles.avatarPickBtnOn : ""}`}
-                                            onClick={() => setDraftAvatar(i)}
-                                            aria-label={`Select avatar ${i + 1}`}
-                                        >
-                                            <img src={src} alt={`avatar ${i + 1}`} className={styles.avatarPickImg} />
-                                        </button>
-                                    );
-                                })}
+                                {loadingAvatarOptions ? (
+                                    <div style={{ fontSize: 11, color: "#6b7280" }}>Loading avatars...</div>
+                                ) : avatarOptions.length === 0 ? (
+                                    <div style={{ fontSize: 11, color: "#b42318" }}>No employee avatars</div>
+                                ) : (
+                                    avatarOptions.map((option, index) => {
+                                        const on = draft.avatarId === option.id;
+                                        return (
+                                            <button
+                                                key={option.id}
+                                                type="button"
+                                                className={`${styles.avatarPickBtn} ${on ? styles.avatarPickBtnOn : ""}`}
+                                                onClick={() => setDraftAvatar(option.id)}
+                                                aria-label={`Select avatar ${index + 1}`}
+                                                title={`Employee avatar ${index + 1}`}
+                                                style={{
+                                                    overflow: "hidden",
+                                                    padding: 0,
+                                                    position: "relative",
+                                                    display: "block",
+                                                }}
+                                            >
+                                                <EmployeeAvatarOptionPreview modelUrl={option.modelUrl} />
+                                            </button>
+                                        );
+                                    })
+                                )}
                             </div>
 
                             {error && <div className={styles.errorText}>{error}</div>}
@@ -1113,8 +1548,8 @@ export default function OrgDashboardPage() {
                             <button className={styles.secondaryBtn} type="button" onClick={closeAdd} disabled={saving}>
                                 Cancel
                             </button>
-                            <button className={styles.primaryBtn} type="button" onClick={submitAdd} disabled={saving}>
-                                {saving ? "Saving..." : "Send invite"}
+                            <button className={styles.primaryBtn} type="button" onClick={submitEmployee} disabled={saving}>
+                                {saving ? "Saving..." : employeeModalMode === "edit" ? "Save changes" : "Send invite"}
                             </button>
                         </div>
                     </div>
@@ -1176,15 +1611,18 @@ export default function OrgDashboardPage() {
                                             <div className={styles.popupLogoLabel}>Logo</div>
                                         )}
 
-                                        <label className={styles.popupLogoDrop}>
+                                        <label className={styles.popupLogoDrop} style={{ opacity: logoUploading ? 0.6 : 1 }}>
                                             <input
                                                 type="file"
                                                 accept="image/*"
                                                 className={styles.popupHiddenFile}
                                                 onChange={openLogoCrop}
+                                                disabled={logoUploading}
                                             />
                                             <div className={styles.popupLogoDropInner}>
-                                                {orgDraft.logoPreview ? (
+                                                {logoUploading ? (
+                                                    <div className={styles.popupUploadText}>Uploading...</div>
+                                                ) : orgDraft.logoPreview ? (
                                                     <img
                                                         src={orgDraft.logoPreview}
                                                         alt="Logo preview"
@@ -1195,6 +1633,11 @@ export default function OrgDashboardPage() {
                                                 )}
                                             </div>
                                         </label>
+                                        {orgDraft.logoFile && !logoUploading && (
+                                            <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                                Ready to upload
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1266,6 +1709,7 @@ export default function OrgDashboardPage() {
                                 type="button"
                                 className={styles.popupIconButton}
                                 onClick={handleSaveOrg}
+                                disabled={orgSaving || logoUploading}
                                 aria-label="Save organization"
                             >
                                 <Image
@@ -1307,7 +1751,7 @@ export default function OrgDashboardPage() {
                     >
                         <div className={styles.savedPopupBg} />
                         <Image
-                            src="/images/icons/button01-icon.png"
+                            src="/images/icons/save-icon.png"
                             alt=""
                             width={60}
                             height={60}

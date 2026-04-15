@@ -1,29 +1,27 @@
 .sidebar {
   width: 90px;
-  border-radius: 5px;
-  /* background: #d5bdaf; */
-  background: rgb(217, 210, 201);
-  border: none;
-  box-shadow:
-    6px 6px 16px rgba(0, 0, 0, 0.18),
-    -4px -4px 12px rgba(255, 255, 255, 0.55);
+  border-radius: 2px;
+  background: #fcfcfc;
+  border: 2px solid #d5bdaf;
+  box-sizing: border-box;
+
+  /* taupe offset shadow — brutalist drop shadow effect */
+  box-shadow: 7px 7px 0px #d5bdaf;
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14px 10px;
+  padding: 13px 12px;
   gap: 0;
+  position: relative;
 }
 
 .logo {
-  width: 60px;
-  height: 60px;
-  border-radius: 5px;
-  background: #d5bdaf;
+  width: 65px;
+  height: 65px;
+  border-radius: 2px;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow:
-    3px 3px 8px rgba(0, 0, 0, 0.16),
-    -2px -2px 6px rgba(255, 255, 255, 0.50);
 }
 
 .logo img {
@@ -34,49 +32,57 @@
 }
 
 .logoDivider {
-  width: 60%;
-  height: 1px;
+  width: 70%;
+  height: 1.5px;
   background: rgba(0, 0, 0, 0.12);
-  margin: 12px auto;
+  margin: 10px auto;
   flex-shrink: 0;
 }
 
 .item {
-  width: 60px;
-  height: 60px;
-  border-radius: 5px;
+  width: 65px;
+  height: 65px;
+  border-radius: 2px;
   border: none;
-  background: #d5bdaf;
+  background: transparent;
   cursor: pointer;
-  font-weight: 700;
   color: #2b2b2b;
   display: grid;
   place-items: center;
   overflow: hidden;
   text-decoration: none;
   flex-shrink: 0;
-  box-shadow:
-    4px 4px 10px rgba(0, 0, 0, 0.16),
-    -3px -3px 8px rgba(255, 255, 255, 0.52);
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  position: relative;
+  transition: transform 0.12s ease;
 }
 
-.item:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow:
-    6px 8px 16px rgba(0, 0, 0, 0.20),
-    -3px -3px 10px rgba(255, 255, 255, 0.55);
+.item:hover:not(:disabled):not([aria-disabled="true"]) {
+  transform: translate(-1px, -1px);
 }
 
-.item:active:not(:disabled) {
-  transform: translateY(0px);
-  box-shadow:
-    inset 3px 3px 8px rgba(0, 0, 0, 0.18),
-    inset -2px -2px 6px rgba(255, 255, 255, 0.45);
+.item:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translate(1px, 1px);
+}
+
+.itemActive {
+  box-shadow: 4px 4px 0px #d5bdaf;
+  border-radius: 2px;
+}
+
+.itemActive::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 28px;
+  background: #000000;
+  border-radius: 0;
 }
 
 .itemDisabled {
-  opacity: 0.45;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -85,14 +91,14 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 5px;
+  border-radius: 2px;
 }
 
 .itemDivider {
-  width: 50%;
+  width: 60%;
   height: 1px;
   background: rgba(0, 0, 0, 0.10);
-  margin: 8px auto;
+  margin: 10px auto;
   flex-shrink: 0;
 }
 
@@ -101,42 +107,32 @@
 }
 
 .logoutDivider {
-  width: 60%;
-  height: 1px;
+  width: 70%;
+  height: 1.5px;
   background: rgba(0, 0, 0, 0.12);
-  margin: 12px auto;
+  margin: 10px auto;
   flex-shrink: 0;
 }
 
 .logout {
-  width: 60px;
-  height: 60px;
-  border-radius: 5px;
+  width: 65px;
+  height: 65px;
+  border-radius: 2px;
   border: none;
-  background: #d5bdaf;
+  background: transparent;
   cursor: pointer;
-  font-weight: 700;
   overflow: hidden;
   padding: 0;
   flex-shrink: 0;
-  box-shadow:
-    4px 4px 10px rgba(0, 0, 0, 0.16),
-    -3px -3px 8px rgba(255, 255, 255, 0.52);
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  transition: transform 0.12s ease;
 }
 
 .logout:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    6px 8px 16px rgba(0, 0, 0, 0.20),
-    -3px -3px 10px rgba(255, 255, 255, 0.55);
+  transform: translate(-1px, -1px);
 }
 
 .logout:active {
-  transform: translateY(0px);
-  box-shadow:
-    inset 3px 3px 8px rgba(0, 0, 0, 0.18),
-    inset -2px -2px 6px rgba(255, 255, 255, 0.45);
+  transform: translate(1px, 1px);
 }
 
 .logout img {
@@ -144,5 +140,5 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 5px;
+  border-radius: 2px;
 }

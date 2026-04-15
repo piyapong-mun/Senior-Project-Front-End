@@ -73,7 +73,9 @@ function AnimatedGLB({ url }: { url: string }) {
     action.fadeIn(0.2);
     action.play();
 
-    return () => action.stop();
+    return () => {
+      action.stop();
+    };
   }, [actions, names, url]);
 
   useFrame((_, dt) => mixer?.update(dt));

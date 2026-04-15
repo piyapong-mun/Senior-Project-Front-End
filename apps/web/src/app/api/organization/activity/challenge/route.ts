@@ -1,7 +1,7 @@
 /**
- * src/app/api/organization/activity/meeting/route.ts
+ * apps/web/src/app/api/organization/activity/challenge/route.ts
  *
- * POST /api/organization/activity/meeting
+ * POST /api/organization/activity/challenge
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -18,7 +18,7 @@ const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "vcep_session";
 
 declare global {
   // eslint-disable-next-line no-var
-  var __vcepMeetingPool: Pool | undefined;
+  var __vcepChallengePool: Pool | undefined;
 }
 
 function readCookie(cookieHeader: string | null, name: string) {
@@ -27,7 +27,11 @@ function readCookie(cookieHeader: string | null, name: string) {
   const found = parts.find((p) => p.startsWith(name + "="));
   if (!found) return null;
   const v = found.slice(name.length + 1);
-  try { return decodeURIComponent(v); } catch { return v; }
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
 }
 
 function getSessionTokens(req: NextRequest) {
@@ -37,11 +41,13 @@ function getSessionTokens(req: NextRequest) {
     try {
       const parsed = JSON.parse(raw) as { idToken?: string; accessToken?: string };
       if (parsed?.idToken) return parsed;
-    } catch { }
+    } catch {}
   }
+
   const idToken = readCookie(cookieHeader, "vcep_id");
   const accessToken = readCookie(cookieHeader, "vcep_access");
   if (!idToken) return null;
+
   return { idToken, accessToken: accessToken || "" };
 }
 
@@ -50,19 +56,32 @@ function stripPgSslParams(cs: string) {
     const url = new URL(cs);
     ["sslmode", "sslcert", "sslkey", "sslrootcert"].forEach((k) => url.searchParams.delete(k));
     return url.toString();
-  } catch { return cs; }
+  } catch {
+    return cs;
+  }
 }
 
 function getPool() {
-  if (global.__vcepMeetingPool) return global.__vcepMeetingPool;
-  const ssl = PGSSL_CA_PATH && fs.existsSync(PGSSL_CA_PATH)
-    ? { ca: fs.readFileSync(PGSSL_CA_PATH, "utf8") }
-    : { rejectUnauthorized: false };
-  global.__vcepMeetingPool = new Pool({ connectionString: stripPgSslParams(DATABASE_URL), ssl });
-  return global.__vcepMeetingPool;
+  if (global.__vcepChallengePool) return global.__vcepChallengePool;
+
+  const ssl =
+    PGSSL_CA_PATH && fs.existsSync(PGSSL_CA_PATH)
+      ? { ca: fs.readFileSync(PGSSL_CA_PATH, "utf8") }
+      : { rejectUnauthorized: false };
+
+  global.__vcepChallengePool = new Pool({
+    connectionString: stripPgSslParams(DATABASE_URL),
+    ssl,
+  });
+
+  return global.__vcepChallengePool;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function sanitizeDt(v: unknown) {
+  return typeof v === "string" && v.trim() !== "" ? v : "2022-01-01T00:00:00Z";
+}
 
 async function resolveContext(req: NextRequest) {
   const sess = getSessionTokens(req);
@@ -119,11 +138,15 @@ export async function POST(req: NextRequest) {
 
     const payload = {
       ...body,
+      enroll_start_at: sanitizeDt(body?.enroll_start_at),
+      enroll_end_at: sanitizeDt(body?.enroll_end_at),
+      run_start_at: sanitizeDt(body?.run_start_at),
+      run_end_at: sanitizeDt(body?.run_end_at),
       ...(orgId ? { creator_org_id: orgId } : {}),
       ...(empId ? { created_by: empId } : {}),
     };
 
-    const backendRes = await fetch(`${BACKEND_URL}/activity/meeting`, {
+    const backendRes = await fetch(`${BACKEND_URL}/activity/challenge`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -136,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     if (!backendRes.ok) {
       return NextResponse.json(
-        { ok: false, message: getErrorMessage(data, `Failed to create meeting (${backendRes.status})`) },
+        { ok: false, message: getErrorMessage(data, `Failed to create challenge (${backendRes.status})`) },
         { status: backendRes.status }
       );
     }
@@ -157,8 +180,12 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     const message = error?.message || "Internal server error";
-    const status = message === "Unauthorized" || message === "Invalid token" ? 401
-      : message === "User not found" ? 404 : 500;
+    const status =
+      message === "Unauthorized" || message === "Invalid token"
+        ? 401
+        : message === "User not found"
+          ? 404
+          : 500;
     return NextResponse.json({ ok: false, message }, { status });
   }
 }
@@ -168,12 +195,7 @@ export async function PUT(req: NextRequest) {
     const { accessToken, orgId, empId } = await resolveContext(req);
     const body = await req.json().catch(() => ({}));
 
-    const activityId = String(
-      body?.activity_id ??
-      body?.id ??
-      ""
-    ).trim();
-
+    const activityId = String(body?.activity_id ?? body?.id ?? "").trim();
     if (!activityId) {
       return NextResponse.json(
         { ok: false, message: "activity_id is required" },
@@ -181,15 +203,20 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { creator_org_id: _coi, created_by: _cb, ...safeBody } = body;
+
     const payload = {
-      ...body,
+      ...safeBody,
       activity_id: activityId,
-      activity_type: "meeting",
-      ...(orgId ? { creator_org_id: orgId } : {}),
-      ...(empId ? { created_by: empId } : {}),
+      activity_type: "challenge",
+      enroll_start_at: sanitizeDt(body?.enroll_start_at),
+      enroll_end_at: sanitizeDt(body?.enroll_end_at),
+      run_start_at: sanitizeDt(body?.run_start_at),
+      run_end_at: sanitizeDt(body?.run_end_at),
     };
 
-    const backendRes = await fetch(`${BACKEND_URL}/activity/meeting/update`, {
+    const backendRes = await fetch(`${BACKEND_URL}/activity/challenge/update`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -201,7 +228,7 @@ export async function PUT(req: NextRequest) {
     const data = await backendRes.json().catch(() => ({}));
 
     if (!backendRes.ok) {
-      console.error("Meeting update failed:", {
+      console.error("Challenge update failed:", {
         status: backendRes.status,
         payload,
         data,
@@ -210,10 +237,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          message: getErrorMessage(
-            data,
-            `Failed to update meeting (${backendRes.status})`
-          ),
+          message: getErrorMessage(data, `Failed to update challenge (${backendRes.status})`),
         },
         { status: backendRes.status }
       );

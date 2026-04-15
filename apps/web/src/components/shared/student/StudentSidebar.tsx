@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import type { NavItem } from "@/lib/config/student/routes";
 import styles from "./StudentSidebar.module.css";
@@ -17,12 +20,23 @@ export default function StudentSidebar({
   items,
   onNavigate,
   logoSrc = "/images/logo/logo-v2.png",
-  logoutIconSrc = "/images/icon bar/icon7.jpg",
+  logoutIconSrc = "/images/icon bar/icon7.png",
   className,
   style,
   onLogout,
 }: StudentSidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const wrapperClassName = className ? `${styles.sidebar} ${className}` : styles.sidebar;
+
+  const handleLogout = async () => {
+    if (onLogout) {
+      onLogout();
+      return;
+    }
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/auth/sign-in");
+  };
 
   return (
     <div className={wrapperClassName} style={style}>
@@ -34,7 +48,14 @@ export default function StudentSidebar({
 
       {items.map((item, idx) => {
         const disabled = item.enabled === false;
+        const isActive = !disabled && pathname.startsWith(item.href);
         const content = item.iconSrc ? <img src={item.iconSrc} alt={item.label} /> : <span>{item.label}</span>;
+
+        const itemClass = [
+          styles.item,
+          disabled ? styles.itemDisabled : "",
+          isActive ? styles.itemActive : "",
+        ].filter(Boolean).join(" ");
 
         const el = (() => {
           if (onNavigate) {
@@ -42,9 +63,10 @@ export default function StudentSidebar({
               <button
                 key={item.key}
                 type="button"
-                className={`${styles.item} ${disabled ? styles.itemDisabled : ""}`}
+                className={itemClass}
                 title={disabled ? `${item.label} (Coming soon)` : item.label}
                 aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
                 aria-disabled={disabled}
                 onClick={() => { if (!disabled) onNavigate(item); }}
                 disabled={disabled}
@@ -57,7 +79,7 @@ export default function StudentSidebar({
             return (
               <div
                 key={item.key}
-                className={`${styles.item} ${styles.itemDisabled}`}
+                className={itemClass}
                 title={`${item.label} (Coming soon)`}
                 aria-disabled
               >
@@ -66,7 +88,13 @@ export default function StudentSidebar({
             );
           }
           return (
-            <Link key={item.key} href={item.href} className={styles.item} aria-label={item.label}>
+            <Link
+              key={item.key}
+              href={item.href}
+              className={itemClass}
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
+            >
               {content}
             </Link>
           );
@@ -84,7 +112,7 @@ export default function StudentSidebar({
 
       <div className={styles.logoutDivider} />
 
-      <button className={styles.logout} title="Logout" aria-label="Logout" type="button" onClick={onLogout}>
+      <button className={styles.logout} title="Logout" aria-label="Logout" type="button" onClick={handleLogout}>
         <img src={logoutIconSrc} alt="Logout" />
       </button>
     </div>

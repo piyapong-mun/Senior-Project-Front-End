@@ -28,11 +28,14 @@
 /* ===== top grid ===== */
 .topGrid{
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(200px, 0.4fr) minmax(280px, 0.7fr);
+  /* 3 columns: org | summary | avatar
+     org+summary รวมกัน = 1fr (เท่า midGrid left)
+     avatar = 390px (เท่า midGrid right) */
+  grid-template-columns: minmax(0,1fr) minmax(0,250px) 390px;
   grid-template-areas:
     "org summary avatar"
     "summaryActivities summaryActivities avatar";
-  gap: 18px;
+  gap: 16px 16px;
   align-items: start;
 }
 
@@ -41,7 +44,8 @@
 .orgCard{
   grid-area: org;
   position: relative;
-  height: 200px;
+  min-height: 200px;
+  min-width: 0;
 }
 
 .orgCardBg{
@@ -73,9 +77,9 @@
 }
 
 .orgLogoCircle{
-  width: 85px;
-  height: 85px;
-  border-radius: 999px;
+  width: 100px;
+  height: 100px;
+  border-radius: 5px;
   border: 2px solid rgba(0,0,0,0.58);
   background: #fff;
   position: relative;
@@ -84,10 +88,10 @@
   box-sizing: border-box;
 }
 
-.orgLogoMark{
+/* .orgLogoMark{
   width: 62px;
   height: 62px;
-  border-radius: 999px;
+  border-radius: 5px;
   position: relative;
   transform: rotate(-8deg);
   background:
@@ -95,15 +99,15 @@
       #ffa589 0deg 18deg,
       transparent 18deg 45deg
     );
-}
+} */
 
-.orgLogoMark::before{
+/* .orgLogoMark::before{
   content: "";
   position: absolute;
   inset: 22px;
   border-radius: 999px;
   background: #fff;
-}
+} */
 
 .orgInfoWrap{
   min-width: 0;
@@ -207,7 +211,7 @@
   grid-area: summary;
   position: relative;
   width: 100%;
-  height: 200px; /* ให้ใกล้ขนาดเดิมใน layout ปัจจุบัน */
+  min-height: 200px;
   box-sizing: border-box;
 }
 
@@ -367,51 +371,87 @@
 /* avatar box (ขวาบน) */
 .avatarBox{
   grid-area: avatar;
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 1px solid #efefef;
   border-radius: 6px;
   overflow: hidden;
-  background: #fff;
+  background: #fefefe;
+  box-shadow: 2px 2px 4px rgba(0,0,0,0.10);
 }
 
 .buildingWrap{
-  height: 250px;
+  /* ความสูงพอดีกับ summaryCard+row1 = ~200px building + avatarRow */
+  height: 220px;
   background: #f7f7f7;
-  display: grid;
-  place-items: center;
-  border-bottom: 1px solid rgba(0,0,0,0.10);
+  position: relative;
+  border-bottom: 1px solid #efefef;
+  overflow: hidden;
 }
 
 .buildingImg{
-  width: 90%;
-  max-width: 280px;
-  height: auto;
+  /* Canvas container — fills buildingWrap exactly */
+  width: 100%;
+  height: 100%;
   display: block;
-  filter: drop-shadow(0 14px 12px rgba(0,0,0,0.12));
+}
+
+.buildingLabel{
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.90);
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .avatarRow{
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-  align-items: flex-end;
+  /* grid 4 cols: 3 employees + 1 ปุ่มเพิ่ม — กว้างเท่ากันพอดีการ์ด */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) auto;
+  gap: 6px;
+  padding: 18px 12px;
+  align-items: end;
+  background: #fefefe;
 }
 
 .avatarTile{
-  border: 1px solid rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.12);
   border-radius: 6px;
-  background: #fff;
+  background: #fafafa;
+  padding: 8px 6px;
+  text-align: center;
+  width: 100%;
+}
+
+.avatarTileEmpty{
+  /* slot ว่าง — กดเพื่อเพิ่มพนักงาน */
+  border: 1.5px dashed rgba(0,0,0,0.18);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.02);
+  min-height: 100px;
   cursor: pointer;
-  padding: 10px 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.avatarTileEmpty:hover{
+  background: rgba(0,0,0,0.06);
+  border-color: rgba(0,0,0,0.30);
 }
 
 .avatarThumb{
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
   display: block;
-  margin: 0 auto 6px;
+  margin: 0 auto 4px;
   filter: grayscale(0.25) brightness(0.95);
-  opacity: 0.70; /* default = จาง */
+  opacity: 0.70;
 }
 
 .avatarThumbActive{
@@ -426,16 +466,18 @@
 }
 
 .addEmpBtn{
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
-  border: 2px solid rgba(0,0,0,0.20);
+  border: 2px solid rgba(0,0,0,0.18);
   background: #fff;
   cursor: pointer;
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 
@@ -634,11 +676,11 @@
 
 /* ===== mid grid ===== */
 .midGrid{
-  margin-top: 18px;
+  margin-top: 16px;
   padding-bottom: 25px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;
-  gap: 18px;
+  gap: 16px;
   align-items: stretch;
 }
 
@@ -709,8 +751,8 @@
 }
 
 .statisticsTabBtnActive{
-  background: #a8dadc;
-  border: 1px solid #a8dadc;
+  background: #D5D0AF;
+  border: 1px solid #D5D0AF;
 }
 
 .statisticsBarsWrap{
@@ -922,15 +964,27 @@
   font-family: "Rounded Mplus 1c", Arial, sans-serif;
 }
 
+
+
 .activityOverviewAddBtn{
-  width: 60px;
-  height: 40px;
-  border-radius: 2px;
-  border: 2px solid #000;
-  background: #f5f5f5;
-  cursor: pointer;
-  font-size: 30px;
-  line-height: 1;
+  /* width: 60px;
+  height: 60px; */
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.activityOverviewAddBtn:hover{
+  /* background: #f7f2ee; */
+  /* box-shadow: 0 8px 18px rgba(0, 0, 0, 0.10); */
+  transform: translateY(-1px);
+}
+
+.activityOverviewAddIcon{
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  display: block;
 }
 
 .activityOverviewScroll{
@@ -953,6 +1007,20 @@
 .activityOverviewScroll::-webkit-scrollbar-thumb{
   background: rgba(0,0,0,0.18);
   border-radius: 999px;
+}
+
+
+.activityEmptyState{
+  min-height: 120px;
+  border: 0.5px dashed rgba(42, 42, 42, 0.35);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  color: rgba(0,0,0,0.58);
+  background: rgba(255,255,255,0.72);
 }
 
 .activityTableRow{
@@ -994,7 +1062,7 @@
   left: 2px;
   width: 30px;
   height: 30px;
-  background: #e9c88b;
+  background: #C7BED4;
 }
 
 .activityThumbPieceBottom{
@@ -1002,14 +1070,20 @@
   bottom: 2px;
   width: 30px;
   height: 30px;
-  background: #5f8f97;
+  background: #BED4D0;
   transform: rotate(-18deg);
 }
 
 .activityNameCell{
+  min-width: 0;
   font-size: 13px;
   line-height: 1.28;
   color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .activityDivider{
@@ -1041,19 +1115,22 @@
 
 .activityStatusColumn{
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
 }
 
 .activityStatusBadge{
-  width: 50px;
-  height: 18px;
+  min-width: 72px;
+  min-height: 50px;
+  padding: 0 8px;
   border-radius: 2px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   font-size: 10px;
-  font-weight: 300;
+  font-weight: 500;
+  line-height: 1.1;
   background: #f4f4f4;
   color: #000;
 }
@@ -1261,81 +1338,137 @@
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
 }
 
-.figmaPopupOverlay{
+.activityCreateOverlay{
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
   z-index: 140;
-  background: rgba(0, 0, 0, 0.1);
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-
-.activityTypePopup{
-  position: relative;
-  width: min(573px, calc(100vw - 40px));
-  height: 113px;
-  max-width: 100%;
-}
-
-.activityTypePopupBg{
-  position: absolute;
-  inset: 0;
-  border-radius: 2px;
-  background: #fefefe;
-  border: 1px solid #717171;
-  box-sizing: border-box;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.activityTypePopupInner{
-  position: absolute;
-  top: 20px;
-  left: 32px;
-  right: 32px;
-  height: 74px;
+  background: rgba(0, 0, 0, 0.18);
   display: grid;
-  grid-template-columns: 1fr 1px 1fr 1px 1fr;
-  align-items: center;
-  gap: 0;
+  place-items: center;
+  padding: 24px;
 }
 
-.activityTypePopupDivider{
-  width: 1px;
-  height: 75px;
-  background: #000;
-  justify-self: center;
-}
-
-.activityTypePopupItem{
+.activityCreateModal{
   position: relative;
-  height: 74px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.activityTypePopupItemBox{
-  position: absolute;
-  top: 0;
-  left: 8px;
-  right: 8px;
-  bottom: 0;
-  border: 5px solid #a8dadc;
+  width: min(760px, calc(100vw - 40px));
+  border-radius: 5px;
+  background: #fafafa;
+  border: 1px solid #edf9f9;
+  box-shadow: 0 22px 40px rgba(0, 0, 0, 0.14);
+  padding: 26px 26px 24px;
   box-sizing: border-box;
 }
 
-.activityTypePopupItemText{
+.activityCreateClose{
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(0,0,0,0.14);
+  border-radius: 5px;
+  background: #fff;
+  color: #5b5b5b;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.activityCreateClose:hover{
+  background: #e6e7e7;
+}
+
+.activityCreateHeader{
+  padding-right: 54px;
+  margin-bottom: 20px;
+}
+
+.activityCreateTitle{
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 500;
   color: #000;
   font-family: "Rounded Mplus 1c", Arial, sans-serif;
+}
+
+.activityCreateSubtitle{
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(0,0,0,0.62);
+  font-family: "Rounded Mplus 1c", Arial, sans-serif;
+}
+
+.activityCreateGrid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.activityCreateCard{
+  position: relative;
+  /* min-height: 168px; */
+  border: 2px solid #C7BED4;
+  border-radius: 5px;
+  /* background: linear-gradient(180deg, #ffffff 0%, #a8dadc 100%); */
+  padding: 18px 16px 16px;
+  box-sizing: border-box;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.activityCreateCard:hover{
+  transform: translateY(-2px);
+  border-color: #C7BED4;
+  background: #C7BED4;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.10);
+}
+
+/* .activityCreateCardAccent{
+  display: block;
+  width: 44px;
+  height: 6px;
+  border-radius: 999px;
+  background: #a8dadc;
+  margin-bottom: 18px;
+} */
+
+.activityCreateCardTitle{
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 500;
+  color: #000;
+  margin-bottom: 10px;
+  font-family: "Rounded Mplus 1c", Arial, sans-serif;
+}
+
+.activityCreateCardText{
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(0,0,0,0.64);
+  font-family: "Rounded Mplus 1c", Arial, sans-serif;
+}
+
+@media (max-width: 760px){
+  .activityCreateModal{
+    padding: 22px 18px 18px;
+    border-radius: 16px;
+  }
+
+  .activityCreateHeader{
+    margin-bottom: 16px;
+  }
+
+  .activityCreateGrid{
+    grid-template-columns: 1fr;
+  }
+
+  .activityCreateCard{
+    min-height: 128px;
+  }
 }
 
 /* ===== modal (popup add employee) ===== */
@@ -1499,6 +1632,11 @@
   background: rgba(0,0,0,0.02);
   cursor: pointer;
   padding: 10px 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.avatarTileEmpty:hover{
+  background: rgba(0,0,0,0.06);
+  border-color: rgba(0,0,0,0.35);
 }
 
 .emptyAvatarCircle{
@@ -1612,7 +1750,7 @@
 .orgLogoImg{
   width: 100%;
   height: 100%;
-  border-radius: 999px;
+  border-radius: 5px;
   object-fit: cover;
   display: block;
 }

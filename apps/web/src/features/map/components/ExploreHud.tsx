@@ -57,7 +57,7 @@ export default function ExploreHud({
           top: 28,
           width: 520,
           height: 46,
-          borderRadius: 5,
+          borderRadius: 2,
           background: "rgba(255,255,255,0.72)",
           // border: "2px solid rgba(0, 0, 0, 0.48)",
           // boxShadow: "0 18px 40px rgba(0,0,0,0.10)",
@@ -70,7 +70,7 @@ export default function ExploreHud({
           zIndex: 40,
         }}
       >
-        <span style={{ opacity: 0.7 }}>🔎</span>
+        <span style={{ opacity: 1 }}><img src="/images/icons/search-icon.png" alt="Logout" /></span>
         <input
           placeholder="Search"
           style={{
@@ -95,7 +95,7 @@ export default function ExploreHud({
           zIndex: 41,
           width: 40,
           height: 40,
-          borderRadius: 5,
+          borderRadius: 2,
           background: "rgba(255,255,255,0.72)",
           // border: "2px solid rgba(0, 0, 0, 0.48)",
           // boxShadow: "0 18px 40px rgba(0,0,0,0.10)",
@@ -126,10 +126,10 @@ export default function ExploreHud({
           top: 28,
           width: 360,
           height: 95,
-          borderRadius: 5,
-          background: "#D9D2C9",
-          // border: "1px solid rgba(0, 0, 0, 0.48)",
-          boxShadow: "3px 3px 8px rgba(111, 111, 111, 0.4)",
+          borderRadius: 2,
+          background: "#efece8",
+          border: "2px solid #D9D2C9",
+          boxShadow: "6px 6px 0px #b8ada0",
           display: "flex",
           alignItems: "center",
           padding: 16,
@@ -160,10 +160,10 @@ export default function ExploreHud({
               style={{
                 width: 84,
                 height: 35,
-                borderRadius: 4,
+                borderRadius: 2,
                 background: "#CFAE83",
                 // border: "2px solid rgba(0, 0, 0, 0.48)",
-                boxShadow: "3px 3px 8px rgba(0, 0, 0, 0.2)",
+                boxShadow: "3px 3px 0px rgba(126, 119, 117, 0.2)",
                 display: "grid",
                 placeItems: "center",
                 fontWeight: 900,
@@ -179,10 +179,10 @@ export default function ExploreHud({
               style={{
                 flex: 1,
                 height: 35,
-                borderRadius: 4,
+                borderRadius: 2,
                 background: "#EEEAE4",
-                // border: "2px solid rgba(0, 0, 0, 0.48)",
-                boxShadow: "3px 3px 8px rgba(0, 0, 0, 0.2)",
+                border: "1px solid rgba(137, 137, 137, 0.48)",
+                boxShadow: "3px 3px 0px rgba(126, 119, 117, 0.2)",
                 display: "flex",
                 alignItems: "center",
                 padding: "0 14px",
@@ -249,10 +249,10 @@ export default function ExploreHud({
             width: 80,
             height: 80,
             borderRadius: 999,
-            background: "#D9D2C9",
+            background: "#fbfbfb",
             border: "1.7px solid rgba(135, 134, 134, 0.48)",
             // boxShadow: "0 18px 40px rgba(144, 112, 84, 0.35)",
-            boxShadow: "3px 3px 8px rgba(190, 190, 190, 0.4)",
+            boxShadow: "2px 2px 2px #D9D2C9",
             overflow: "hidden",
             display: "grid",
             placeItems: "center",

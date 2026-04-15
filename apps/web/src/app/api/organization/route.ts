@@ -11,9 +11,11 @@ const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "vcep_session";
 const DATABASE_URL = process.env.DATABASE_URL!;
 const BACKEND_URL = process.env.BACKEND_URL!;
 const PGSSL_CA_PATH = process.env.PGSSL_CA_PATH;
-const BACKEND_CA_PATH = process.env.BACKEND_CA_PATH || process.env.SSL_CERT_FILE || "";
+const BACKEND_CA_PATH =
+  process.env.BACKEND_CA_PATH || process.env.SSL_CERT_FILE || "";
 const BACKEND_ALLOW_SELF_SIGNED =
-  String(process.env.BACKEND_ALLOW_SELF_SIGNED || "true").toLowerCase() === "true";
+  String(process.env.BACKEND_ALLOW_SELF_SIGNED || "true").toLowerCase() ===
+  "true";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -46,7 +48,13 @@ function getSessionTokens(req: Request) {
         refreshToken?: string;
       };
 
-      if (parsed?.idToken) return parsed;
+      if (parsed?.idToken) {
+        return {
+          idToken: parsed.idToken,
+          accessToken: parsed.accessToken || "",
+          refreshToken: parsed.refreshToken,
+        };
+      }
     } catch {}
   }
 
@@ -54,7 +62,11 @@ function getSessionTokens(req: Request) {
   const accessToken = readCookie(cookieHeader, "vcep_access");
 
   if (!idToken) return null;
-  return { idToken, accessToken };
+
+  return {
+    idToken,
+    accessToken: accessToken || "",
+  };
 }
 
 function stripPgSslParams(connectionString: string) {
@@ -103,7 +115,9 @@ function toStringValue(value: unknown, fallback = "") {
 
 function parseJsonObject(value: unknown) {
   if (!value) return {};
-  if (typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
 
   try {
     const parsed = JSON.parse(String(value));
@@ -120,12 +134,19 @@ function toPublicAssetUrl(value: unknown) {
   if (!raw) return "";
   if (/^https?:\/\//i.test(raw)) return raw;
 
-  const base = String(process.env.ASSETS_PUBLIC_BASE || "").trim().replace(/\/$/, "");
+  const base = (
+    String(process.env.ASSETS_PUBLIC_BASE || "").trim() ||
+    String(process.env.S3_PUBLIC_BASE_URL || "").trim() ||
+    String(process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL || "").trim()
+  ).replace(/\/$/, "");
+
   if (!base) return raw;
   return `${base}/${raw.replace(/^\/+/, "")}`;
 }
 
-function buildContact(body: any, fallbackEmail: string) {
+// ─── contact ต้องเป็น JSON STRING ตาม Swagger spec ──────────────────────────
+// Swagger: "contact": "{ \"email\": \"...\", \"phone\": \"...\" }"
+function buildContact(body: any, fallbackEmail: string): string {
   return JSON.stringify({
     email: toStringValue(body?.email, fallbackEmail),
     phone: toStringValue(body?.phone),
@@ -165,7 +186,8 @@ function normalizeOrg(orgRaw: any, fallbackEmail: string) {
     positionY: toNumber(orgRaw?.position_y),
     linkedin: toStringValue(social?.linkedin) || toStringValue(contact?.linkedin),
     facebook: toStringValue(social?.facebook) || toStringValue(contact?.facebook),
-    instagram: toStringValue(social?.instagram) || toStringValue(contact?.instagram),
+    instagram:
+      toStringValue(social?.instagram) || toStringValue(contact?.instagram),
     youtube: toStringValue(social?.youtube) || toStringValue(contact?.youtube),
     tiktok: toStringValue(social?.tiktok) || toStringValue(contact?.tiktok),
     raw: orgRaw,
@@ -239,10 +261,19 @@ async function getEmployeeContext(req: Request): Promise<EmployeeContext> {
 
   const employee = empRes.rows[0] || null;
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const resolvedOrgId = (() => {
+    const fromEmp = String(employee?.org_id || "").trim();
+    if (fromEmp && UUID_REGEX.test(fromEmp)) return fromEmp;
+    const fromToken = String(orgIdFromToken || "").trim();
+    if (fromToken && UUID_REGEX.test(fromToken)) return fromToken;
+    return "";
+  })();
+
   return {
     userId: String(user.user_id),
     empId: employee?.emp_id ? String(employee.emp_id) : "",
-    orgId: String(employee?.org_id || orgIdFromToken || ""),
+    orgId: resolvedOrgId,
     email: String(user.email || emailFromToken || "").toLowerCase(),
     emailFromToken,
     role: resolvedRole,
@@ -255,9 +286,10 @@ async function getEmployeeContext(req: Request): Promise<EmployeeContext> {
 function getBackendAgent(target: URL) {
   if (target.protocol !== "https:") return undefined;
 
-  const ca = BACKEND_CA_PATH && fs.existsSync(BACKEND_CA_PATH)
-    ? fs.readFileSync(BACKEND_CA_PATH, "utf8")
-    : undefined;
+  const ca =
+    BACKEND_CA_PATH && fs.existsSync(BACKEND_CA_PATH)
+      ? fs.readFileSync(BACKEND_CA_PATH, "utf8")
+      : undefined;
 
   return new https.Agent({
     ca,
@@ -285,7 +317,12 @@ async function requestBackendJson(
         method: init.method || "GET",
         headers: {
           Accept: "application/json",
-          ...(body ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) } : {}),
+          ...(body
+            ? {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(body),
+              }
+            : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         agent: getBackendAgent(target),
@@ -298,7 +335,9 @@ async function requestBackendJson(
         });
         res.on("end", () => {
           const status = res.statusCode || 500;
-          const contentType = String(res.headers["content-type"] || "").toLowerCase();
+          const contentType = String(
+            res.headers["content-type"] || ""
+          ).toLowerCase();
 
           let parsed: any = raw;
           if (raw && contentType.includes("application/json")) {
@@ -313,7 +352,12 @@ async function requestBackendJson(
 
           if (status < 200 || status >= 300) {
             const message =
-              (parsed && typeof parsed === "object" && (parsed.message || parsed.error)) ||
+              (parsed &&
+                typeof parsed === "object" &&
+                (parsed.message || parsed.error ||
+                  (Array.isArray(parsed.detail)
+                    ? parsed.detail.map((d: any) => d?.msg || JSON.stringify(d)).join("; ")
+                    : parsed.detail))) ||
               (typeof parsed === "string" && parsed) ||
               `Backend request failed with status ${status}`;
             reject(new Error(String(message)));
@@ -331,12 +375,19 @@ async function requestBackendJson(
   });
 }
 
-async function postOrg(accessToken: string, body: any, orgId: string | null, fallbackEmail: string) {
-  const basePayload = {
+async function saveOrg(
+  accessToken: string,
+  body: any,
+  orgId: string | null,
+  fallbackEmail: string,
+  pool: import("pg").Pool
+) {
+  const logo = toStringValue(body?.logo ?? body?.logoKey);
+
+  // ── Build payload ──────────────────────────────────────────────────────────
+  const payload: Record<string, any> = {
     about_org: toStringValue(body?.aboutUs ?? body?.about_org),
-    building_id: toStringValue(body?.buildingId ?? body?.building_id),
     contact: buildContact(body, fallbackEmail),
-    logo: toStringValue(body?.logo ?? body?.logoKey),
     org_name: toStringValue(body?.orgName ?? body?.org_name, "Organization"),
     position_x: toNumber(body?.positionX ?? body?.position_x),
     position_y: toNumber(body?.positionY ?? body?.position_y),
@@ -344,25 +395,64 @@ async function postOrg(accessToken: string, body: any, orgId: string | null, fal
     website_url: toStringValue(body?.website ?? body?.website_url),
   };
 
-  const attemptPayloads = orgId
-    ? [{ ...basePayload, org_id: orgId }, basePayload]
-    : [basePayload];
+  if (logo) payload.logo = logo;
 
   let lastError: Error | null = null;
 
-  for (const payload of attemptPayloads) {
+  if (orgId) {
+    // ── Preserve existing building_id from DB to avoid FK violation ─────────
+    // building_id is managed separately via the map picker — never overwrite it
+    // but PUT /org requires it to be present if the record already has one
+    try {
+      const existing = await pool.query(
+        `SELECT building_id FROM organizations WHERE org_id = $1 LIMIT 1`,
+        [orgId]
+      );
+      const existingBuildingId = existing.rows[0]?.building_id
+        ? String(existing.rows[0].building_id)
+        : null;
+      if (existingBuildingId) {
+        payload.building_id = existingBuildingId;
+      }
+    } catch {
+      // non-fatal — proceed without building_id
+    }
+
+    // ── Update existing org: PUT /org ───────────────────────────────────────
+    try {
+      return await requestBackendJson("/org", accessToken, {
+        method: "PUT",
+        body: JSON.stringify({ ...payload, org_id: orgId }),
+      });
+    } catch (err: any) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+
+    // Fallback to POST if PUT returns error (e.g. org not yet created in backend)
+    try {
+      return await requestBackendJson("/org", accessToken, {
+        method: "POST",
+        body: JSON.stringify({ ...payload, org_id: orgId }),
+      });
+    } catch (err: any) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  } else {
+    // ── Create new org: POST /org ───────────────────────────────────────────
     try {
       return await requestBackendJson("/org", accessToken, {
         method: "POST",
         body: JSON.stringify(payload),
       });
-    } catch (error: any) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+    } catch (err: any) {
+      lastError = err instanceof Error ? err : new Error(String(err));
     }
   }
 
   throw lastError || new Error("Failed to save organization");
 }
+
+// ─── GET ──────────────────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
   try {
@@ -375,12 +465,18 @@ export async function GET(req: Request) {
       );
     }
 
-    const orgRaw = await requestBackendJson(`/org/${encodeURIComponent(context.orgId)}`, context.accessToken);
+    const orgRaw = await requestBackendJson(
+      `/org/${encodeURIComponent(context.orgId)}`,
+      context.accessToken
+    );
 
     return NextResponse.json({
       ok: true,
       data: {
-        organization: normalizeOrg(orgRaw, context.email || context.emailFromToken || ""),
+        organization: normalizeOrg(
+          orgRaw,
+          context.email || context.emailFromToken || ""
+        ),
       },
     });
   } catch (error: any) {
@@ -398,22 +494,28 @@ export async function GET(req: Request) {
   }
 }
 
+// ─── POST ─────────────────────────────────────────────────────────────────────
+
 export async function POST(req: Request) {
   try {
     const context = await getEmployeeContext(req);
     const body = await req.json();
 
-    const orgRaw = await postOrg(
+    const orgRaw = await saveOrg(
       context.accessToken,
       body,
       toStringValue(body?.orgId || body?.org_id) || context.orgId || null,
-      context.email || context.emailFromToken || ""
+      context.email || context.emailFromToken || "",
+      getPool()
     );
 
     return NextResponse.json({
       ok: true,
       data: {
-        organization: normalizeOrg(orgRaw, context.email || context.emailFromToken || ""),
+        organization: normalizeOrg(
+          orgRaw,
+          context.email || context.emailFromToken || ""
+        ),
       },
     });
   } catch (error: any) {

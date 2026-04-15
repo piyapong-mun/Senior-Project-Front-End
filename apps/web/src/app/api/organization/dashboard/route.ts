@@ -1,71 +1,251 @@
 import { NextResponse } from "next/server";
-import {
-  fetchJson,
-  getEmployeeContext,
-  listEmployeesByOrgId,
-  parseJsonObject,
-  toPublicAssetUrl,
-} from "@/lib/organization/server";
+import { decodeJwt } from "jose";
+import { Pool } from "pg";
+import fs from "fs";
+import http from "http";
+import https from "https";
 
-const BACKEND = process.env.BACKEND_URL!;
+export const runtime = "nodejs";
 
-type ActivityStatusTone = "pending" | "join" | "ended";
-type ActivityKind = "Meetings" | "Courses" | "Challenges";
-type NormalizedActivity = ReturnType<typeof normalizeActivity>;
-type NormalizedParticipant = ReturnType<typeof normalizeParticipant>;
+const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "vcep_session";
+const DATABASE_URL = process.env.DATABASE_URL!;
+const BACKEND_URL = process.env.BACKEND_URL!;
+const PGSSL_CA_PATH = process.env.PGSSL_CA_PATH;
+const BACKEND_CA_PATH =
+  process.env.BACKEND_CA_PATH || process.env.SSL_CERT_FILE || "";
+const BACKEND_ALLOW_SELF_SIGNED =
+  String(process.env.BACKEND_ALLOW_SELF_SIGNED || "true").toLowerCase() ===
+  "true";
 
-function toContact(value: unknown) {
-  return parseJsonObject(value);
+declare global {
+  // eslint-disable-next-line no-var
+  var __vcepDashboardPool: Pool | undefined;
 }
 
-function toNumber(value: unknown, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+const S3_ASSETS_BASE = (
+  process.env.ASSETS_PUBLIC_BASE ||
+  process.env.S3_PUBLIC_BASE_URL ||
+  process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL ||
+  "https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com"
+).replace(/\/+$/, "");
+
+function readCookie(cookieHeader: string | null, name: string) {
+  if (!cookieHeader) return null;
+  const parts = cookieHeader.split(";").map((p) => p.trim());
+  const found = parts.find((p) => p.startsWith(name + "="));
+  if (!found) return null;
+  const v = found.slice(name.length + 1);
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
 }
 
-function toStringValue(value: unknown, fallback = "") {
-  const str = String(value ?? "").trim();
-  return str || fallback;
-}
+function getSessionTokens(req: Request) {
+  const cookieHeader = req.headers.get("cookie");
 
-function buildInitials(firstName?: string | null, lastName?: string | null, email?: string | null) {
-  const joined = `${String(firstName || "").trim()} ${String(lastName || "").trim()}`.trim();
-  if (joined) {
-    return joined
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() || "")
-      .join("");
+  const raw = readCookie(cookieHeader, COOKIE_NAME);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as {
+        idToken?: string;
+        accessToken?: string;
+        refreshToken?: string;
+      };
+      if (parsed?.idToken) return parsed;
+    } catch { }
   }
 
-  const mail = String(email || "").trim();
-  return (mail.slice(0, 2) || "NA").toUpperCase();
+  const idToken = readCookie(cookieHeader, "vcep_id");
+  const accessToken = readCookie(cookieHeader, "vcep_access");
+  if (!idToken) return null;
+
+  return { idToken, accessToken: accessToken || "" };
 }
 
-function avatarIndexFromChoice(value: unknown) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return 0;
-  const match = raw.match(/(\d+)/);
-  if (!match) return 0;
-  return Math.max(0, (Number(match[1]) || 1) - 1) % 3;
+function stripPgSslParams(connectionString: string) {
+  try {
+    const url = new URL(connectionString);
+    ["sslmode", "sslcert", "sslkey", "sslrootcert"].forEach((k) =>
+      url.searchParams.delete(k)
+    );
+    return url.toString();
+  } catch {
+    return connectionString
+      .replace(/([?&])sslmode=[^&]*/gi, "$1")
+      .replace(/([?&])sslcert=[^&]*/gi, "$1")
+      .replace(/([?&])sslkey=[^&]*/gi, "$1")
+      .replace(/([?&])sslrootcert=[^&]*/gi, "$1")
+      .replace(/[?&]$/, "");
+  }
 }
 
-function deriveActivityKind(value: unknown): ActivityKind {
-  const raw = String(value ?? "").trim().toLowerCase();
+function getPool() {
+  if (global.__vcepDashboardPool) return global.__vcepDashboardPool;
+
+  const ssl =
+    PGSSL_CA_PATH && fs.existsSync(PGSSL_CA_PATH)
+      ? { ca: fs.readFileSync(PGSSL_CA_PATH, "utf8") }
+      : { rejectUnauthorized: false };
+
+  global.__vcepDashboardPool = new Pool({
+    connectionString: stripPgSslParams(DATABASE_URL),
+    ssl,
+  });
+
+  return global.__vcepDashboardPool;
+}
+
+function getBackendAgent(target: URL) {
+  if (target.protocol !== "https:") return undefined;
+
+  const ca =
+    BACKEND_CA_PATH && fs.existsSync(BACKEND_CA_PATH)
+      ? fs.readFileSync(BACKEND_CA_PATH, "utf8")
+      : undefined;
+
+  return new https.Agent({
+    ca,
+    rejectUnauthorized: ca ? true : !BACKEND_ALLOW_SELF_SIGNED,
+  });
+}
+
+async function requestBackendJson(path: string, accessToken: string) {
+  const target = new URL(path, BACKEND_URL);
+  const isHttps = target.protocol === "https:";
+  const client = isHttps ? https : http;
+
+  return new Promise<any>((resolve, reject) => {
+    const req = client.request(
+      target,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        agent: getBackendAgent(target),
+      },
+      (res) => {
+        let raw = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => (raw += chunk));
+        res.on("end", () => {
+          const status = res.statusCode || 500;
+          let parsed: any = raw;
+          try {
+            parsed = JSON.parse(raw);
+          } catch { }
+
+          if (status < 200 || status >= 300) {
+            const message =
+              (parsed && typeof parsed === "object" && (parsed.message || parsed.error)) ||
+              (typeof parsed === "string" && parsed) ||
+              `Backend error ${status}`;
+            reject(new Error(String(message)));
+            return;
+          }
+          resolve(parsed);
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+function toStr(v: unknown, fallback = "") {
+  return String(v ?? "").trim() || fallback;
+}
+
+function toNum(v: unknown, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function parseJsonObject(v: unknown): Record<string, unknown> {
+  if (!v) return {};
+  if (typeof v === "object" && !Array.isArray(v)) {
+    return v as Record<string, unknown>;
+  }
+  try {
+    const p = JSON.parse(String(v));
+    return p && typeof p === "object" && !Array.isArray(p) ? p : {};
+  } catch {
+    return {};
+  }
+}
+
+function toPublicAssetUrl(v: unknown) {
+  const raw = String(v ?? "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `${S3_ASSETS_BASE}/${raw.replace(/^\/+/, "")}`;
+}
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUuid(v: string) {
+  return UUID_REGEX.test(v);
+}
+
+function normalizeOrg(orgRaw: any, fallbackEmail: string) {
+  const contact = parseJsonObject(orgRaw?.contact);
+  const social = parseJsonObject(orgRaw?.social_links);
+
+  return {
+    orgId: toStr(orgRaw?.org_id),
+    orgName: toStr(orgRaw?.org_name, "Organization"),
+    aboutUs: toStr(orgRaw?.about_org),
+    companySize: toStr(orgRaw?.size),
+    businessType:
+      toStr(contact?.businessType) ||
+      toStr(contact?.business_type) ||
+      toStr(orgRaw?.business_type),
+    location:
+      toStr(contact?.location) ||
+      toStr(contact?.address) ||
+      toStr(orgRaw?.building_id),
+    email: toStr(contact?.email, fallbackEmail),
+    phone: toStr(contact?.phone),
+    website: toStr(orgRaw?.website_url),
+    logoPreview: toPublicAssetUrl(orgRaw?.logo),
+    buildingId: toStr(orgRaw?.building_id),
+    buildingName: toStr(orgRaw?.building_name),
+    positionX: toNum(orgRaw?.position_x),
+    positionY: toNum(orgRaw?.position_y),
+    linkedin: toStr(social?.linkedin) || toStr(contact?.linkedin),
+    facebook: toStr(social?.facebook) || toStr(contact?.facebook),
+    instagram: toStr(social?.instagram) || toStr(contact?.instagram),
+    youtube: toStr(social?.youtube) || toStr(contact?.youtube),
+    tiktok: toStr(social?.tiktok) || toStr(contact?.tiktok),
+  };
+}
+
+function deriveActivityKindLabel(value: unknown) {
+  const raw = toStr(value).toLowerCase();
   if (raw.includes("meeting")) return "Meetings";
   if (raw.includes("course")) return "Courses";
   return "Challenges";
 }
 
-function deriveStatusTone(value: unknown): ActivityStatusTone {
-  const raw = String(value ?? "").trim().toLowerCase();
+function deriveActivityCategory(value: unknown) {
+  const raw = toStr(value).toLowerCase();
+  if (raw.includes("meeting")) return "Meeting";
+  if (raw.includes("course")) return "Course";
+  return "Challenge";
+}
+
+function deriveStatusTone(value: unknown) {
+  const raw = toStr(value, "pending").toLowerCase();
   if (
     raw.includes("end") ||
     raw.includes("close") ||
-    raw.includes("complete") ||
-    raw.includes("finish")
+    raw.includes("finish") ||
+    raw.includes("complete")
   ) {
-    return "ended";
+    return "ended" as const;
   }
 
   if (
@@ -73,182 +253,372 @@ function deriveStatusTone(value: unknown): ActivityStatusTone {
     raw.includes("open") ||
     raw.includes("active") ||
     raw.includes("publish") ||
-    raw.includes("public")
+    raw.includes("public") ||
+    raw.includes("scheduled")
   ) {
-    return "join";
+    return "join" as const;
   }
 
-  return "pending";
+  return "pending" as const;
 }
 
-function normalizeActivity(item: any, index: number) {
-  const kind = deriveActivityKind(item?.activity_type ?? item?.category ?? item?.kind);
+function toTitleCaseStatus(value: unknown) {
+  const raw = toStr(value, "pending")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!raw) return "Pending";
+  return raw
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function pickDifficulty(...values: unknown[]) {
+  for (const value of values) {
+    const text = toStr(value);
+    if (text) return text;
+  }
+  return "-";
+}
+
+function normalizeActivityRecord(item: any, index: number) {
+  const commonInfo = parseJsonObject(item?.commonInfo ?? item?.common_info);
+  const activityDetail = parseJsonObject(
+    item?.activity_detail ??
+    item?.activityDetail ??
+    commonInfo?.activity_detail ??
+    commonInfo?.activityDetail
+  );
+  const challengeInfo = parseJsonObject(item?.challenge ?? item?.challengeInfo);
+  const courseInfo = parseJsonObject(item?.course ?? item?.courseInfo);
+  const meetingInfo = parseJsonObject(item?.meeting ?? item?.meetingInfo);
+
+  const rawType =
+    toStr(item?.activity_type) ||
+    toStr(commonInfo?.activity_type) ||
+    toStr(activityDetail?.activity_type) ||
+    toStr(item?.kind) ||
+    toStr(item?.category);
+
+  const rawStatus =
+    toStr(item?.activity_status) ||
+    toStr(commonInfo?.activity_status) ||
+    toStr(activityDetail?.activity_status) ||
+    toStr(item?.status) ||
+    toStr(item?.activity_visibility) ||
+    toStr(commonInfo?.activity_visibility) ||
+    toStr(activityDetail?.activity_visibility) ||
+    "pending";
+
   return {
-    id: toStringValue(item?.activity_id ?? item?.id, `activity-${index}`),
-    title: toStringValue(item?.activity_name ?? item?.title, "Activity"),
-    difficulty: toStringValue(item?.difficulty ?? item?.activity_difficulty, "-") || "-",
-    category: toStringValue(item?.category ?? item?.activity_type ?? item?.type, kind),
-    kind,
-    xp: toNumber(item?.xp ?? item?.activity_xp ?? item?.xp_reward ?? 0),
-    status: toStringValue(item?.activity_status ?? item?.status, "pending"),
-    statusTone: deriveStatusTone(item?.activity_status ?? item?.status),
+    id: toStr(
+      item?.activity_id ?? item?.id ?? commonInfo?.activity_id,
+      `activity-${index}`
+    ),
+    title: toStr(
+      item?.activity_name ??
+      commonInfo?.activity_name ??
+      item?.title ??
+      item?.name,
+      "Activity"
+    ),
+    difficulty: pickDifficulty(
+      item?.difficulty,
+      item?.level,
+      challengeInfo?.difficulty,
+      challengeInfo?.level,
+      courseInfo?.difficulty,
+      courseInfo?.level,
+      meetingInfo?.difficulty,
+      meetingInfo?.level,
+      activityDetail?.difficulty,
+      activityDetail?.level
+    ),
+    category: deriveActivityCategory(rawType),
+    kind: deriveActivityKindLabel(rawType),
+    xp: toNum(
+      item?.xp_reward ??
+      item?.xp ??
+      item?.activity_hours ??
+      item?.hours ??
+      activityDetail?.xp_reward ??
+      activityDetail?.xp ??
+      activityDetail?.activity_hours ??
+      activityDetail?.hours ??
+      commonInfo?.xp_reward ??
+      commonInfo?.xp ??
+      commonInfo?.activity_hours ??
+      commonInfo?.hours ??
+      0,
+      0
+    ),
+    status: rawStatus,
+    statusTone: deriveStatusTone(rawStatus),
+    statusLabel: toTitleCaseStatus(rawStatus),
   };
 }
 
-function normalizeParticipant(item: any, index: number) {
-  const firstName = toStringValue(item?.first_name ?? item?.participant_first_name);
-  const lastName = toStringValue(item?.last_name ?? item?.participant_last_name);
-  const name =
-    `${firstName} ${lastName}`.trim() ||
-    toStringValue(item?.participant_name ?? item?.name, `Participant ${index + 1}`);
+async function loadActivitiesFromDatabase(pool: Pool, orgId: string) {
+  const dbRes = await pool.query(
+    `SELECT *
+     FROM activities
+     WHERE creator_org_id = $1
+     ORDER BY activity_id DESC`,
+    [orgId]
+  );
 
-  return {
-    id: toStringValue(item?.participant_id ?? item?.user_id ?? item?.id, `participant-${index}`),
-    name,
-    subtitle:
-      toStringValue(item?.major) ||
-      toStringValue(item?.faculty) ||
-      toStringValue(item?.university) ||
-      toStringValue(item?.email, "Participant"),
-    score: toNumber(item?.score ?? item?.xp ?? item?.level ?? item?.current_exp ?? 0),
-    avatarBg: ["#f1d6d8", "#efd0bf", "#c7dce7", "#e5d7c8", "#d8e7f1"][index % 5],
-    initials: buildInitials(firstName, lastName, item?.email ?? item?.participant_email),
-  };
+  return dbRes.rows.map((row: any, index: number) => normalizeActivityRecord(row, index));
 }
 
-function normalizeOrg(orgRaw: any, fallbackEmail: string) {
-  const contact = toContact(orgRaw?.contact);
-  const social = toContact(orgRaw?.social_links);
+async function countParticipants(pool: Pool, orgId: string) {
+  const queries = [
+    {
+      text: `SELECT COUNT(DISTINCT ar.user_id) AS cnt
+             FROM activity_registrations ar
+             JOIN activities a ON a.activity_id = ar.activity_id
+             WHERE a.creator_org_id = $1`,
+      values: [orgId],
+    },
+    {
+      text: `SELECT COUNT(*) AS cnt
+             FROM activity_registrations ar
+             JOIN activities a ON a.activity_id = ar.activity_id
+             WHERE a.creator_org_id = $1`,
+      values: [orgId],
+    },
+  ];
 
-  return {
-    orgId: toStringValue(orgRaw?.org_id),
-    orgName: toStringValue(orgRaw?.org_name, "Organization"),
-    aboutUs: toStringValue(orgRaw?.about_org),
-    companySize: toStringValue(orgRaw?.size),
-    businessType:
-      toStringValue(contact?.businessType) ||
-      toStringValue(contact?.business_type) ||
-      toStringValue(orgRaw?.business_type),
-    location:
-      toStringValue(contact?.location) ||
-      toStringValue(contact?.address) ||
-      toStringValue(orgRaw?.building_id),
-    email: toStringValue(contact?.email, fallbackEmail),
-    phone: toStringValue(contact?.phone),
-    website: toStringValue(orgRaw?.website_url),
-    logoPreview: toPublicAssetUrl(orgRaw?.logo),
-    buildingId: toStringValue(orgRaw?.building_id),
-    positionX: toNumber(orgRaw?.position_x),
-    positionY: toNumber(orgRaw?.position_y),
-    linkedin: toStringValue(social?.linkedin) || toStringValue(contact?.linkedin),
-    facebook: toStringValue(social?.facebook) || toStringValue(contact?.facebook),
-    instagram: toStringValue(social?.instagram) || toStringValue(contact?.instagram),
-    youtube: toStringValue(social?.youtube) || toStringValue(contact?.youtube),
-    tiktok: toStringValue(social?.tiktok) || toStringValue(contact?.tiktok),
-    raw: orgRaw,
-  };
+  for (const query of queries) {
+    try {
+      const res = await pool.query(query.text, query.values);
+      return toNum(res.rows?.[0]?.cnt, 0);
+    } catch {
+      continue;
+    }
+  }
+
+  return 0;
 }
 
 export async function GET(req: Request) {
   try {
-    const context = await getEmployeeContext(req);
+    const sess = getSessionTokens(req);
+    const idToken = sess?.idToken;
+    const accessToken = (sess as any)?.accessToken || "";
 
-    if (context.role !== "employee") {
+    if (!idToken) {
+      return NextResponse.json(
+        { ok: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const payload = decodeJwt(idToken);
+    const cognitoUserId = String(payload.sub || "");
+    const tokenRole = String(payload["custom:role"] || "").toLowerCase();
+    const emailFromToken = String(payload.email || "").toLowerCase();
+    const orgIdFromToken = String(payload["custom:orgId"] || "");
+
+    if (!cognitoUserId) {
+      return NextResponse.json(
+        { ok: false, message: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    const pool = getPool();
+
+    const userRes = await pool.query(
+      `SELECT user_id, email, role, status
+       FROM users
+       WHERE cognito_user_id = $1 OR lower(email) = lower($2)
+       ORDER BY CASE WHEN cognito_user_id = $1 THEN 0 ELSE 1 END
+       LIMIT 1`,
+      [cognitoUserId, emailFromToken]
+    );
+
+    const user = userRes.rows[0];
+    if (!user?.user_id) {
+      return NextResponse.json(
+        { ok: false, message: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    const resolvedRole = String(user.role || tokenRole || "").toLowerCase();
+    if (resolvedRole !== "employee") {
       return NextResponse.json(
         { ok: false, message: "Only employee accounts can access this route" },
         { status: 403 }
       );
     }
 
-    if (!context.orgId) {
+    const empRes = await pool.query(
+      `SELECT emp_id, org_id, first_name, last_name, position, phone,
+              avatar_choice, is_reviewer
+       FROM employees
+       WHERE user_id = $1
+       LIMIT 1`,
+      [user.user_id]
+    );
+
+    const employee = empRes.rows[0] || null;
+
+    const resolvedOrgId = (() => {
+      const fromEmp = toStr(employee?.org_id);
+      if (fromEmp && isValidUuid(fromEmp)) return fromEmp;
+      const fromToken = toStr(orgIdFromToken);
+      if (fromToken && isValidUuid(fromToken)) return fromToken;
+      return "";
+    })();
+
+    if (!resolvedOrgId) {
       return NextResponse.json(
         { ok: false, message: "Organization not found for this employee" },
         { status: 404 }
       );
     }
 
-    const [orgRaw, dashboardRaw, employeeRows] = await Promise.all([
-      fetchJson(`${BACKEND}/org/${encodeURIComponent(context.orgId)}`, context.accessToken),
-      context.empId
-        ? fetchJson(`${BACKEND}/org/dashboard/${encodeURIComponent(context.empId)}`, context.accessToken)
-        : Promise.resolve({}),
-      listEmployeesByOrgId(context.orgId),
-    ]);
+    let orgRaw: any = null;
+    try {
+      orgRaw = await requestBackendJson(
+        `/org/${encodeURIComponent(resolvedOrgId)}`,
+        accessToken
+      );
+    } catch {
+      orgRaw = null;
+    }
 
-    const activitiesRaw: any[] = Array.isArray(dashboardRaw?.activity_info)
-      ? dashboardRaw.activity_info
-      : Array.isArray(dashboardRaw?.activities)
-        ? dashboardRaw.activities
-        : Array.isArray(dashboardRaw?.data?.activity_info)
-          ? dashboardRaw.data.activity_info
-          : [];
+    const org = orgRaw
+      ? normalizeOrg(orgRaw, String(user.email || emailFromToken))
+      : null;
 
-    const activities: NormalizedActivity[] = activitiesRaw.map((item, index) =>
-      normalizeActivity(item, index)
+    let buildingRow: any = null;
+    const buildingId = toStr(orgRaw?.building_id);
+    if (buildingId && isValidUuid(buildingId)) {
+      try {
+        const bRes = await pool.query(
+          `SELECT building_id, building_name, building_model,
+                  preview_url, unlock_level
+           FROM building
+           WHERE building_id = $1
+           LIMIT 1`,
+          [buildingId]
+        );
+        buildingRow = bRes.rows[0] || null;
+      } catch {
+        buildingRow = null;
+      }
+    }
+
+    const allEmpsRes = await pool.query(
+      `SELECT e.emp_id, e.user_id, e.org_id,
+              e.first_name, e.last_name, e.position, e.phone,
+              e.avatar_choice, e.is_reviewer,
+              u.email
+       FROM employees e
+       LEFT JOIN users u ON u.user_id = e.user_id
+       WHERE e.org_id = $1
+       ORDER BY e.first_name, e.last_name`,
+      [resolvedOrgId]
     );
 
-    const publishedCount = activities.filter((item) => item.statusTone === "join").length;
-    const pendingCount = activities.filter((item) => item.statusTone === "pending").length;
-    const meetingCount = activities.filter((item) => item.kind === "Meetings").length;
-    const courseCount = activities.filter((item) => item.kind === "Courses").length;
-    const challengeCount = activities.filter((item) => item.kind === "Challenges").length;
-
-    const participantsRaw: any[] = Array.isArray(dashboardRaw?.participants)
-      ? dashboardRaw.participants
-      : Array.isArray(dashboardRaw?.participant_info)
-        ? dashboardRaw.participant_info
-        : Array.isArray(dashboardRaw?.students)
-          ? dashboardRaw.students
-          : [];
-
-    const participants: NormalizedParticipant[] = participantsRaw.map((item, index) =>
-      normalizeParticipant(item, index)
-    );
-
-    const employees = employeeRows.map((row) => ({
-      id: row.emp_id,
-      firstName: row.first_name || "",
-      lastName: row.last_name || "",
-      position: row.position || "",
-      phone: row.phone || "",
-      email: row.email || "",
-      canCheckChallenge: Boolean(row.can_check_challenge),
-      avatarIndex: avatarIndexFromChoice(row.avatar_choice),
-      avatarChoice: row.avatar_choice,
-      isProfileComplete: Boolean(row.is_profile_complete),
+    const employees = allEmpsRes.rows.map((e: any) => ({
+      id: toStr(e.emp_id),
+      empId: toStr(e.emp_id),
+      userId: toStr(e.user_id),
+      orgId: toStr(e.org_id),
+      firstName: toStr(e.first_name),
+      lastName: toStr(e.last_name),
+      position: toStr(e.position),
+      phone: toStr(e.phone),
+      email: toStr(e.email).toLowerCase(),
+      canCheckChallenge: Boolean(e.is_reviewer),
+      avatarChoice: toStr(e.avatar_choice),
+      avatarId: toStr(e.avatar_choice),
+      avatarIndex: 0,
     }));
 
+    const activities = await loadActivitiesFromDatabase(pool, resolvedOrgId);
+    const totalParticipants = await countParticipants(pool, resolvedOrgId);
+
+    const published = activities.filter(
+      (a) =>
+        a.status === "published" ||
+        a.status === "public" ||
+        a.statusTone === "join"
+    ).length;
+    const draft = Math.max(0, activities.length - published);
+    const meetings = activities.filter((a) => a.kind === "Meetings").length;
+    const courses = activities.filter((a) => a.kind === "Courses").length;
+    const challenges = activities.filter((a) => a.kind === "Challenges").length;
+
     const summary = {
-      totalActivities:
-        toNumber(dashboardRaw?.total_activities, activities.length) || activities.length,
-      totalParticipants:
-        toNumber(dashboardRaw?.total_participants, participants.length) || participants.length,
-      meetings: toNumber(dashboardRaw?.meeting_count, meetingCount) || meetingCount,
-      courses: toNumber(dashboardRaw?.course_count, courseCount) || courseCount,
-      challenges: toNumber(dashboardRaw?.challenge_count, challengeCount) || challengeCount,
-      published: toNumber(dashboardRaw?.published_count, publishedCount) || publishedCount,
-      draft: toNumber(dashboardRaw?.draft_count, pendingCount) || pendingCount,
+      totalActivities: activities.length,
+      totalParticipants,
+      meetings,
+      courses,
+      challenges,
+      published,
+      draft,
     };
 
     return NextResponse.json({
       ok: true,
       data: {
-        account: {
-          userId: context.userId,
-          empId: context.empId,
-          orgId: context.orgId,
-          email: context.email,
-        },
-        org: normalizeOrg(orgRaw, context.email || context.emailFromToken || ""),
+        org,
         summary,
-        activities,
-        participants,
         employees,
+        activities,
+        building: (() => {
+          if (!buildingRow) return null;
+          const rawModel = toStr(buildingRow.building_model).replace(/^\/+/, "");
+          const rawPreview = toStr(buildingRow.preview_url);
+          const buildingName = toStr(buildingRow.building_name);
+
+          const modelUrl = rawModel
+            ? `${S3_ASSETS_BASE}/${rawModel}`
+            : null;
+
+          const previewUrl = rawPreview
+            ? (/^https?:\/\//i.test(rawPreview)
+              ? rawPreview
+              : `${S3_ASSETS_BASE}/${rawPreview.replace(/^\/+/, "")}`)
+            : buildingName
+              ? `${S3_ASSETS_BASE}/building-previews/${buildingName}.png`
+              : null;
+
+          return {
+            buildingId: toStr(buildingRow.building_id),
+            buildingName,
+            modelUrl,
+            previewUrl,
+          };
+        })(),
+        account: {
+          userId: toStr(user.user_id),
+          empId: toStr(employee?.emp_id),
+          email: toStr(user.email || emailFromToken),
+          role: resolvedRole,
+          orgId: resolvedOrgId,
+        },
+        participants: [],
+        participantBars: [],
+        skillBars: [],
       },
     });
   } catch (error: any) {
     const message = error?.message || "Server error";
-    const status = message === "Unauthorized" || message === "Invalid token" ? 401 : 500;
+    const status =
+      message === "Unauthorized" || message === "Invalid token"
+        ? 401
+        : message === "Only employee accounts can access this route"
+          ? 403
+          : message.includes("not found")
+            ? 404
+            : 500;
 
     return NextResponse.json({ ok: false, message }, { status });
   }
