@@ -419,66 +419,6 @@ export default function OrgDashboardPage() {
 
     const openEditOrg = () => setIsEditOrgOpen(true);
     const closeEditOrg = () => setIsEditOrgOpen(false);
-
-    const handleSaveOrg = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            setSaving(true);
-            const formData = new FormData();
-
-            // Use Active-Account to get org_id
-            const activeAccount = await fetch("/api/organization/active-account", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
-
-            const activeAccountData = await activeAccount.json();
-            const orgId = activeAccountData.org_id;
-
-            formData.append("orgId", orgId);
-            formData.append("orgName", orgDraft.orgName);
-            formData.append("companySize", orgDraft.companySize);
-            formData.append("businessType", orgDraft.businessType);
-            formData.append("location", orgDraft.location);
-            formData.append("aboutUs", orgDraft.aboutUs);
-            formData.append("email", orgDraft.email);
-            formData.append("phone", orgDraft.phone);
-            formData.append("website", orgDraft.website);
-            formData.append("linkedin", orgDraft.linkedin);
-            formData.append("facebook", orgDraft.facebook);
-            formData.append("instagram", orgDraft.instagram);
-            formData.append("youtube", orgDraft.youtube);
-            formData.append("tiktok", orgDraft.tiktok);
-
-            if (orgDraft.logoFile) {
-                formData.append("logoFile", orgDraft.logoFile);
-            }
-
-            const res = await fetch("/api/organization/update", {
-                method: "POST",
-                body: formData,
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || "Failed to update organization");
-            }
-
-            setIsEditOrgOpen(false);
-            setIsSavedOpen(true);
-            setTimeout(() => setIsSavedOpen(false), 2000);
-
-            await fetchOrgDashboard();
-        } catch (error: any) {
-            setError(error.message);
-        } finally {
-            setSaving(false);
-        }
-    };
-
     const closeSaved = () => setIsSavedOpen(false);
 
     const [isOpen, setIsOpen] = useState(false);
@@ -794,9 +734,9 @@ export default function OrgDashboardPage() {
         }
     }
 
-    //     const handleSaveOrg = async () => {
-    //         try {
-    //             setOrgSaving(true);
+    const handleSaveOrg = async () => {
+        try {
+            setOrgSaving(true);
 
             // Step 1: Upload logo to S3 if a new file was selected
             let logoKey: string | undefined;
@@ -852,11 +792,11 @@ export default function OrgDashboardPage() {
                 }),
             });
 
-    //             const json = await response.json().catch(() => ({}));
+            const json = await response.json().catch(() => ({}));
 
-    //             if (!response.ok || !json?.ok) {
-    //                 throw new Error(json?.message || "Failed to save organization");
-    //             }
+            if (!response.ok || !json?.ok) {
+                throw new Error(json?.message || "Failed to save organization");
+            }
 
             await refreshDashboard();
             setIsEditOrgOpen(false);
@@ -948,230 +888,34 @@ export default function OrgDashboardPage() {
     // ปุ่มเพิ่มหายเมื่อครบ 3 คน
     const canAddMore = employees.length < MAX_EMP;
 
-    // const filteredOrgActivities = useMemo(() => {
-    //     // if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
-    //     // return ORG_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
-    //     if (selectedActivityKind === "all") return UPDATED_ACTIVITY_ROWS;
-    //     return UPDATED_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
-    // }, [selectedActivityKind]);
+    const filteredOrgActivities = useMemo(() => {
+        if (selectedActivityKind === "all") return activityRows;
+        return activityRows.filter((item) => item.kind === selectedActivityKind);
+    }, [activityRows, selectedActivityKind]);
 
     useEffect(() => {
         loadAvatarOptions();
         refreshDashboard();
     }, []);
 
-    // =======================
-    // Update Org API
-    // =======================
-    //---------------------------------------------------------------------------------------------------------
-    const handleUpdateOrg = async () => {
-        try {
-            setSaving(true);
-            // setError(null);
+    if (pageLoading) {
+        return (
+            <main className={styles.main}>
+                <div style={{ padding: 24 }}>Loading organization dashboard...</div>
+            </main>
+        );
+    }
 
-            const formData = new FormData();
-            formData.append("orgName", orgDraft.orgName);
-            formData.append("companySize", orgDraft.companySize);
-            formData.append("businessType", orgDraft.businessType);
-            formData.append("location", orgDraft.location);
-            formData.append("aboutUs", orgDraft.aboutUs);
-            formData.append("email", orgDraft.email);
-            formData.append("phone", orgDraft.phone);
-            formData.append("website", orgDraft.website);
-            formData.append("linkedin", orgDraft.linkedin);
-            formData.append("facebook", orgDraft.facebook);
-            formData.append("instagram", orgDraft.instagram);
-            formData.append("youtube", orgDraft.youtube);
-            formData.append("tiktok", orgDraft.tiktok);
-
-            if (orgDraft.logoFile) {
-                formData.append("logoFile", orgDraft.logoFile);
-            }
-
-            const res = await fetch("/api/organization/update", {
-                method: "POST",
-                body: formData,
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || "Failed to update organization");
-            }
-
-            setIsEditOrgOpen(false);
-            setIsSavedOpen(true);
-            setTimeout(() => setIsSavedOpen(false), 2000);
-
-            // Refresh org data
-            await fetchOrgDashboard();
-
-        } catch (error: any) {
-            setError(error.message);
-        } finally {
-            setSaving(false);
-        }
-    };
-    //---------------------------------------------------------------------------------------------------------
-
-    // =======================
-    // Load and Update Data
-    // =======================
-    //---------------------------------------------------------------------------------------------------------
-    const [orgDashboard, setOrgDashboard] = useState<OrgDashboard | null>(null);
-
-    const [updatedMonthDonutLabels, setUpdatedMonthDonutLabels] = useState<any[]>([]);
-
-    const [updatedTypeDonutLabels, setUpdatedTypeDonutLabels] = useState<any[]>([]);
-
-    // ไม่ Rerender ถ้าไม่จำเป็น เพราะโหลดข้อมูลเยอะ
-    const fetchOrgDashboard = useCallback(async () => {
-        const res = await fetch("/api/org/dashboard");
-        const resJson = await res.json();
-        const data = resJson.data.orgDashboard;
-        setOrgDashboard(data);
-
-        if (data && Array.isArray(data.employees_info)) {
-            const mapped = data.employees_info.map((emp: any) => ({
-                id: emp.emp_id,
-                firstName: emp.first_name || "",
-                lastName: emp.last_name || "",
-                position: emp.position || "",
-                phone: emp.phone || "",
-                email: emp.email || "",
-                canCheckChallenge: emp.is_reviewer,
-                avatarIndex: 0,
-            }));
-            setEmployees(mapped);
-        }
-
-        return data;
-    }, [])
-
-    // Update Activity Rows
-    const updatedActivityRows = useMemo(() => {
-        function mapstatusTone(state: string) {
-            if (state === "pending") return "pending";
-            if (state === "can join") return "join";
-            if (state === "ended") return "ended";
-            return "pending";
-        }
-        return orgDashboard?.activity_info.map((activity) => ({
-            id: activity.activity_id,
-            title: activity.activity_name,
-            hours: activity.hours,
-            category: activity.activity_type,
-            kind: activity.activity_type,
-            xp: 0,
-            statusTone: mapstatusTone(activity.state),
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Filter Activity Rows
-    const filteredOrgActivities = useMemo(() => {
-        return updatedActivityRows.filter((activity) => {
-            if (selectedActivityKind === "all") return true;
-            return activity.kind === selectedActivityKind;
-        });
-    }, [updatedActivityRows, selectedActivityKind]);
-
-    // Update Participants
-    const updatedParticipants = useMemo(() => {
-        var participantCounter = 0;
-        return orgDashboard?.complete_stats_info.map((participant) => ({
-            id: participantCounter++,
-            name: participant.first_name + " " + participant.last_name,
-            subtitle: "None",
-            score: participant.xp,
-            avatarBg: "#f1d6d8",
-            initials: participant.first_name[0] + participant.last_name[0],
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Update Skill Bars
-    const updatedSkillBars = useMemo(() => {
-        return orgDashboard?.skill_stats_info.map((skill) => ({
-            label: skill.skill_name,
-            value: skill.number,
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Update University Bars
-    const updatedParticipantBars = useMemo(() => {
-        return orgDashboard?.university_stats_info.map((participant) => ({
-            label: participant.university,
-            value: participant.number,
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Fetch Data
-    useEffect(() => {
-        const init = async () => {
-            try {
-
-                const data = await fetchOrgDashboard();
-
-                if (data) {
-                    // 1. จัดการข้อมูลพนักงาน (ป้องกัน Error .map())
-                    const employeeList = (data.employees_info ?? []).map((employee: any) => ({
-                        id: employee.emp_id,
-                        firstName: employee.first_name,
-                        lastName: employee.last_name,
-                        position: employee.position,
-                        phone: employee.phone,
-                        email: "None", // ใน JSON ไม่มี email รายบุคคล
-                        canCheckChallenge: employee.is_reviewer, // ใช้ค่าจาก API
-                        avatarIndex: 0,
-                    }));
-                    setEmployees(employeeList);
-
-                    // 2. จัดการข้อมูล Org Draft
-                    // หมายเหตุ: contact ใน JSON เป็น stringified JSON ต้อง parse ก่อน
-                    let contactInfo = { email: "none", phone: "none" };
-                    try {
-                        if (data.contact) contactInfo = JSON.parse(data.contact);
-                    } catch (e) {
-                        console.error("Parse contact error", e);
-                    }
-
-                    setOrgDraft({
-                        orgName: data.org_name ?? "",
-                        companySize: data.size ?? "",
-                        businessType: "none",
-                        location: "none",
-                        aboutUs: data.about_org ?? "",
-                        logoFile: null,
-                        logoPreview: data.logo || null,
-                        email: contactInfo.email,
-                        phone: contactInfo.phone,
-                        website: data.website_url ?? "",
-                        linkedin: "none",
-                        facebook: "none",
-                        instagram: "none",
-                        youtube: "none",
-                        tiktok: "none",
-                    });
-
-                }
-            } catch (error) {
-                console.error("Error fetching org dashboard:", error);
-            }
-        };
-        init();
-    }, []);
-
-    // const filteredOrgActivities = useMemo(() => {
-    //     // if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
-    //     // return ORG_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
-    //     if (selectedActivityKind === "all") return updatedActivityRows;
-    //     return updatedActivityRows.filter((item) => item.kind === selectedActivityKind);
-    // }, [selectedActivityKind]);
-
-    //---------------------------------------------------------------------------------------------------------
+    if (pageError) {
+        return (
+            <main className={styles.main}>
+                <div style={{ padding: 24, color: "#b42318" }}>{pageError}</div>
+            </main>
+        );
+    }
 
     return (
 
-        <main className={styles.main}>
         <main className={styles.main}>
             {/* ===== Row 1: Org profile + summary cards + avatar box ===== */}
             <section className={styles.topGrid}>
@@ -1230,22 +974,22 @@ export default function OrgDashboardPage() {
                     <div className={styles.summaryTopBox}>
                         <div className={styles.summaryTopBoxBg} />
 
-                        <div className={styles.summaryTotalValue}>{orgDashboard?.activity_stats_info.total_activity}</div>
+                        <div className={styles.summaryTotalValue}>{summary.totalActivities}</div>
                         <div className={styles.summaryTotalLabel}>Total Activities</div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>challenge</div>
-                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_challenge}</div>
+                            <div className={styles.summaryMiniValue}>{summary.challenges}</div>
                         </div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>courses</div>
-                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_course}</div>
+                            <div className={styles.summaryMiniValue}>{summary.courses}</div>
                         </div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>meetings</div>
-                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_meeting}</div>
+                            <div className={styles.summaryMiniValue}>{summary.meetings}</div>
                         </div>
                     </div>
 
@@ -1262,7 +1006,7 @@ export default function OrgDashboardPage() {
                         </div>
 
                         <div className={styles.summaryParticipantText}>
-                            <div className={styles.summaryParticipantValue}>{orgDashboard?.activity_stats_info.total_participant}</div>
+                            <div className={styles.summaryParticipantValue}>{summary.totalParticipants}</div>
                             <div className={styles.summaryParticipantLabel}>Total Participants</div>
                         </div>
                     </div>
@@ -1371,7 +1115,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_meeting}</div>
+                            <div className={styles.summaryActivityValue}>{summary.meetings}</div>
                             <div className={styles.summaryActivityLabel}>Meetings</div>
                         </div>
 
@@ -1379,7 +1123,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_course}</div>
+                            <div className={styles.summaryActivityValue}>{summary.courses}</div>
                             <div className={styles.summaryActivityLabel}>Courses</div>
                         </div>
 
@@ -1387,7 +1131,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_challenge}</div>
+                            <div className={styles.summaryActivityValue}>{summary.challenges}</div>
                             <div className={styles.summaryActivityLabel}>Challenges</div>
                         </div>
                     </div>
@@ -1566,10 +1310,10 @@ export default function OrgDashboardPage() {
                                     <div className={styles.activityNameCell} title={item.title}>{item.title}</div>
                                     <div className={styles.activityDivider} />
 
-                                    {/* <div className={styles.activityInfoCell}>
+                                    <div className={styles.activityInfoCell}>
                                         <div className={styles.activityInfoHead}>difficulty</div>
                                         <div className={styles.activityInfoValue}>{item.difficulty}</div>
-                                    </div> */}
+                                    </div>
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityInfoCell}>
@@ -1579,8 +1323,8 @@ export default function OrgDashboardPage() {
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityInfoCellXp}>
-                                        <div className={styles.activityInfoHead}>Hours</div>
-                                        <div className={styles.activityInfoValue}>{item.hours}</div>
+                                        <div className={styles.activityInfoHead}>XP</div>
+                                        <div className={styles.activityInfoValue}>{item.xp}</div>
                                     </div>
                                     <div className={styles.activityDivider} />
 
@@ -1600,8 +1344,7 @@ export default function OrgDashboardPage() {
                         <h3 className={styles.rightTitle}>Participants</h3>
 
                         <div className={styles.studentsListScroller}>
-                            {/* {PARTICIPANTS.map((person) => ( */}
-                            {updatedParticipants.map((person) => (
+                            {participantRows.map((person) => (
                                 <button
                                     key={person.id}
                                     type="button"
