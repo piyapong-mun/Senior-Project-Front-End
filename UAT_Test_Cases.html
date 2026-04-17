@@ -1,0 +1,156 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+    <meta charset="utf-8">
+    <title>UAT Test Cases</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f2f2f2; }
+        h1, h2 { font-family: Arial, sans-serif; }
+        body { font-family: Arial, sans-serif; font-size: 11pt; }
+    </style>
+</head>
+<body>
+    <h1>UAT Test Cases for VCEP System</h1>
+
+    <h2>1. ระบบการ Authentication (Authentication System)</h2>
+    <table>
+        <tr>
+            <th>TestCase ID</th><th>TestCase Name</th><th>Pre-condition</th><th>Test Step</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+        </tr>
+        <tr>
+            <td>Authen-Re01</td><td>ลงทะเบียนนักศึกษา (Registration - Student)</td><td>ผู้ใช้ยังไม่มีบัญชี</td>
+            <td>1. เลือกเมนู "Register" > กดแท็บ "Student"<br>2. กรอกข้อมูลส่วนตัว (ชื่อ-สกุล, Email, Password)<br>3. กดปุ่ม "Create Account"</td>
+            <td>1. ระบบแสดงข้อความสำเร็จ (Success Modal)<br>2. ส่ง Email Verification ไปยังอีเมลที่ระบุ</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Authen-Re02</td><td>ลงทะเบียนองค์กร (Registration - Organization)</td><td>ผู้ใช้ยังไม่มีบัญชี</td>
+            <td>1. เลือกเมนู "Register" > กดแท็บ "Organization"<br>2. กรอกข้อมูลองค์กรเบื้องต้นและผู้ติดต่อ<br>3. กดปุ่ม "Create Account"</td>
+            <td>1. ระบบแสดงข้อความสำเร็จ<br>2. เข้าสู่ระบบเบื้องต้นหรือรอ Admin อนุมัติ</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Authen-Lo01</td><td>เข้าสู่ระบบนักศึกษา (Login - Student)</td><td>ผู้ใช้มีบัญชีนักศึกษาแล้ว</td>
+            <td>1. ไปที่หน้า "Log In"<br>2. กรอก Email และ Password<br>3. กดปุ่ม "Login"</td>
+            <td>ระบบพาเข้าสู่หน้า Student Dashboard ยืนยันสิทธิ์สำเร็จ</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Authen-Lo02</td><td>เข้าสู่ระบบองค์กร (Login - Organization)</td><td>ผู้ใช้มีบัญชีองค์กรแล้ว</td>
+            <td>1. ไปที่หน้า "Log In"<br>2. กรอก Email และ Password ขององค์กร<br>3. กดปุ่ม "Login"</td>
+            <td>ระบบพาเข้าสู่หน้า Organization Dashboard สำเร็จ</td><td></td><td></td>
+        </tr>
+    </table>
+
+    <h2>2. ระบบนักศึกษา: หน้าหลักและการจัดการข้อมูล (Student: Dashboard & Portfolio)</h2>
+    <table>
+        <tr>
+            <th>TestCase ID</th><th>TestCase Name</th><th>Pre-condition</th><th>Test Step</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+        </tr>
+        <tr>
+            <td>Std-DB01</td><td>เข้าถึง Dashboard (Access Dashboard)</td><td>นักศึกษาเข้าสู่ระบบแล้ว</td>
+            <td>1. คลิกที่เมนู "Dashboard" จาก Navigation Bar</td>
+            <td>แสดงภาพรวมความคืบหน้า, กิจกรรมล่าสุด และสถิติของนักศึกษา (XP/Level) ได้อย่างถูกต้อง</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-PF01</td><td>แก้ไข Portfolio (Edit Portfolio)</td><td>นักศึกษาเข้าสู่ระบบแล้ว</td>
+            <td>1. ไปที่หน้า Profile/Portfolio<br>2. กด "Edit Profile"<br>3. อัปเดตข้อมูล/เพิ่มทักษะ<br>4. กด "Save"</td>
+            <td>ข้อมูลใน Portfolio อัปเดตสำเร็จและแสดงผลได้อย่างถูกต้องในหน้าจอดูโปรไฟล์</td><td></td><td></td>
+        </tr>
+    </table>
+
+    <h2>3. ระบบนักศึกษา: การค้นหาและทำกิจกรรม (Student: Activity Flow)</h2>
+    <table>
+        <tr>
+            <th>TestCase ID</th><th>TestCase Name</th><th>Pre-condition</th><th>Test Step</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+        </tr>
+        <tr>
+            <td>Std-Act01</td><td>เข้าถึงภาพรวมกิจกรรม (Access Activity Overview)</td><td>นักศึกษาเข้าสู่ระบบแล้ว</td>
+            <td>1. คลิกที่เมนู "Activities" หรือ "Explore"</td>
+            <td>ระบบแสดงหน้ารวมกิจกรรมทั้งหมด สามารถค้นหาและกรอง (Filter) ด้วย Category หรือ Status ได้</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-Act02</td><td>ลงทะเบียนกิจกรรม Course</td><td>อยู่ในหน้าแสดงรายละเอียดของ Course</td>
+            <td>1. กดปุ่ม "Join Course" หรือ "Enroll"</td>
+            <td>ระบบเพิ่มกิจกรรมลงในรายการกิจกรรมของนักศึกษา (My Activities)</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-Act03</td><td>ลงทะเบียนกิจกรรม Challenge</td><td>อยู่ในหน้าแสดงรายละเอียดของ Challenge</td>
+            <td>1. กดปุ่ม "Join Challenge"</td>
+            <td>ระบบเพิ่มกิจกรรมลงในรายการและพร้อมให้เริ่มทำข้อกำหนด</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-Act04</td><td>ลงทะเบียนกิจกรรม Meeting</td><td>อยู่ในหน้าแสดงรายละเอียดของ Meeting</td>
+            <td>1. กดปุ่ม "Register Meeting"</td>
+            <td>ระบบบันทึกรายชื่อผู้เข้าร่วมและจัดเก็บกิจกรรมเตรียมพร้อมสำหรับการ Meeting</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-DoAct01</td><td>ทำกิจกรรมประเภท Course</td><td>ลงทะเบียน Course แล้ว</td>
+            <td>1. เข้าสู่ Course Progress<br>2. ดูเนื้อหาหรือวิดีโอจนจบ<br>3. ทำ Quiz และกด "Submit"</td>
+            <td>สถานะการเรียนเปลี่ยนเป็น Completed และแสดงผลคะแนน Quiz ออกมาให้เห็น</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-DoAct02</td><td>ทำกิจกรรมประเภท Challenge</td><td>ลงทะเบียน Challenge แล้ว</td>
+            <td>1. เข้าสู่ Challenge Progress<br>2. อัปโหลดไฟล์ผลงานผ่านฟอร์มส่งงาน<br>3. กด "Submit Challenge"</td>
+            <td>ระบบรับไฟล์เข้า S3 สำเร็จ และเปลี่ยนสถานะงานเป็น Submitted/รอการประเมิน</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-DoAct03</td><td>ทำกิจกรรมประเภท Meeting</td><td>ลงทะเบียน Meeting แล้ว</td>
+            <td>1. เข้าสู่ Meeting Progress<br>2. กรอกโค้ดหรือสแกน QR Code เพื่อเช็คอิน</td>
+            <td>ระบบบันทึกสถานะการเข้าร่วม (Attended) พร้อมอัปเดตหน้า Progress สำเร็จ</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Std-ActDB01</td><td>เข้าถึงหน้าสรุปวิเคราะห์กิจกรรม</td><td>นักศึกษาทำกิจกรรมเสร็จสิ้นทั้งหมด/บางส่วน</td>
+            <td>1. ไปยังหน้าประวัติผลงานกิจกรรม หรือ Activity Progress</td>
+            <td>แสดงผลการตอบโจทย์ของกิจกรรม, ข้อคิดเห็น และสิ่งที่นักศึกษาได้เรียนรู้ (Learning Outcome) ชัดเจน</td><td></td><td></td>
+        </tr>
+    </table>
+
+    <h2>4. ระบบองค์กร: การจัดการองค์กรและพนักงาน (Organization: Setup & Management)</h2>
+    <table>
+        <tr>
+            <th>TestCase ID</th><th>TestCase Name</th><th>Pre-condition</th><th>Test Step</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+        </tr>
+        <tr>
+            <td>Org-Mgmt01</td><td>สร้างองค์กรและพนักงานคนแรก</td><td>องค์กรลงทะเบียนเสร็จสิ้นครั้งแรก</td>
+            <td>1. เข้าสู่ระบบ<br>2. กรอกรายละเอียดองค์กรเพิ่มเติม (ถ้ามี)<br>3. ตรวจสอบข้อมูลผู้ใช้งาน</td>
+            <td>ผู้สร้างใช้งานได้ในรูปแบบ Admin ระดับองค์กร</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Org-Mgmt02</td><td>เพิ่มพนักงานใหม่ (Add Employee)</td><td>เข้าสู่ระบบในฐานะ Admin ขององค์กร</td>
+            <td>1. ไปที่เมนู Managing Employees<br>2. กด "Add Employee/Invite"<br>3. ระบุข้อมูลอีเมล/ชื่อ สิทธิ์พนักงาน<br>4. กด "Save"</td>
+            <td>พนักงานใหม่บัญชีถูกสร้าง/ส่งอีเมลเชิญ และสามารถล็อกอินด้วยสถานะพนักงานองค์กรได้</td><td></td><td></td>
+        </tr>
+    </table>
+
+    <h2>5. ระบบองค์กร: สร้างกิจกรรมและภาพรวมทั้งหมด (Organization: Activity Management)</h2>
+    <table>
+        <tr>
+            <th>TestCase ID</th><th>TestCase Name</th><th>Pre-condition</th><th>Test Step</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+        </tr>
+        <tr>
+            <td>Org-CAct01</td><td>สร้างกิจกรรม Course</td><td>เข้าสู่ระบบในฐานะตัวแทนองค์กร</td>
+            <td>1. ไปที่เมนูดูแลกิจกรรม > เลือก Create Course<br>2. กรอกข้อมูลรายละเอียด (ชื่อ, คลิป, ควิซ)<br>3. กด "Publish"</td>
+            <td>กิจกรรม Course ถูกเผยแพร่สู่หน้ารวมกิจกรรม (Overview) ให้นักศึกษาเห็นและลงทะเบียนได้</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Org-CAct02</td><td>สร้างกิจกรรม Challenge</td><td>เข้าสู่ระบบในฐานะตัวแทนองค์กร</td>
+            <td>1. ไปที่เมนูดูแลกิจกรรม > เลือก Create Challenge<br>2. ระบุโจทย์, เกณฑ์การให้คะแนนอัปโหลดไฟล์<br>3. กด "Publish"</td>
+            <td>กิจกรรม Challenge ออกสู่ระบบ ให้นักศึกษาสามารถเข้ามารับโจทย์ได้</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Org-CAct03</td><td>สร้างกิจกรรม Meeting</td><td>เข้าสู่ระบบในฐานะตัวแทนองค์กร</td>
+            <td>1. ไปที่เมนูดูแลกิจกรรม > เลือก Create Meeting<br>2. กำหนดวันเวลาทำการ, ลิงก์ออนไลน์/สถานที่<br>3. กด "Publish"</td>
+            <td>กิจกรรม Meeting ไปปรากฏยังระบบให้นักศึกษากดสมัครเข้า Meeting ได้</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Org-ActDB01</td><td>เข้าถึง Dashboard ผู้เข้าร่วมกิจกรรม</td><td>กิจกรรมถูกเผยแพร่และมีนักศึกษาเข้าร่วม</td>
+            <td>1. กดเข้าดูรายการกิจกรรมที่สร้างไว้<br>2. เข้าไปคลิกดู "Analytics" หรือ Dashboard ย่อย</td>
+            <td>หน้าสรุปผลโชว์ยอดผู้เข้าร่วม/อัตราการส่งงาน (สถิติการทำกิจกรรมของนิสิต) ได้อย่างถูกต้อง</td><td></td><td></td>
+        </tr>
+        <tr>
+            <td>Org-FB01</td><td>ให้คำติชมกิจกรรม (Feedback/Grading)</td><td>มีนักศึกษาส่งผลลัพธ์ Challenge เข้ามาแล้ว</td>
+            <td>1. เลือกดูหัวข้อกิจกรรมที่รอตรวจ<br>2. เปิดผลงานนักศึกษาขึ้นมาประเมิน (ให้คะแนน)<br>3. พิมพ์ Feedback การตอบโจทย์<br>4. กด Submit/Approve</td>
+            <td>สถานะผลงานถูกอัปเดตเป็น Approved หรือ Graded พร้อมส่งแจ้งเตือน Feedback ให้นักศึกษาเข้าดูได้</td><td></td><td></td>
+        </tr>
+    </table>
+</body>
+</html>

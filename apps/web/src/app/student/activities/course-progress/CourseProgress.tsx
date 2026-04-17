@@ -48,7 +48,7 @@ function CourseMainView({ activityId }: { activityId: string }) {
     setExpandedModules(prev => ({ ...prev, [modId]: !prev[modId] }));
   };
 
-  const isComplete = currentStatus.toLowerCase() === "complete" || currentStatus.toLowerCase() === "completed" || currentStatus.toLowerCase() === "pass" || data?.submission_info?.Note?.toLowerCase() === "completed";
+  const isComplete = currentStatus.toLowerCase() === "complete" || currentStatus.toLowerCase() === "completed" || currentStatus.toLowerCase() === "pass";
   const getStatusClass = (status: string) => {
     if (!status) return styles.statusRed;
     const s = status.toLowerCase();
