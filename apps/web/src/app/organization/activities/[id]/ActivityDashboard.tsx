@@ -140,34 +140,36 @@ function normalizeSkillLevelNumber(skill: any): number {
   return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
-function formatDate(isoString: string) {
-  if (!isoString) return "-";
+// แยก date/time จาก ISO string โดยตรง เพื่อไม่ให้ timezone shift ผิด
+// รองรับ "2026-04-16T00:00:00+07:00" และ "2026-04-16T00:00:00Z"
+function parseDateTimeParts(isoString: string): { date: string; time: string } {
+  if (!isoString) return { date: "-", time: "-" };
   try {
-    return new Date(isoString).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return isoString;
-  }
-}
+    // ตัด timezone suffix ออก แล้วอ่าน local datetime ตรงๆ
+    // เช่น "2026-04-16T07:00:00+07:00" → "2026-04-16T07:00:00"
+    const local = isoString.replace(/([+-]\d{2}:\d{2}|Z)$/, "");
+    const [datePart, timePart] = local.split("T");
+    if (!datePart) return { date: isoString, time: "-" };
 
-function formatTime(isoString: string) {
-  if (!isoString) return "-";
-  try {
-    return new Date(isoString).toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    // format date: DD Mon YYYY
+    const [year, month, day] = datePart.split("-").map(Number);
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const dateStr = `${String(day).padStart(2,"0")} ${MONTHS[(month ?? 1) - 1] ?? "?"} ${year}`;
+
+    // format time: HH:MM
+    const timeStr = timePart ? timePart.slice(0, 5) : "00:00";
+
+    return { date: dateStr, time: timeStr };
   } catch {
-    return "-";
+    return { date: isoString, time: "-" };
   }
 }
 
 function formatDateTimeRange(start: string, end: string) {
   if (!start && !end) return "-";
-  return `${formatDate(start)} • ${formatTime(start)} → ${formatDate(end)} • ${formatTime(end)}`;
+  const s = parseDateTimeParts(start);
+  const e = parseDateTimeParts(end);
+  return `${s.date} • ${s.time} → ${e.date} • ${e.time}`;
 }
 
 function capitalize(str: string) {
@@ -202,9 +204,24 @@ function normalizeActivityResponse(activityId: string, payload: any): ActivityDe
     raw?.meeting_info ?? raw?.meetingInfo ??
     info?.meeting_info ?? info?.meetingInfo;
 
-  const challengeInfo =
+  // backend อาจ return challenge_info หลาย format
+  const challengeInfoWrapped =
     raw?.challenge_info ?? raw?.challengeInfo ??
-    info?.challenge_info ?? info?.challengeInfo;
+    raw?.challenge ??
+    info?.challenge_info ?? info?.challengeInfo ??
+    info?.challenge;
+
+  const challengeInfo = challengeInfoWrapped ?? (
+    (raw?.problem_statement != null || info?.problem_statement != null ||
+     raw?.level != null || info?.level != null)
+      ? {
+          problem_statement: raw?.problem_statement ?? info?.problem_statement,
+          description: raw?.goal_expected_outcome ?? raw?.goal ?? info?.goal_expected_outcome ?? info?.goal,
+          level: raw?.level ?? info?.level,
+          submit_type: raw?.submit_type ?? raw?.submission_requirements ?? info?.submit_type ?? info?.submission_requirements,
+        }
+      : null
+  );
 
   // course response is flat — modules live directly on raw/info
   // wrapped form (course_info / courseInfo) is also supported
@@ -343,15 +360,29 @@ function normalizeActivityResponse(activityId: string, payload: any): ActivityDe
 }
 
 async function fetchActivityById(activityId: string): Promise<ActivityDetail> {
-  // Try with ?prefer=course first to ensure we get modules for course activities
-  const res = await fetch(`/api/organization/activity/${activityId}?prefer=course`, {
+  // ดึงข้อมูลปกติก่อน (ไม่ใส่ prefer=course เพื่อให้ได้ challenge_info ครบ)
+  const res = await fetch(`/api/organization/activity/${activityId}`, {
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data?.message || `Failed to load activity (${res.status})`);
   }
-  return normalizeActivityResponse(activityId, data);
+
+  const detail = normalizeActivityResponse(activityId, data);
+
+  // ถ้าเป็น course และยังไม่มี modules ให้ retry ด้วย ?prefer=course
+  if (detail.activity_type === "course" && !detail.course_info?.modules?.length) {
+    try {
+      const res2 = await fetch(`/api/organization/activity/${activityId}?prefer=course`, {
+        cache: "no-store",
+      });
+      const data2 = await res2.json().catch(() => ({}));
+      if (res2.ok) return normalizeActivityResponse(activityId, data2);
+    } catch {}
+  }
+
+  return detail;
 }
 
 
@@ -486,7 +517,6 @@ export default function ActivityDashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [isStatusSaving, setIsStatusSaving] = useState(false);
 
   useEffect(() => {
     if (!activityId) {
@@ -550,19 +580,6 @@ export default function ActivityDashboard() {
     };
   }, [activityId]);
 
-  const handleStatusToggle = async (newStatus: "draft" | "published") => {
-    if (!activity || isStatusSaving || activity.status === newStatus) return;
-
-    setIsStatusSaving(true);
-    try {
-      await patchActivityStatus(activityId, newStatus);
-      setActivity((prev) => (prev ? { ...prev, status: newStatus } : prev));
-    } catch (err: any) {
-      alert(err?.message || "Failed to update status");
-    } finally {
-      setIsStatusSaving(false);
-    }
-  };
 
   const handleEdit = () => {
     if (!activity) return;
@@ -650,21 +667,19 @@ export default function ActivityDashboard() {
         <div className={styles.heroActions}>
           <div className={styles.statusToggleCard}>
             <div className={styles.publishStatusRow}>
-              <button
+              <div
                 className={`${styles.statusTabBtn} ${!isPublished ? styles.activePublished : ""}`}
-                onClick={() => handleStatusToggle("draft")}
-                disabled={isStatusSaving}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 Draft
-              </button>
+              </div>
               <div className={styles.shortVerticalDivider} />
-              <button
+              <div
                 className={`${styles.statusTabBtn} ${isPublished ? styles.activePublished : ""}`}
-                onClick={() => handleStatusToggle("published")}
-                disabled={isStatusSaving}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 Published
-              </button>
+              </div>
             </div>
 
             <div className={styles.horizontalDivider} />

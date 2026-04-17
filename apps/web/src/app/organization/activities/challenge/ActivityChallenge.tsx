@@ -1412,7 +1412,7 @@ function AccessAndScheduleSection({
   onEnrollmentRangeChange,
   onActivityRangeChange,
   defaultMaxParticipants = FORM_DEFAULTS.maxParticipants,
-  defaultIsUnlimited = false,
+  defaultIsUnlimited = true,
   defaultEnrollmentRange,
   defaultActivityRange,
 }: {
@@ -1452,17 +1452,16 @@ function AccessAndScheduleSection({
     <SectionCard className={styles.settingsPanel}>
       <div className={styles.accessGrid}>
         {AUDIENCE_OPTIONS.map((option) => (
-          <button
+          <div
             key={option.value}
-            type="button"
             className={`${styles.accessCard} ${
               selectedAudience === option.value ? styles.accessCardActive : ""
             }`}
-            onClick={() => onSelectAudience(option.value)}
+            style={{ cursor: "default", opacity: option.value !== selectedAudience ? 0.4 : 1 }}
           >
             <div className={styles.accessTitle}>{option.label}</div>
             <AudienceIllustration value={option.value} />
-          </button>
+          </div>
         ))}
       </div>
 
@@ -1470,18 +1469,17 @@ function AccessAndScheduleSection({
 
       <div className={styles.joinModeGrid}>
         {PARTICIPATION_OPTIONS.map((option) => (
-          <button
+          <div
             key={option.value}
-            type="button"
             className={`${styles.joinModeButton} ${
               selectedParticipation === option.value
                 ? styles.joinModeButtonActive
                 : ""
             }`}
-            onClick={() => onSelectParticipation(option.value)}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", cursor: "default", opacity: option.value !== selectedParticipation ? 0.4 : 1 }}
           >
             {option.label}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -1577,7 +1575,7 @@ export default function ActivityChallenge() {
   // Mutable refs for date/boolean state (no re-render needed)
   const enrollmentRangeRef = useRef<RangeValue>({ startDate: "", startTime: "", endDate: "", endTime: "" });
   const activityRangeRef = useRef<RangeValue>({ startDate: "", startTime: "", endDate: "", endTime: "" });
-  const isUnlimitedRef = useRef(false);
+  const isUnlimitedRef = useRef(true);
   const skillItemsRef = useRef<SkillProgressItem[]>([]);
 
   // Load existing activity data in edit mode
@@ -1690,7 +1688,29 @@ export default function ActivityChallenge() {
 
     const activityTitle = activityTitleRef.current?.value?.trim() || "";
     if (!activityTitle) {
-      setSubmitError("Please fill in the Activity Title.");
+      setSubmitError("กรุณากรอก Activity Title");
+      return;
+    }
+
+    const description = descriptionRef.current?.value?.trim() || "";
+    if (!description) {
+      setSubmitError("กรุณากรอก Description");
+      return;
+    }
+
+    const problemStatement = problemStatementRef.current?.value?.trim() || "";
+    if (!problemStatement) {
+      setSubmitError("กรุณากรอก Problem Statement");
+      return;
+    }
+
+    if (!enrollmentRangeRef.current.startDate || !enrollmentRangeRef.current.endDate) {
+      setSubmitError("กรุณาเลือก Enrollment Period");
+      return;
+    }
+
+    if (!activityRangeRef.current.startDate || !activityRangeRef.current.endDate) {
+      setSubmitError("กรุณาเลือก Activity Run Period");
       return;
     }
 

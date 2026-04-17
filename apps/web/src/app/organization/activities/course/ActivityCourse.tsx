@@ -1412,23 +1412,21 @@ function AccessAndScheduleSection({
   activityRange: RangeValue;
   onActivityRangeChange: (value: RangeValue) => void;
 }) {
-  const [isUnlimited, setIsUnlimited] = useState(false);
+  const [isUnlimited, setIsUnlimited] = useState(true);
 
   return (
     <SectionCard className={styles.settingsPanel}>
       <div className={styles.settingsScrollArea}>
         <div className={styles.accessGrid}>
           {AUDIENCE_OPTIONS.map((option) => (
-            <button
+            <div
               key={option.value}
-              type="button"
-              className={`${styles.accessCard} ${selectedAudience === option.value ? styles.accessCardActive : ""
-                }`}
-              onClick={() => onSelectAudience(option.value)}
+              className={`${styles.accessCard} ${selectedAudience === option.value ? styles.accessCardActive : ""}`}
+              style={{ cursor: "default", opacity: option.value !== selectedAudience ? 0.4 : 1 }}
             >
               <div className={styles.accessTitle}>{option.label}</div>
               <AudienceIllustration value={option.value} />
-            </button>
+            </div>
           ))}
         </div>
 
@@ -1436,15 +1434,13 @@ function AccessAndScheduleSection({
 
         <div className={styles.joinModeGrid}>
           {PARTICIPATION_OPTIONS.map((option) => (
-            <button
+            <div
               key={option.value}
-              type="button"
-              className={`${styles.joinModeButton} ${selectedParticipation === option.value ? styles.joinModeButtonActive : ""
-                }`}
-              onClick={() => onSelectParticipation(option.value)}
+              className={`${styles.joinModeButton} ${selectedParticipation === option.value ? styles.joinModeButtonActive : ""}`}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", cursor: "default", opacity: option.value !== selectedParticipation ? 0.4 : 1 }}
             >
               {option.label}
-            </button>
+            </div>
           ))}
         </div>
 
@@ -2263,6 +2259,27 @@ export default function ActivityCourse() {
   const handleSubmit = async () => {
     setSubmitError("");
     setSubmitSuccess(false);
+
+    if (!activityTitle.trim()) {
+      setSubmitError("กรุณากรอก Activity Title");
+      return;
+    }
+
+    if (!description.trim()) {
+      setSubmitError("กรุณากรอก Description");
+      return;
+    }
+
+    if (!enrollRange.startDate || !enrollRange.endDate) {
+      setSubmitError("กรุณาเลือก Enrollment Period");
+      return;
+    }
+
+    if (!activityRange.startDate || !activityRange.endDate) {
+      setSubmitError("กรุณาเลือก Activity Run Period");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

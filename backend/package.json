@@ -1,0 +1,20 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.1031.0",
+    "ioredis": "^5.10.1",
+    "jose": "^6.2.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}

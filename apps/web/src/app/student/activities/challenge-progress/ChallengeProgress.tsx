@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useEffect, useCallback } from "react";
-import styles from "./page.module.css";
+import { useMemo, useState, useEffect } from "react";
 import { Suspense } from "react";
+import styles from "./page.module.css";
 
 function ChallengeProgressContent() {
   const router = useRouter();
@@ -15,44 +15,38 @@ function ChallengeProgressContent() {
   const [isFileUpdate, setIsFileUpdate] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
-  //==============================
-  // fetch activity data
-  //==============================
+  // ==============================
+  // Fetch activity data
+  // ==============================
   useEffect(() => {
     async function fetchActivity() {
       const res = await fetch(`/api/student/challenge?activity_id=${activityId}`);
       const json = await res.json();
-
       if (json.ok) {
         setChallenge(json.data);
-        console.log("challenge", json.data);
       }
     }
     fetchActivity();
   }, [activityId]);
 
-  // Change artifact []byte form go to json
+  // Decode artifact []byte from Go (base64 → JSON)
   const artifact = useMemo(() => {
     const art = challenge?.submission_info?.Artifact;
     if (!art) return [];
-
-    // The 'art' string from Go []byte is base64 encoded by default.
-    // Decode base64 to utf-8 string, then parse the JSON
     const decodedStr = Buffer.from(art, "base64").toString("utf-8");
     return JSON.parse(decodedStr);
   }, [challenge]);
 
-  const currentStatus = challenge?.submission_info ? challenge?.submission_info?.Status : "In Progress";
-  const getStatusClass = (status: string) => {
-    if (!status) return styles.statusRed;
-    const s = status.toLowerCase();
-    if (s === "complete" || s === "completed") return styles.statusGreen;
-    if (s === "in progress") return styles.statusBlue;
-    return styles.statusRed;
-  };
+  const currentStatus: string = challenge?.submission_info
+    ? challenge?.submission_info?.Status || "In Progress"
+    : "In Progress";
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDescription(e.target.value);
+  // Map status → pill style
+  const getStatusPillClass = (status: string) => {
+    const s = status.toLowerCase();
+    if (s === "complete" || s === "completed") return `${styles.statusPill} ${styles.statusComplete}`;
+    if (s === "submitted") return `${styles.statusPill} ${styles.statusSubmitted}`;
+    return `${styles.statusPill} ${styles.statusIncomplete}`;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,13 +56,15 @@ function ChallengeProgressContent() {
     }
   };
 
-  // console.log(artifact);
+  const handleRemoveFile = () => {
+    setFile(null);
+    setIsFileUpdate(false);
+  };
 
   // ==================
   // Submit
   // ==================
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     const formData = new FormData();
     formData.append("activity_id", activityId || "");
     formData.append("description", description);
@@ -84,133 +80,279 @@ function ChallengeProgressContent() {
     if (json.ok) {
       router.push("/student/activities");
     }
-  }
+  };
 
-
-  //==============================
-  // fetch file submission (from s3 path -> blob -> file)
-  //==============================
-  // ใช้ useEffect ( เนื่องจากหากมีการ re-render จะทำให้ fetch file ใหม่ทุกครั้ง ป้องกัน File ไม่อัพเดท )
+  // ==============================
+  // Prefill existing submission
+  // ==============================
   useEffect(() => {
     async function fetchFile() {
       if (artifact?.text_submission) {
         setDescription(artifact.text_submission);
       }
       if (artifact?.file_submission) {
-        const PATH = artifact.file_submission;
-        const res = await fetch("https://miro.medium.com/v2/resize:fit:4800/format:webp/1*1nTjDBAC2kYVlLLmEc8BKw.png");
-        console.log(res);
+        const res = await fetch(artifact.file_submission);
         if (res.ok) {
           const blob = await res.blob();
-          const file = new File([blob], "Click to Open", { type: "text/plain" });
-          setFile(file);
+          const fetched = new File([blob], "Click to Open", { type: "text/plain" });
+          setFile(fetched);
         }
       }
     }
     fetchFile();
   }, [artifact]);
 
-  //===============================
-  // Check if the submission is complete
-  //===============================
-  // const currentStatus = challenge?.submission_info?.Status === "" ? "In Progress" : challenge?.submission_info ? challenge?.submission_info?.Status : "In Progress";
+  // ==============================
+  // Check completion
+  // ==============================
   useEffect(() => {
-    console.log(currentStatus);
-    if (currentStatus.toLowerCase() === "completed" || currentStatus.toLowerCase() === "complete") {
+    if (
+      currentStatus.toLowerCase() === "completed" ||
+      currentStatus.toLowerCase() === "complete"
+    ) {
       setIsComplete(true);
     }
-  }, [challenge])
+  }, [challenge]);
+
+  const isReadOnly = isComplete;
+  const canSubmit = description.trim().length > 0 && !isReadOnly;
+
+  // Meta items
+  const dueDate = challenge?.activity?.IsOpenEnded
+    ? "Open Ended"
+    : challenge?.activity?.RunEndAt
+    ? `${challenge.activity.RunEndAt.split("T")[0]} ${challenge.activity.RunEndAt.split("T")[1]?.split("Z")[0] ?? ""}`
+    : "—";
+
+  const metaItems = [
+    { label: "Type", value: "Challenge" },
+    { label: "Hours", value: challenge?.activity?.Hours ?? "—" },
+    { label: "Due Date", value: dueDate },
+    { label: "Difficulty", value: challenge?.challenge_info?.difficulty ?? "—" },
+    { label: "XP Reward", value: challenge?.challenge_info?.xp ? `+${challenge.challenge_info.xp} XP` : "—" },
+    { label: "Status", value: currentStatus },
+  ];
+
+  const rewardSkills: any[] = challenge?.challenge_info?.reward_skills ?? [];
+  const deliverables: string[] = challenge?.challenge_info?.deliverables ?? [];
+  const requirements: string[] = challenge?.challenge_info?.requirements ?? [];
 
   return (
-    <div className={styles.container}>
-      <section className={styles.card}>
-        <div className={styles.cardHeader}>
-          <h1 className={styles.title}>
-            {challenge?.activity.ActivityName || "Loading..."}
-          </h1>
-          <button className={styles.backButton} onClick={() => router.back()}>
-            Back
-          </button>
-        </div>
-        <p className={styles.description}>
-          {challenge?.challenge_info.problem_statement || "Loading..."}
-        </p>
+    <div className={styles.page}>
+      {/* ─── LEFT COLUMN ─────────────────────────────────── */}
+      <div className={styles.column}>
+        {/* Summary panel */}
+        <section className={`${styles.panel} ${styles.summaryPanel}`}>
+          <div className={styles.eyebrow}>Challenge</div>
 
-        <div className={styles.infoGrid}>
-          <div className={styles.infoColumn}>
-            <p>Hours : <span>{challenge?.activity.Hours}</span></p>
-            <p>Due date: <span>{challenge?.activity.IsOpenEnded ? "----" : `${challenge?.activity.RunEndAt.split("T")[0]} ${challenge?.activity.RunEndAt.split("T")[1].split("Z")[0]}`}</span></p>
+          <div className={styles.topRow}>
+            <h1 className={styles.title}>
+              {challenge?.activity?.ActivityName ?? "Loading..."}
+            </h1>
+            <div className={styles.headerActions}>
+              <span className={getStatusPillClass(currentStatus)}>{currentStatus}</span>
+              <button className={styles.backButton} onClick={() => router.back()}>
+                Back
+              </button>
+            </div>
           </div>
-          <div className={styles.infoColumn}>
-            <p>Status : <span className={getStatusClass(currentStatus)}>{currentStatus}</span></p>
-            <p>Type : <span>Challenge</span></p>
+
+          <p className={styles.description}>
+            {challenge?.challenge_info?.problem_statement ?? "Loading..."}
+          </p>
+
+          <div className={styles.metaGrid}>
+            {metaItems.map((item) => (
+              <div key={item.label} className={styles.metaCard}>
+                <div className={styles.metaLabel}>{item.label}</div>
+                <div className={styles.metaValue}>{item.value}</div>
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
-      {isComplete && (
-        <section className={`${styles.card} ${styles.feedbackGreen}`}>
-          <h2 className={styles.sectionTitle}>Feedback</h2>
-          <div className={styles.feedbackComment}>
-            <p>"{challenge?.feedback_info?.feedback}"</p>
+
+          {rewardSkills.length > 0 && (
+            <div className={styles.rewardSkillsSection}>
+              <div className={styles.rewardSkillsTitle}>Skills you will receive</div>
+              <div className={styles.rewardSkillsList}>
+                {rewardSkills.map((skill: any, i: number) => (
+                  <div key={i} className={styles.rewardSkillRow}>
+                    <div className={styles.rewardSkillName}>{skill.skillName ?? skill.skill_name}</div>
+                    <div className={styles.rewardSkillLevel}>{skill.level}</div>
+                    <div className={styles.rewardSkillPercent}>{skill.percentText ?? skill.percent}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Problem / Expected outcome */}
+        <section className={`${styles.panel} ${styles.contentPanel}`}>
+          <div className={styles.sectionBlock}>
+            <div className={styles.sectionTitle}>Problem statement</div>
+            <p className={styles.sectionText}>
+              {challenge?.challenge_info?.problem_statement ?? "—"}
+            </p>
           </div>
-          <div className={styles.rewardContainer}>
-            <div className={`${styles.rewardBadge} ${challenge?.feedback_info?.status ? styles.badgePass : styles.badgeFail}`}>
-              <span className={styles.badgeLabel}>Status</span>
-              <span className={styles.badgeValue}>
+
+          <div className={styles.sectionDivider} />
+
+          <div className={styles.sectionBlock}>
+            <div className={styles.sectionTitle}>Expected outcome</div>
+            <p className={styles.sectionText}>
+              {challenge?.challenge_info?.expected_outcome ?? "—"}
+            </p>
+          </div>
+        </section>
+
+        {/* Requirements & Deliverables */}
+        {(requirements.length > 0 || deliverables.length > 0) && (
+          <section className={`${styles.panel} ${styles.requirementsPanel}`}>
+            {requirements.length > 0 && (
+              <>
+                <div className={styles.sectionTitle}>Requirements</div>
+                <ul className={styles.requirementList}>
+                  {requirements.map((item: string) => (
+                    <li key={item} className={styles.requirementItem}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {deliverables.length > 0 && (
+              <div className={styles.deliverableWrap}>
+                {deliverables.map((item: string) => (
+                  <span key={item} className={styles.deliverableChip}>{item}</span>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+
+      {/* ─── RIGHT COLUMN ────────────────────────────────── */}
+      <div className={styles.column}>
+        {/* Congratulations / feedback panel */}
+        {isComplete && (
+          <section className={`${styles.panel} ${styles.successPanel}`}>
+            <div className={styles.successTitle}>Congratulations !!!</div>
+
+            {challenge?.feedback_info?.feedback && (
+              <div className={styles.successCard} style={{ marginBottom: 10 }}>
+                <div className={styles.successCardLabel}>Feedback</div>
+                <div className={styles.successCardValue}>
+                  {challenge.feedback_info.feedback}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.successCard}>
+              <div className={styles.successCardLabel}>Result</div>
+              <div className={styles.successCardValue}>
                 {challenge?.feedback_info?.status ? "Pass" : "Fail"}
-              </span>
+              </div>
             </div>
-            <div className={`${styles.rewardBadge} ${styles.badgeXp}`}>
-              <span className={styles.badgeLabel}>XP Earned</span>
-              <span className={styles.badgeValue}>
-                +{challenge?.submission_info?.XP || 0}
-              </span>
+
+            <div className={styles.successMetaRow}>
+              {challenge?.activity?.RunEndAt && (
+                <span>Submitted: {challenge.activity.RunEndAt.split("T")[0]}</span>
+              )}
+              <span>XP: +{challenge?.submission_info?.XP ?? 0}</span>
+            </div>
+          </section>
+        )}
+
+        {/* Submission form */}
+        <section className={`${styles.panel} ${styles.submissionPanel}`}>
+          <div className={styles.sectionTitle}>Submission</div>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>Description</label>
+            <textarea
+              className={styles.textarea}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Explain your idea, logic, and important implementation notes"
+              disabled={isReadOnly}
+            />
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>Upload File</label>
+            <div className={styles.uploadBox}>
+              {file ? (
+                <div className={styles.uploadFileCard}>
+                  <div>
+                    <div className={styles.uploadFileName}>
+                      <a
+                        href={artifact.file_submission}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {file.name}
+                      </a>
+                    </div>
+                    <div className={styles.uploadFileHint}>Attached to this submission</div>
+                  </div>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      className={styles.inlineTextButton}
+                      onClick={handleRemoveFile}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className={styles.uploadEmpty}>No file uploaded yet</div>
+              )}
+
+              {!isReadOnly && (
+                <label className={styles.uploadButton}>
+                  Upload
+                  <input
+                    type="file"
+                    className={styles.hiddenInput}
+                    onChange={handleFileChange}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.actionRow}>
+            {!isReadOnly && (
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+              >
+                {currentStatus.toLowerCase() === "submitted"
+                  ? "Update submission"
+                  : "Submit challenge"}
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* Tips panel */}
+        <section className={`${styles.panel} ${styles.tipPanel}`}>
+          <div className={styles.sectionTitle}>Submission tips</div>
+          <div className={styles.tipList}>
+            <div className={styles.tipItem}>
+              Use a short explanation for the core logic and validation flow.
+            </div>
+            <div className={styles.tipItem}>
+              If you submit a repository, make sure the main entry file is easy to find.
+            </div>
+            <div className={styles.tipItem}>
+              Screenshots or a demo video help reviewers understand the finished result faster.
             </div>
           </div>
         </section>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <section className={styles.card}>
-          <h2 className={styles.sectionTitle}>Submission</h2>
-
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Description</label>
-            <textarea className={styles.textarea} rows={5} value={description} onChange={handleDescriptionChange} disabled={isComplete}></textarea>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Upload File</label>
-            <div className={styles.uploadArea}>
-              {/* Display selected file name */}
-              {file && <span className={styles.fileName}>
-                <a href={artifact.file_submission} target="_blank" rel="noopener noreferrer">
-                  {file.name}
-                </a></span>}
-
-              {/* The actual hidden input */}
-              <input
-                type="file"
-                id="file-upload"
-                className={styles.hiddenInput}
-                disabled={isComplete}
-                onChange={handleFileChange}
-              />
-
-              {/* The visible button (label) */}
-              <label htmlFor="file-upload" className={styles.customUploadButton}>
-                {file ? "Change File" : "Select Document"}
-              </label>
-
-            </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", marginTop: "2rem" }}>
-            {/* Log isComplete */}
-            {/* <p>{isComplete.toString()}</p> */}
-            <button type="submit" className={styles.submitButton} disabled={isComplete}>Submit</button>
-          </div>
-        </section>
-      </form>
+      </div>
     </div>
   );
 }

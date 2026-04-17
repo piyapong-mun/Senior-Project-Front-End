@@ -291,7 +291,9 @@ function normalizeActivityRecord(item: any, index: number) {
     commonInfo?.activity_detail ??
     commonInfo?.activityDetail
   );
-  const challengeInfo = parseJsonObject(item?.challenge ?? item?.challengeInfo);
+  const challengeInfo = parseJsonObject(item?.challenge_info ?? item?.challenge ?? item?.challengeInfo);
+  // level จาก LEFT JOIN challenge table
+  const joinedLevel = String(item?.challenge_level ?? "").trim();
   const courseInfo = parseJsonObject(item?.course ?? item?.courseInfo);
   const meetingInfo = parseJsonObject(item?.meeting ?? item?.meetingInfo);
 
@@ -325,6 +327,7 @@ function normalizeActivityRecord(item: any, index: number) {
       "Activity"
     ),
     difficulty: pickDifficulty(
+      joinedLevel,
       item?.difficulty,
       item?.level,
       challengeInfo?.difficulty,
@@ -362,10 +365,16 @@ function normalizeActivityRecord(item: any, index: number) {
 
 async function loadActivitiesFromDatabase(pool: Pool, orgId: string) {
   const dbRes = await pool.query(
-    `SELECT *
-     FROM activities
-     WHERE creator_org_id = $1
-     ORDER BY activity_id DESC`,
+    `SELECT
+       a.*,
+       c.level       AS challenge_level,
+       c.problem_statement,
+       c.description AS challenge_description,
+       c.submit_type
+     FROM activities a
+     LEFT JOIN challenge c ON c.activity_id = a.activity_id
+     WHERE a.creator_org_id = $1
+     ORDER BY a.activity_id DESC`,
     [orgId]
   );
 

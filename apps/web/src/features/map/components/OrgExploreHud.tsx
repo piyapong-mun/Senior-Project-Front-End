@@ -56,6 +56,8 @@ const C = {
   greenText: "#175a2a",
   orangeBg: "rgba(245, 158, 11, 0.18)",
   orangeText: "#8a4b00",
+  redBg: "rgba(239,68,68,0.15)",
+  redText: "#991b1b",
   chipBg: "rgba(59,130,246,0.10)",
   chipText: "#0c1019",
 };
@@ -87,9 +89,10 @@ function MetricCard({ value, label }: { value: number | string; label: string })
 
 function StatusBadge({ value }: { value?: string }) {
   const lower = String(value ?? "").toLowerCase();
+  const isDraft = lower.includes("draft");
   const isPending = lower.includes("pending");
-  const bg = isPending ? C.orangeBg : C.greenBg;
-  const color = isPending ? C.orangeText : C.greenText;
+  const bg = isDraft ? C.redBg : isPending ? C.orangeBg : C.greenBg;
+  const color = isDraft ? C.redText : isPending ? C.orangeText : C.greenText;
 
   return (
     <span

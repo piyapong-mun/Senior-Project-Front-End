@@ -2170,3 +2170,15 @@
   background: #C7BED4;
   border-color: #C7BED4;
 }
+/* periodLabelRow — align กับ periodInputRow grid */
+.periodLabelRow {
+  display: grid;
+  grid-template-columns: 122px 69px 36px 122px 69px;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.periodLabelRow .periodLabel {
+  grid-column: 1 / 3;
+}

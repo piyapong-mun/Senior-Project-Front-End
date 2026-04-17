@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import ExploreHud from "./ExploreHud";
-import MapCanvas from "./MapCanvas";
+import MapCanvas, { type RemotePlayer } from "./MapCanvas";
 import {
   AVATAR_FOCUS_DIST,
   BUILDING_FOCUS_DIST,
@@ -42,6 +42,49 @@ type CurrentStudent = {
   avatar_image_url: string | null;
 };
 
+type PositionPayload = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+type RealtimeMessage =
+  | {
+      type: "presence.snapshot";
+      players?: RemotePlayer[];
+    }
+  | {
+      type: "presence.update";
+      player?: RemotePlayer;
+    }
+  | {
+      type: "presence.leave";
+      userId?: string;
+    }
+  | {
+      type: "ack";
+      event?: string;
+    }
+  | {
+      type: "error";
+      message?: string;
+    };
+
+const MAP_ROOM_ID = "student-explore";
+const POSITION_SEND_INTERVAL_MS = 140;
+
+function toPositionPayload(value: THREE.Vector3): PositionPayload {
+  return {
+    x: Number(value.x.toFixed(3)),
+    y: Number(value.y.toFixed(3)),
+    z: Number(value.z.toFixed(3)),
+  };
+}
+
+function samePosition(a: PositionPayload, b: PositionPayload) {
+  return a.x === b.x && a.y === b.y && a.z === b.z;
+}
+
 export default function ExploreScene() {
   const router = useRouter();
   const { companies } = useCompanies();
@@ -61,6 +104,7 @@ export default function ExploreScene() {
 
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [hoverBuilding, setHoverBuilding] = useState<HoverBuildingPayload>(null);
+  const [remotePlayers, setRemotePlayers] = useState<RemotePlayer[]>([]);
 
   const [me, setMe] = useState<CurrentStudent | null>(null);
 
@@ -70,56 +114,256 @@ export default function ExploreScene() {
   const yawAnimRef = useRef<YawAnimState | null>(null);
   const isAnimatingRef = useRef(false);
 
+  const socketRef = useRef<WebSocket | null>(null);
+  const socketReadyRef = useRef(false);
+  const joinedRef = useRef(false);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const lastSentPosRef = useRef<PositionPayload | null>(null);
+  const lastSentAtRef = useRef(0);
+
+  const applySnapshot = useCallback(
+    (players: RemotePlayer[]) => {
+      setRemotePlayers(
+        players.filter((player) => player.userId && player.userId !== me?.user_id)
+      );
+    },
+    [me?.user_id]
+  );
+
+  const upsertRemotePlayer = useCallback(
+    (player: RemotePlayer) => {
+      if (!player.userId || player.userId === me?.user_id) return;
+
+      setRemotePlayers((previous) => {
+        const next = previous.filter((item) => item.userId !== player.userId);
+        next.push(player);
+        return next;
+      });
+    },
+    [me?.user_id]
+  );
+
+  const removeRemotePlayer = useCallback(
+    (userId: string) => {
+      if (!userId || userId === me?.user_id) return;
+      setRemotePlayers((previous) => previous.filter((item) => item.userId !== userId));
+    },
+    [me?.user_id]
+  );
+
+  const sendSocketMessage = useCallback((payload: Record<string, unknown>) => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+
+    socket.send(JSON.stringify(payload));
+    return true;
+  }, []);
+
+  const sendJoinIfReady = useCallback(() => {
+    if (!me?.user_id || !avatarPosState) return;
+    if (!socketReadyRef.current || joinedRef.current) return;
+
+    const currentPos = toPositionPayload(avatarPosState);
+
+    const didSend = sendSocketMessage({
+      action: "join",
+      roomId: MAP_ROOM_ID,
+      position: currentPos,
+      avatarModelUrl: me.avatar_model_url || null,
+    });
+
+    if (!didSend) return;
+
+    joinedRef.current = true;
+    lastSentPosRef.current = currentPos;
+    lastSentAtRef.current = Date.now();
+  }, [avatarPosState, me?.avatar_model_url, me?.user_id, sendSocketMessage]);
+
   useEffect(() => {
-  let cancelled = false;
+    let cancelled = false;
 
-  (async () => {
+    (async () => {
+      try {
+        const r = await fetch("/api/student", { cache: "no-store" });
+        const json = await r.json().catch(() => null);
+
+        if (!r.ok || !json?.ok) return;
+
+        const s = json?.data?.student_info;
+        if (!s) return;
+
+        if (!cancelled) {
+          setMe({
+            user_id: s.user_id ?? "",
+            std_id: s.std_id ?? "",
+            first_name: s.first_name ?? "",
+            last_name: s.last_name ?? "",
+            level: Number(s.level ?? 1),
+            xp: 0,
+            xp_max: Number(s.xp_max ?? 100),
+            avatar_choice: s.avatar_choice ?? null,
+            profile_image_url: s.profile_image_url ?? null,
+            avatar_model_url: s.avatar_model_url ?? null,
+            avatar_image_url: s.avatar_image_url ?? null,
+          });
+        }
+      } catch {}
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const connectSocket = useCallback(async () => {
+    if (!me?.user_id) return;
+    if (typeof window === "undefined") return;
+    if (socketRef.current) return;
+
     try {
-      const r = await fetch("/api/student", { cache: "no-store" });
-      const json = await r.json().catch(() => null);
+      const tokenRes = await fetch("/api/realtime/map-token", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const tokenJson = await tokenRes.json().catch(() => null);
 
-      if (!r.ok || !json?.ok) return;
-
-      const s = json?.data?.student_info;
-      if (!s) return;
-
-      if (!cancelled) {
-        setMe({
-          user_id: s.user_id ?? "",
-          std_id: s.std_id ?? "",
-          first_name: s.first_name ?? "",
-          last_name: s.last_name ?? "",
-          level: Number(s.level ?? 1),
-          xp: 0,
-          xp_max: Number(s.xp_max ?? 100),
-          avatar_choice: s.avatar_choice ?? null,
-          profile_image_url: s.profile_image_url ?? null,
-          avatar_model_url: s.avatar_model_url ?? null,
-          avatar_image_url: s.avatar_image_url ?? null,
-        });
+      if (!tokenRes.ok || !tokenJson?.ok || !tokenJson?.token || !tokenJson?.wsUrl) {
+        return;
       }
+
+      const ws = new WebSocket(`${tokenJson.wsUrl}?token=${encodeURIComponent(tokenJson.token)}`);
+      socketRef.current = ws;
+
+      ws.onopen = () => {
+        socketReadyRef.current = true;
+        joinedRef.current = false;
+        reconnectAttemptRef.current = 0;
+        sendJoinIfReady();
+      };
+
+      ws.onmessage = (event) => {
+        const payload = JSON.parse(String(event.data || "{}")) as RealtimeMessage;
+
+        if (payload.type === "presence.snapshot") {
+          applySnapshot(Array.isArray(payload.players) ? payload.players : []);
+          return;
+        }
+
+        if (payload.type === "presence.update" && payload.player) {
+          upsertRemotePlayer(payload.player);
+          return;
+        }
+
+        if (payload.type === "presence.leave" && payload.userId) {
+          removeRemotePlayer(payload.userId);
+        }
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+
+      ws.onclose = () => {
+        socketReadyRef.current = false;
+        joinedRef.current = false;
+        socketRef.current = null;
+
+        if (cancelledConnect.current) return;
+
+        const nextAttempt = Math.min(reconnectAttemptRef.current + 1, 6);
+        reconnectAttemptRef.current = nextAttempt;
+        const delayMs = Math.min(1000 * 2 ** (nextAttempt - 1), 12000);
+
+        reconnectTimerRef.current = window.setTimeout(() => {
+          reconnectTimerRef.current = null;
+          void connectSocket();
+        }, delayMs);
+      };
     } catch {}
-  })();
+  }, [applySnapshot, me?.user_id, removeRemotePlayer, sendJoinIfReady, upsertRemotePlayer]);
 
-  return () => {
-    cancelled = true;
-  };
-}, []);
+  const cancelledConnect = useRef(false);
+  useEffect(() => {
+    cancelledConnect.current = false;
+    void connectSocket();
 
-  const handleRoadsOnce = useCallback((roads: THREE.Mesh[]) => {
-    roadsRef.current = roads;
+    return () => {
+      cancelledConnect.current = true;
 
-    if (spawnedRef.current) return;
-    spawnedRef.current = true;
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
 
-    const mesh = roads[Math.floor(Math.random() * roads.length)];
-    const p = samplePointOnMesh(mesh);
-    if (!p) return;
+      const socket = socketRef.current;
+      socketRef.current = null;
+      socketReadyRef.current = false;
+      joinedRef.current = false;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close(1000, "component-unmount");
+      }
+    };
+  }, [connectSocket]);
 
-    p.y += FOOT_Y_OFFSET;
-    avatarPosRef.current.copy(p);
-    setAvatarPosState(p.clone());
-  }, [samplePointOnMesh]);
+  useEffect(() => {
+    sendJoinIfReady();
+  }, [sendJoinIfReady]);
+
+  useEffect(() => {
+    if (!avatarPosState || !socketReadyRef.current || !joinedRef.current) return;
+
+    const nextPos = toPositionPayload(avatarPosState);
+    const lastPos = lastSentPosRef.current;
+    const now = Date.now();
+
+    if (lastPos && samePosition(lastPos, nextPos) && now - lastSentAtRef.current < 1000) {
+      return;
+    }
+
+    if (now - lastSentAtRef.current < POSITION_SEND_INTERVAL_MS) {
+      return;
+    }
+
+    const didSend = sendSocketMessage({
+      action: "position",
+      position: nextPos,
+      avatarModelUrl: me?.avatar_model_url || null,
+    });
+
+    if (!didSend) return;
+
+    lastSentPosRef.current = nextPos;
+    lastSentAtRef.current = now;
+  }, [avatarPosState, me?.avatar_model_url, sendSocketMessage]);
+
+  useEffect(() => {
+    if (!socketReadyRef.current || !joinedRef.current) return;
+
+    const intervalId = window.setInterval(() => {
+      sendSocketMessage({ action: "ping" });
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [sendSocketMessage]);
+
+  const handleRoadsOnce = useCallback(
+    (roads: THREE.Mesh[]) => {
+      roadsRef.current = roads;
+
+      if (spawnedRef.current) return;
+      spawnedRef.current = true;
+
+      const mesh = roads[Math.floor(Math.random() * roads.length)];
+      const p = samplePointOnMesh(mesh);
+      if (!p) return;
+
+      p.y += FOOT_Y_OFFSET;
+      avatarPosRef.current.copy(p);
+      setAvatarPosState(p.clone());
+    },
+    [samplePointOnMesh]
+  );
 
   const handlePickRoad = useCallback((p: THREE.Vector3) => {
     camAnimRef.current = null;
@@ -127,7 +371,7 @@ export default function ExploreScene() {
     const pp = p.clone();
     pp.y += FOOT_Y_OFFSET;
     avatarPosRef.current.copy(pp);
-    setAvatarPosState(pp);
+    setAvatarPosState(pp.clone());
   }, []);
 
   const flyTo = useCallback(
@@ -212,7 +456,7 @@ export default function ExploreScene() {
         const avatarP = roadP.clone();
         avatarP.y += FOOT_Y_OFFSET;
         avatarPosRef.current.copy(avatarP);
-        setAvatarPosState(avatarP);
+        setAvatarPosState(avatarP.clone());
       }
 
       const target = payload.worldPos.clone();
@@ -267,6 +511,7 @@ export default function ExploreScene() {
         isAnimatingRef={isAnimatingRef}
         avatarRef={avatarRef}
         avatarPos={avatarPosState}
+        remotePlayers={remotePlayers}
         userName={me?.first_name || ""}
         avatarModelUrl={me?.avatar_model_url || ""}
         hoverBuilding={hoverBuilding}
