@@ -1,300 +1,438 @@
-.container {
+/* ─────────────────────────────────────────────
+   page.module.css — ChallengeProgress
+   Design mirrors ActivityChallengeProgress
+───────────────────────────────────────────── */
+
+.page {
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 680px 580px;
+  gap: 44px;
+  align-items: start;
+  color: #000;
+  font-family: "Rounded Mplus 1c", sans-serif;
+  padding-bottom: 20px;
+}
+
+.column {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 1200px;
-  margin: 0 auto;
-  font-family: inherit;
-  color: #333;
-  padding: 16px;
+  gap: 20px;
 }
 
-.card {
-  background-color: #fff;
-  border: 1px solid #f3f4f6;
-  border-radius: 12px;
-  padding: 32px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  margin-bottom: 24px;
+/* ── Panels ────────────────────────────────── */
+.panel {
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  box-sizing: border-box;
 }
 
-.feedbackGreen {
-  background-color: #dcfce7 !important;
-  border-color: #bbf7d0 !important;
+.summaryPanel     { padding: 28px 24px 24px; }
+.contentPanel,
+.requirementsPanel,
+.tipPanel         { padding: 24px; }
+.submissionPanel  { padding: 24px 20px 20px; }
+
+.successPanel {
+  padding: 18px 20px;
+  background: #a8dadc;
+  border-color: #a8dadc;
 }
 
-.cardHeader {
+/* ── Summary panel ─────────────────────────── */
+.eyebrow {
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  margin-bottom: 10px;
+}
+
+.topRow {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  gap: 16px;
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-  letter-spacing: -0.025em;
   margin: 0;
-}
-
-.backButton {
-  background: #f3f4f6;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 28px;
+  line-height: 1.15;
   font-weight: 500;
-  color: #4b5563;
-  transition: all 0.2s ease;
 }
 
-.backButton:hover {
-  background-color: #e5e7eb;
-  color: #111827;
-}
-
-.description {
-  font-size: 0.9rem;
-  color: #4b5563;
-  line-height: 1.5;
-  margin-bottom: 24px;
-  max-width: 80%;
-}
-
-.infoGrid {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  background-color: #f8fafc;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #f1f5f9;
-}
-
-.infoColumn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.infoColumn p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.infoColumn span {
-  display: block;
-  color: #0f172a;
-  font-weight: 600;
-  font-size: 1rem;
-  text-transform: none;
-  letter-spacing: normal;
-  margin-top: 4px;
-}
-
-.statusRed {
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.statusBlue {
-  color: #2563eb;
-  font-weight: 600;
-}
-
-.statusGreen {
-  color: #16a34a;
-  font-weight: 600;
-}
-
-.sectionTitle {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 16px 0;
-}
-
-.formGroup {
-  margin-bottom: 24px;
-}
-
-.label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #374151;
-}
-
-.textarea {
-  width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 0.95rem;
-  resize: vertical;
-  outline: none;
-  background-color: #fff;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.textarea:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
-}
-
-.uploadArea {
-  border: 2px dashed #cbd5e1;
-  border-radius: 8px;
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: #f8fafc;
-  transition: background-color 0.2s;
-}
-
-.uploadButton {
-  background: #f9fafb;
-  border: 1px solid #000;
-  padding: 6px 64px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
-}
-
-.uploadButton:hover {
-  background-color: #f3f4f6;
-}
-
-/* Hide the default input completely */
-.hiddenInput {
-  display: none;
-}
-
-/* Style the label to look like a button */
-.customUploadButton {
-  display: inline-block;
-  padding: 10px 20px;
-  background-color: #3b82f6;
-  color: white;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.3);
-}
-
-.customUploadButton:hover {
-  background-color: #2563eb;
-  transform: translateY(-1px);
-}
-
-/* Style for the text showing the chosen file name */
-.fileName {
-  font-size: 14px;
-  color: #3b82f6;
-  font-weight: 500;
-  margin-bottom: 12px;
-}
-
-.uploadArea {
+.headerActions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-/*  Submit Button */
-.submitButton {
-  display: inline-block;
-  padding: 12px 32px;
-  background-color: #0ea5e9;
-  color: white;
-  font-weight: 600;
-  border-radius: 8px;
-  border: none;
+.backButton {
+  min-width: 78px;
+  height: 28px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: #fff;
+  color: #000;
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-family: inherit;
+  border-radius: 2px;
 }
 
-.submitButton:hover {
-  background-color: #0284c7;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(14, 165, 233, 0.4);
+.description {
+  margin: 18px 0 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
 }
 
-/* Disabled button */
-.submitButton:disabled {
-  background-color: #898989;
-  cursor: not-allowed;
-  /* Opacity */
-  opacity: 0.5;
+/* ── Meta grid ─────────────────────────────── */
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.feedbackComment {
-  font-style: italic;
-  color: #166534;
-  background-color: #dcfce7;
-  padding: 16px;
-  border-left: 4px solid #22c55e;
-  border-radius: 4px;
-  margin-bottom: 24px;
+.metaCard {
+  min-height: 74px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+  padding: 12px 14px;
+  box-sizing: border-box;
 }
 
-.rewardContainer {
+.metaLabel {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.metaValue {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* ── Status pill ───────────────────────────── */
+.statusPill {
+  min-width: 92px;
+  height: 28px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 2px;
+}
+
+.statusIncomplete {
+  background: #fde6e7;
+  color: #af2b3a;
+}
+
+.statusSubmitted {
+  background: #fff1cf;
+  color: #876300;
+}
+
+.statusComplete {
+  background: #dff2dd;
+  color: #20511f;
+}
+
+/* ── Reward skills ─────────────────────────── */
+.rewardSkillsSection { margin-top: 18px; }
+
+.rewardSkillsTitle {
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 10px;
+}
+
+.rewardSkillsList {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rewardSkillRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 74px;
+  min-height: 44px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+}
+
+.rewardSkillName,
+.rewardSkillLevel,
+.rewardSkillPercent {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.rewardSkillName { padding: 0 14px; }
+
+.rewardSkillLevel,
+.rewardSkillPercent {
+  justify-content: center;
+  border-left: 1px solid #d9d9d9;
+}
+
+/* ── Section titles / text ─────────────────── */
+.sectionTitle {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.sectionBlock + .sectionBlock { margin-top: 18px; }
+
+.sectionText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.sectionDivider {
+  height: 1px;
+  background: #000;
+  margin: 18px 0;
+}
+
+/* ── Requirements ──────────────────────────── */
+.requirementList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.requirementItem {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.deliverableWrap {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.deliverableChip {
+  min-height: 32px;
+  padding: 7px 12px;
+  border: 1px solid #b3b3b3;
+  background: #f7f7f7;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+/* ── Success panel ─────────────────────────── */
+.successTitle {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.successCard {
+  min-height: 42px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  margin-bottom: 8px;
+}
+
+.successCardLabel {
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.successCardValue {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.successMetaRow {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+/* ── Submission form ───────────────────────── */
+.fieldGroup + .fieldGroup { margin-top: 16px; }
+
+.fieldLabel {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1.5px solid rgba(0, 0, 0, 0.45);
+  background: #f7f7f7;
+  border-radius: 2px;
+  font-family: inherit;
+  color: rgba(0, 0, 0, 0.8);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.input {
+  height: 39px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.textarea {
+  min-height: 160px;
+  resize: vertical;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.textarea:disabled,
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Upload box ────────────────────────────── */
+.uploadBox {
+  border: 1px dashed rgba(0, 0, 0, 0.25);
+  background: #fcfcfc;
+  padding: 16px;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.uploadEmpty {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.uploadButton {
+  width: 112px;
+  height: 36px;
+  border: 1px solid #b3b3b3;
+  background: #f7f7f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.hiddenInput { display: none; }
+
+.uploadFileCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #d7d7d7;
+}
+
+.uploadFileName {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.uploadFileName a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.uploadFileHint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.inlineTextButton {
+  border: 0;
+  background: transparent;
+  color: #b42318;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+/* ── Action row ────────────────────────────── */
+.actionRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-.rewardBadge {
+.primaryButton {
+  min-width: 144px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1.5px solid #000;
+  background: #a8dadc;
+}
+
+.primaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Tips ──────────────────────────────────── */
+.tipList {
   display: flex;
-  align-items: center;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  flex-direction: column;
+  gap: 10px;
 }
 
-.badgeLabel {
-  background-color: #f3f4f6;
-  color: #4b5563;
-  padding: 8px 12px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  border-right: 1px solid #e5e7eb;
+.tipItem {
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
 }
 
-.badgeValue {
-  padding: 8px 16px;
-  font-weight: bold;
-  font-size: 0.95rem;
-}
-
-.badgePass .badgeValue {
-  background-color: #22c55e;
-  color: white;
-}
-
-.badgeFail .badgeValue {
-  background-color: #ef4444;
-  color: white;
-}
-
-.badgeFail .badgeLabel {
-  border-right: 1px solid #fca5a5;
-}
-
-.badgeXp .badgeValue {
-  background-color: #eab308;
-  color: white;
+/* ── Responsive ────────────────────────────── */
+@media (max-width: 1280px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
 }

@@ -1,86 +1,94 @@
 import { NextResponse } from "next/server";
+import { Pool } from "pg";
+import fs from "fs";
 
-const ALLOWED_MODELS = new Set([
-  "building-models/building-model-typeA.glb",
-  "building-models/building-model-typeB.glb",
-  "building-models/building-model-typeC.glb",
-  "building-models/building-model-typeD.glb",
-  "building-models/building-model-typeE.glb",
-]);
+export const runtime = "nodejs";
 
-function normalizeModel(model: string) {
-  return (model || "").trim().replace(/^\/+/, "");
+const DATABASE_URL = process.env.DATABASE_URL!;
+const PGSSL_CA_PATH = process.env.PGSSL_CA_PATH;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __vcepOptionsBuildingsPool: Pool | undefined;
 }
 
-function toBuildingName(model: string, fallbackIndex: number) {
-  const map: Record<string, string> = {
-    "building-models/building-model-typeA.glb": "Building A",
-    "building-models/building-model-typeB.glb": "Building B",
-    "building-models/building-model-typeC.glb": "Building C",
-    "building-models/building-model-typeD.glb": "Building D",
-    "building-models/building-model-typeE.glb": "Building E",
-  };
+function stripPgSslParams(connectionString: string) {
+  try {
+    const url = new URL(connectionString);
+    ["sslmode", "sslcert", "sslkey", "sslrootcert"].forEach((k) =>
+      url.searchParams.delete(k)
+    );
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
+}
 
-  return map[model] || `Building ${fallbackIndex + 1}`;
+function getPool() {
+  if (global.__vcepOptionsBuildingsPool) return global.__vcepOptionsBuildingsPool;
+
+  const ssl =
+    PGSSL_CA_PATH && fs.existsSync(PGSSL_CA_PATH)
+      ? { ca: fs.readFileSync(PGSSL_CA_PATH, "utf8") }
+      : { rejectUnauthorized: false };
+
+  global.__vcepOptionsBuildingsPool = new Pool({
+    connectionString: stripPgSslParams(DATABASE_URL),
+    ssl,
+  });
+
+  return global.__vcepOptionsBuildingsPool;
+}
+
+function toPublicAssetUrl(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const base = (
+    String(process.env.ASSETS_PUBLIC_BASE || "").trim() ||
+    String(process.env.S3_PUBLIC_BASE_URL || "").trim() ||
+    String(process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL || "").trim() ||
+    "https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com"
+  ).replace(/\/$/, "");
+
+  return `${base}/${raw.replace(/^\/+/, "")}`;
 }
 
 export async function GET() {
   try {
-    const baseUrl = process.env.BACKEND_URL;
-    if (!baseUrl) {
-      return NextResponse.json(
-        { ok: false, message: "BACKEND_URL is not set" },
-        { status: 500 }
-      );
-    }
+    const pool = getPool();
 
-    const r = await fetch(`${baseUrl}/auth/building/all`, {
-      cache: "no-store",
-    });
+    const result = await pool.query(`
+      SELECT
+        b.building_id,
+        b.building_name,
+        b.building_model,
+        b.preview_url,
+        b.unlock_level,
+        COALESCE(b.building_selected, false) AS building_selected
+      FROM building b
+      WHERE b.building_name IS NOT NULL
+        AND b.building_name <> ''
+        AND b.building_model IS NOT NULL
+        AND b.building_model <> ''
+      ORDER BY b.building_name ASC
+    `);
 
-    if (!r.ok) {
-      const t = await r.text();
-      return new NextResponse(t, { status: r.status });
-    }
+    const items = result.rows.map((row) => ({
+      id: String(row.building_id),
+      name: String(row.building_name),
+      modelUrl: toPublicAssetUrl(row.building_model),
+      previewUrl: row.preview_url ? toPublicAssetUrl(row.preview_url) : null,
+      unlockLevel: Number(row.unlock_level ?? 0),
+      buildingSelected: Boolean(row.building_selected),
+    }));
 
-    const rows = await r.json();
-    const assetsBase =
-      process.env.ASSETS_PUBLIC_BASE ||
-      process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL ||
-      "https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com";
-
-    const items = (Array.isArray(rows) ? rows : [])
-      .map((x: any, index: number) => {
-        const id = String(x.building_id ?? x.id ?? "");
-        const raw =
-          String(x.building_model ?? x.model ?? x.buildingModel ?? "");
-        const model = normalizeModel(raw);
-        const unlockLevel = Number(x.unlock_level ?? 0);
-
-        return {
-          id,
-          model,
-          unlockLevel,
-          name:
-            String(x.building_name ?? "").trim() ||
-            toBuildingName(model, index),
-          previewUrl: String(x.preview_url ?? "").trim() || null,
-        };
-      })
-      .filter((it: any) => it.id && it.model && ALLOWED_MODELS.has(it.model))
-      .map((it: any) => ({
-        id: it.id,
-        name: it.name,
-        modelUrl: `${assetsBase.replace(/\/+$/, "")}/${it.model}`,
-        previewUrl: it.previewUrl,
-        unlockLevel: it.unlockLevel,
-      }));
-
-    return NextResponse.json(items);
-  } catch (e: any) {
-    console.error("GET /api/options/buildings ERROR:", e);
+    return NextResponse.json({ ok: true, items });
+  } catch (error: any) {
+    console.error("GET /api/options/buildings ERROR:", error);
     return NextResponse.json(
-      { ok: false, message: e?.message || "failed" },
+      { ok: false, message: error?.message || "failed" },
       { status: 500 }
     );
   }

@@ -34,6 +34,18 @@ import type {
 } from "../types";
 import { SkeletonUtils } from "three-stdlib";
 
+export type RemotePlayer = {
+  userId: string;
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  rotationY?: number;
+  avatarModelUrl?: string | null;
+  updatedAt: number;
+};
+
 type MapCanvasProps = {
   controlsRef: MutableRefObject<OrbitControlsImpl | null>;
   cameraRef: MutableRefObject<THREE.PerspectiveCamera | null>;
@@ -42,6 +54,7 @@ type MapCanvasProps = {
   isAnimatingRef: MutableRefObject<boolean>;
   avatarRef: MutableRefObject<THREE.Group | null>;
   avatarPos: THREE.Vector3 | null;
+  remotePlayers: RemotePlayer[];
   userName: string;
   avatarModelUrl?: string;
   hoverBuilding: HoverBuildingPayload;
@@ -52,6 +65,8 @@ type MapCanvasProps = {
   onCameraAnimDone: (company: Company | null) => void;
   resolveCompany: (meshName: string) => Company | null;
 };
+
+type AvatarPosition = THREE.Vector3 | { x: number; y: number; z: number } | null;
 
 function pickLoopClip(names: string[]) {
   const lower = names.map((n) => n.toLowerCase());
@@ -343,10 +358,11 @@ const Avatar = React.forwardRef<
   THREE.Group,
   {
     modelUrl?: string;
-    position: THREE.Vector3 | null;
+    position: AvatarPosition;
+    rotationY?: number;
     scale?: number;
   }
->(({ modelUrl = "/models/boy.glb", position, scale = 3 }, ref) => {
+>(({ modelUrl = "/models/boy.glb", position, rotationY = 0, scale = 3 }, ref) => {
   const groupRef = useRef<THREE.Group | null>(null);
   const gltf = useGLTF(modelUrl);
   const clonedScene = useMemo(() => SkeletonUtils.clone(gltf.scene), [gltf.scene]);
@@ -354,8 +370,18 @@ const Avatar = React.forwardRef<
 
   useEffect(() => {
     if (!groupRef.current || !position) return;
-    groupRef.current.position.copy(position);
+
+    if (position instanceof THREE.Vector3) {
+      groupRef.current.position.copy(position);
+    } else {
+      groupRef.current.position.set(position.x, position.y, position.z);
+    }
   }, [position]);
+
+  useEffect(() => {
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y = rotationY;
+  }, [rotationY]);
 
   useEffect(() => {
     if (!ref) return;
@@ -482,6 +508,7 @@ export default function MapCanvas({
   isAnimatingRef,
   avatarRef,
   avatarPos,
+  remotePlayers,
   userName,
   avatarModelUrl,
   hoverBuilding,
@@ -557,6 +584,16 @@ export default function MapCanvas({
             </div>
           </Html>
         ) : null}
+
+        {remotePlayers.map((player) => (
+          <Avatar
+            key={`${player.userId}-${player.avatarModelUrl || "default"}`}
+            modelUrl={player.avatarModelUrl || "/models/boy.glb"}
+            position={player.position}
+            rotationY={player.rotationY ?? 0}
+            scale={3}
+          />
+        ))}
 
         <Avatar
           key={avatarModelUrl || "/models/boy.glb"}

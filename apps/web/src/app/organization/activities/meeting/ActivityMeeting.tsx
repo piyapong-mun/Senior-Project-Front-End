@@ -1913,16 +1913,16 @@ function AccessAndScheduleSection({
 
   return (
     <SectionCard className={styles.settingsPanel}>
+      {/* Audience และ Join mode ถูก fixed เป็น everyone + scheduledParticipation */}
       <div className={styles.accessGrid}>
         {AUDIENCE_OPTIONS.map((option) => (
-          <button
+          <div
             key={option.value}
-            type="button"
             className={`${styles.accessCard} ${selectedAudience === option.value ? styles.accessCardActive : ""}`}
-            onClick={() => onSelectAudience(option.value)}
+            style={{ cursor: "default", opacity: option.value !== selectedAudience ? 0.4 : 1 }}
           >
             <div className={styles.accessTitle}>{option.label}</div>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -1930,14 +1930,13 @@ function AccessAndScheduleSection({
 
       <div className={styles.joinModeGrid}>
         {PARTICIPATION_OPTIONS.map((option) => (
-          <button
+          <div
             key={option.value}
-            type="button"
             className={`${styles.joinModeButton} ${selectedParticipation === option.value ? styles.joinModeButtonActive : ""}`}
-            onClick={() => onSelectParticipation(option.value)}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", cursor: "default", opacity: option.value !== selectedParticipation ? 0.4 : 1 }}
           >
             {option.label}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -2096,7 +2095,7 @@ export default function ActivityMeeting() {
   });
   const [initialSkillItems, setInitialSkillItems] = useState<SkillProgressItem[]>([]);
   const [initialSelectedPlace, setInitialSelectedPlace] = useState<SelectedPlaceState | null>(null);
-  const [initialUnlimited, setInitialUnlimited] = useState(false);
+  const [initialUnlimited, setInitialUnlimited] = useState(true);
   const [formSeed, setFormSeed] = useState(0);
 
   const [isInitialLoading, setIsInitialLoading] = useState(isEditMode);
@@ -2215,7 +2214,25 @@ export default function ActivityMeeting() {
 
     const activityTitle = activityTitleRef.current?.value?.trim() || "";
     if (!activityTitle) {
-      setSubmitError("Please fill in the Activity Title.");
+      setSubmitError("กรุณากรอก Activity Title");
+      return;
+    }
+
+    const description = descriptionRef.current?.value?.trim() || "";
+    if (!description) {
+      setSubmitError("กรุณากรอก Description");
+      return;
+    }
+
+    const enrollRange = enrollmentRangeRef.current;
+    if (!enrollRange.startDate || !enrollRange.endDate) {
+      setSubmitError("กรุณาเลือก Enrollment Period");
+      return;
+    }
+
+    const actRange = activityRangeRef.current;
+    if (!actRange.startDate || !actRange.endDate) {
+      setSubmitError("กรุณาเลือก Activity Run Period");
       return;
     }
 

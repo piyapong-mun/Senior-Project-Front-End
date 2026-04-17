@@ -74,83 +74,15 @@ type PresenceStudent = {
   modelUrl?: string | null;
 };
 
-const MOCK_OCCUPIED_BUILDING_MESH_NAMES = [
-  "building-model-01",
-  "building-model-02",
-  "building-model-03",
-  "building-model-04",
-] as const;
-
-const MOCK_CURRENT_ACCOUNT_BUILDING_MESH_NAME = "building-model-03";
-
-const DASHBOARD_MOCK_ACTIVITIES: OrgActivity[] = [
-  {
-    id: "activity-1",
-    title: "Frontend Basics & Web Terminology Quiz",
-    description: "Course activity focused on basic web concepts and terminology for beginners.",
-    difficulty: "Beginner",
-    category: "Course",
-    xp_reward: 20,
-    status: "Pending",
-  },
-  {
-    id: "activity-2",
-    title: "UI Layout Explanation Task",
-    description: "Explain interface layout choices and core page structure using simple design reasoning.",
-    difficulty: "Beginner",
-    category: "Course",
-    xp_reward: 15,
-    status: "Open",
-  },
-  {
-    id: "activity-3",
-    title: "Responsive Web Page Workshop",
-    description: "Hands-on challenge on responsive page structure and adaptive component behavior.",
-    difficulty: "Intermediate",
-    category: "Challenge",
-    xp_reward: 50,
-    status: "Open",
-  },
-  {
-    id: "activity-4",
-    title: "Frontend Performance Analysis Case",
-    description: "Analyze front-end bottlenecks and propose practical improvements for performance.",
-    difficulty: "Advanced",
-    category: "Challenge",
-    xp_reward: 65,
-    status: "Pending",
-  },
-];
-
-const DASHBOARD_PROFILE_SUMMARY: OrgProfileSummary = {
-  description:
-    "Quality work requires attention to detail. The best solutions often come from collaboration. Simple ideas can have profound impacts. Every challenge presents an opportunity for growth.",
-  phone: "(746) 807-2977",
-  email: "emmadavis@hotmail.com",
-  address: "Philadelphia, PA",
-  totalActivities: 15,
-  published: 15,
-  draft: 2,
-  meetings: 4,
-  courses: 8,
-  challenges: 5,
-  participants: 32,
-};
-
-const FALLBACK_ORG: CurrentOrg = {
-  org_id: "demo-org",
-  org_name: "PeakSystems",
+// ── ค่าเริ่มต้น (ใช้ขณะโหลด ไม่ใช่ mock ถาวร) ──────────────────────────────
+const INITIAL_ORG: CurrentOrg = {
+  org_id: "",
+  org_name: "",
   logo: undefined,
-  building_mesh_names: [MOCK_CURRENT_ACCOUNT_BUILDING_MESH_NAME],
-  activities: DASHBOARD_MOCK_ACTIVITIES,
-  profileSummary: DASHBOARD_PROFILE_SUMMARY,
+  building_mesh_names: [],
+  activities: [],
+  profileSummary: {},
 };
-
-const FALLBACK_REMOTE_STUDENTS: RemoteStudent[] = [
-  { id: "p1", name: "Charlotte Garcia", position: new THREE.Vector3(10, 5, -4), modelUrl: "/models/boy.glb" },
-  // { id: "p2", name: "Emma Williams", position: new THREE.Vector3(-7, 5, -2), modelUrl: "/models/boy.glb" },
-  // { id: "p3", name: "James Taylor", position: new THREE.Vector3(6, 5, -4), modelUrl: "/models/boy.glb" },
-];
 
 function normalizeActivities(input: unknown): OrgActivity[] {
   if (!Array.isArray(input)) return [];
@@ -216,21 +148,19 @@ function buildProfileSummary(payload: any): OrgProfileSummary {
 function buildOrgFromPayload(payload: any): CurrentOrg | null {
   if (!payload || typeof payload !== "object") return null;
 
-  // รองรับทั้ง normalizeOrg format (orgName, aboutUs, email ฯลฯ)
-  // และ raw backend format (org_name, about_org ฯลฯ)
   const orgName = String(
     payload.orgName ?? payload.org_name ?? payload.organization_name ?? payload.name ?? ""
   ).trim();
 
   if (!orgName) return null;
 
-  // building mesh name จาก buildingName ที่ set ไว้ใน DB
+  // ใช้ building_name จาก DB จริง — ไม่มี fallback hardcode
   const buildingMeshName = String(
-    payload.buildingName ?? payload.building_name ?? MOCK_CURRENT_ACCOUNT_BUILDING_MESH_NAME
-  ).trim() || MOCK_CURRENT_ACCOUNT_BUILDING_MESH_NAME;
+    payload.buildingName ?? payload.building_name ?? ""
+  ).trim();
 
   return {
-    org_id: String(payload.orgId ?? payload.org_id ?? payload.id ?? "org"),
+    org_id: String(payload.orgId ?? payload.org_id ?? payload.id ?? ""),
     org_name: orgName,
     logo:
       typeof payload.logoPreview === "string" && payload.logoPreview
@@ -238,7 +168,8 @@ function buildOrgFromPayload(payload: any): CurrentOrg | null {
         : typeof payload.logo === "string" && payload.logo
           ? payload.logo
           : undefined,
-    building_mesh_names: [buildingMeshName],
+    // ถ้า buildingMeshName ว่าง = org ยังไม่ได้เลือกตึก
+    building_mesh_names: buildingMeshName ? [buildingMeshName] : [],
     activities: normalizeActivities(payload.activities ?? payload.open_activities ?? payload.activity_list),
     profileSummary: buildProfileSummary({
       description: payload.aboutUs ?? payload.about_org ?? payload.description,
@@ -293,45 +224,81 @@ export default function OrgExploreScene() {
   const yawAnimRef = useRef<YawAnimState | null>(null);
   const isAnimatingRef = useRef(false);
 
-  const [org, setOrg] = useState<CurrentOrg>(FALLBACK_ORG);
-  const [remoteStudents, setRemoteStudents] = useState<RemoteStudent[]>(FALLBACK_REMOTE_STUDENTS);
+  const [org, setOrg] = useState<CurrentOrg>(INITIAL_ORG);
+  const [remoteStudents, setRemoteStudents] = useState<RemoteStudent[]>([]);
   const [isOwnBuildingSelected, setIsOwnBuildingSelected] = useState(false);
   const [hoverPayload, setHoverPayload] = useState<OrgHoverPayload>(null);
 
+  // ── ตึกที่มี org อยู่ (ดึงจาก DB จริง) ──────────────────────────────────────
+  const [occupiedMeshNames, setOccupiedMeshNames] = useState<string[]>([]);
+
+  // โหลด dashboard + buildings พร้อมกัน
+  // dashboard มี activities, summary, building.buildingName ครบ
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const response = await fetch("/api/organization", { cache: "no-store" });
-        const json = (await response.json().catch(() => null)) as OrgApiResponse | null;
-        if (!response.ok || !json?.ok) return;
+        const [dashRes, buildingsRes] = await Promise.all([
+          fetch("/api/organization/dashboard", { cache: "no-store" }),
+          fetch("/api/organization/explore/buildings", { cache: "no-store" }),
+        ]);
 
-        // normalizeOrg คืน { ok, data: { organization: { orgName, orgId, ... } } }
-        const nextOrg = buildOrgFromPayload(
-          json.data?.organization ?? json.data ?? json.org ?? json
-        );
-        if (!cancelled && nextOrg) {
-          setOrg((prev) => ({
-            ...prev,
-            ...nextOrg,
-            activities: nextOrg.activities.length ? nextOrg.activities : prev.activities,
-            profileSummary: {
-              ...prev.profileSummary,
-              ...nextOrg.profileSummary,
-            },
-          }));
+        const dashJson = await dashRes.json().catch(() => null);
+        const buildingsJson = await buildingsRes.json().catch(() => null);
+
+        // ── occupied buildings list ─────────────────────────────────────────
+        const buildings: { org_id: string; org_name: string; building_name: string }[] =
+          buildingsJson?.data?.buildings ?? buildingsJson?.buildings ?? [];
+
+        const meshNames = buildings
+          .map((b) => String(b.building_name ?? "").trim().toLowerCase())
+          .filter(Boolean);
+
+        if (!cancelled && meshNames.length) {
+          setOccupiedMeshNames(meshNames);
         }
-      } catch {
-        // keep mock values
-      }
+
+        // ── org ของตัวเอง จาก dashboard ────────────────────────────────────
+        if (!dashRes.ok || !dashJson?.ok) return;
+
+        const d = dashJson.data;
+        // สร้าง payload รวมข้อมูลทั้งหมดจาก dashboard
+        const orgPayload = {
+          ...(d?.org ?? {}),
+          activities: d?.activities ?? [],
+          // summary fields
+          totalActivities: d?.summary?.totalActivities,
+          published:       d?.summary?.published,
+          draft:           d?.summary?.draft,
+          meetings:        d?.summary?.meetings,
+          courses:         d?.summary?.courses,
+          challenges:      d?.summary?.challenges,
+          participants:    d?.summary?.totalParticipants,
+          // building_name มาจาก building object
+          buildingName:    d?.building?.buildingName ?? "",
+        };
+
+        const nextOrg = buildOrgFromPayload(orgPayload);
+        if (!nextOrg || cancelled) return;
+
+        // fallback: ถ้า buildingName ยังว่าง ให้ cross-match จาก buildings list
+        if (!nextOrg.building_mesh_names.length) {
+          const orgId = String(d?.account?.orgId ?? d?.org?.orgId ?? d?.org?.org_id ?? "").trim();
+          const matched = buildings.find((b) => String(b.org_id ?? "").trim() === orgId);
+          if (matched?.building_name) {
+            nextOrg.building_mesh_names = [matched.building_name.toLowerCase()];
+          }
+        }
+
+        setOrg(nextOrg);
+      } catch {}
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
+  // โหลด remote students
   useEffect(() => {
     let cancelled = false;
 
@@ -348,14 +315,10 @@ export default function OrgExploreScene() {
         if (!cancelled && nextStudents.length) {
           setRemoteStudents(nextStudents);
         }
-      } catch {
-        // keep mock values
-      }
+      } catch {}
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const ownBuildingMeshNames = useMemo(
@@ -363,10 +326,11 @@ export default function OrgExploreScene() {
     [org.building_mesh_names]
   );
 
-  const occupiedBuildingMeshNames = useMemo(
-    () => [...MOCK_OCCUPIED_BUILDING_MESH_NAMES].map((name) => name.toLowerCase()),
-    []
-  );
+  // รวม own building เข้าไปใน occupied ด้วยเสมอ (ถ้ามี)
+  const occupiedBuildingMeshNames = useMemo(() => {
+    const set = new Set([...occupiedMeshNames, ...ownBuildingMeshNames]);
+    return Array.from(set);
+  }, [occupiedMeshNames, ownBuildingMeshNames]);
 
   const flyTo = useCallback((target: THREE.Vector3, dist: number) => {
     const ctrls = controlsRef.current;

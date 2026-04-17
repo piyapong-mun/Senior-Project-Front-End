@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { decodeJwt } from "jose";
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 import fs from "fs";
 import http from "http";
 import https from "https";
@@ -144,8 +144,6 @@ function toPublicAssetUrl(value: unknown) {
   return `${base}/${raw.replace(/^\/+/, "")}`;
 }
 
-// ─── contact ต้องเป็น JSON STRING ตาม Swagger spec ──────────────────────────
-// Swagger: "contact": "{ \"email\": \"...\", \"phone\": \"...\" }"
 function buildContact(body: any, fallbackEmail: string): string {
   return JSON.stringify({
     email: toStringValue(body?.email, fallbackEmail),
@@ -283,6 +281,77 @@ async function getEmployeeContext(req: Request): Promise<EmployeeContext> {
   };
 }
 
+async function syncBuildingSelection(
+  client: PoolClient,
+  previousBuildingId: string | null,
+  nextBuildingId: string | null
+) {
+  const prevId = previousBuildingId?.trim() || null;
+  const nextId = nextBuildingId?.trim() || null;
+
+  if (!nextId) {
+    if (prevId) {
+      await client.query(
+        `
+        UPDATE building
+        SET building_selected = false
+        WHERE building_id = $1
+        `,
+        [prevId]
+      );
+    }
+    return;
+  }
+
+  const targetRes = await client.query(
+    `
+    SELECT
+      building_id,
+      COALESCE(building_selected, false) AS building_selected
+    FROM building
+    WHERE building_id = $1
+    FOR UPDATE
+    `,
+    [nextId]
+  );
+
+  if (targetRes.rowCount === 0) {
+    const error: any = new Error("Selected building not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const target = targetRes.rows[0];
+
+  if (target.building_selected && prevId !== nextId) {
+    const error: any = new Error(
+      "This building has already been selected by another organization"
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+
+  if (prevId && prevId !== nextId) {
+    await client.query(
+      `
+      UPDATE building
+      SET building_selected = false
+      WHERE building_id = $1
+      `,
+      [prevId]
+    );
+  }
+
+  await client.query(
+    `
+    UPDATE building
+    SET building_selected = true
+    WHERE building_id = $1
+    `,
+    [nextId]
+  );
+}
+
 function getBackendAgent(target: URL) {
   if (target.protocol !== "https:") return undefined;
 
@@ -354,9 +423,12 @@ async function requestBackendJson(
             const message =
               (parsed &&
                 typeof parsed === "object" &&
-                (parsed.message || parsed.error ||
+                (parsed.message ||
+                  parsed.error ||
                   (Array.isArray(parsed.detail)
-                    ? parsed.detail.map((d: any) => d?.msg || JSON.stringify(d)).join("; ")
+                    ? parsed.detail
+                        .map((d: any) => d?.msg || JSON.stringify(d))
+                        .join("; ")
                     : parsed.detail))) ||
               (typeof parsed === "string" && parsed) ||
               `Backend request failed with status ${status}`;
@@ -380,11 +452,13 @@ async function saveOrg(
   body: any,
   orgId: string | null,
   fallbackEmail: string,
-  pool: import("pg").Pool
+  fallbackBuildingId: string | null
 ) {
   const logo = toStringValue(body?.logo ?? body?.logoKey);
+  const selectedBuildingId =
+    toStringValue(body?.buildingId ?? body?.building_id) ||
+    (fallbackBuildingId ? String(fallbackBuildingId) : "");
 
-  // ── Build payload ──────────────────────────────────────────────────────────
   const payload: Record<string, any> = {
     about_org: toStringValue(body?.aboutUs ?? body?.about_org),
     contact: buildContact(body, fallbackEmail),
@@ -396,29 +470,11 @@ async function saveOrg(
   };
 
   if (logo) payload.logo = logo;
+  if (selectedBuildingId) payload.building_id = selectedBuildingId;
 
   let lastError: Error | null = null;
 
   if (orgId) {
-    // ── Preserve existing building_id from DB to avoid FK violation ─────────
-    // building_id is managed separately via the map picker — never overwrite it
-    // but PUT /org requires it to be present if the record already has one
-    try {
-      const existing = await pool.query(
-        `SELECT building_id FROM organizations WHERE org_id = $1 LIMIT 1`,
-        [orgId]
-      );
-      const existingBuildingId = existing.rows[0]?.building_id
-        ? String(existing.rows[0].building_id)
-        : null;
-      if (existingBuildingId) {
-        payload.building_id = existingBuildingId;
-      }
-    } catch {
-      // non-fatal — proceed without building_id
-    }
-
-    // ── Update existing org: PUT /org ───────────────────────────────────────
     try {
       return await requestBackendJson("/org", accessToken, {
         method: "PUT",
@@ -428,7 +484,6 @@ async function saveOrg(
       lastError = err instanceof Error ? err : new Error(String(err));
     }
 
-    // Fallback to POST if PUT returns error (e.g. org not yet created in backend)
     try {
       return await requestBackendJson("/org", accessToken, {
         method: "POST",
@@ -438,7 +493,6 @@ async function saveOrg(
       lastError = err instanceof Error ? err : new Error(String(err));
     }
   } else {
-    // ── Create new org: POST /org ───────────────────────────────────────────
     try {
       return await requestBackendJson("/org", accessToken, {
         method: "POST",
@@ -451,8 +505,6 @@ async function saveOrg(
 
   throw lastError || new Error("Failed to save organization");
 }
-
-// ─── GET ──────────────────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
   try {
@@ -494,20 +546,76 @@ export async function GET(req: Request) {
   }
 }
 
-// ─── POST ─────────────────────────────────────────────────────────────────────
-
 export async function POST(req: Request) {
+  const pool = getPool();
+  const client = await pool.connect();
+
   try {
     const context = await getEmployeeContext(req);
     const body = await req.json();
 
+    const requestedOrgId =
+      toStringValue(body?.orgId || body?.org_id) || context.orgId || null;
+    const requestedBuildingId =
+      toStringValue(body?.buildingId ?? body?.building_id) || null;
+
+    let previousBuildingId: string | null = null;
+
+    await client.query("BEGIN");
+
+    if (requestedOrgId) {
+      const existingOrgRes = await client.query(
+        `
+        SELECT org_id, building_id
+        FROM organizations
+        WHERE org_id = $1
+        FOR UPDATE
+        `,
+        [requestedOrgId]
+      );
+
+      previousBuildingId = existingOrgRes.rows[0]?.building_id
+        ? String(existingOrgRes.rows[0].building_id)
+        : null;
+    }
+
+    const nextBuildingId = requestedBuildingId || previousBuildingId || null;
+
+    if (requestedBuildingId || previousBuildingId) {
+      await syncBuildingSelection(client, previousBuildingId, nextBuildingId);
+    }
+
     const orgRaw = await saveOrg(
       context.accessToken,
       body,
-      toStringValue(body?.orgId || body?.org_id) || context.orgId || null,
+      requestedOrgId,
       context.email || context.emailFromToken || "",
-      getPool()
+      previousBuildingId
     );
+
+    const savedOrgId =
+      toStringValue(orgRaw?.org_id) ||
+      toStringValue(requestedOrgId) ||
+      toStringValue(context.orgId);
+
+    if (savedOrgId) {
+      await client.query(
+        `
+        UPDATE organizations
+        SET
+          building_id = $2,
+          org_name = COALESCE(NULLIF($3, ''), org_name)
+        WHERE org_id = $1
+        `,
+        [
+          savedOrgId,
+          nextBuildingId,
+          toStringValue(body?.orgName ?? body?.org_name),
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
 
     return NextResponse.json({
       ok: true,
@@ -519,15 +627,19 @@ export async function POST(req: Request) {
       },
     });
   } catch (error: any) {
+    await client.query("ROLLBACK").catch(() => null);
+
     const message = error?.message || "Failed to save organization";
     const status =
       message === "Unauthorized" || message === "Invalid token"
         ? 401
         : message === "Only employee accounts can access this route"
           ? 403
-          : 500;
+          : Number(error?.statusCode || 500);
 
     return NextResponse.json({ ok: false, message }, { status });
+  } finally {
+    client.release();
   }
 }
 
