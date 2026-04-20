@@ -138,8 +138,8 @@ const FORM_DEFAULTS = {
   activityStartTime: "",
   activityEndDate: "",
   activityEndTime: "",
-  maxParticipants: "0",
-  xpReward: "60",
+  maxParticipants: "99",
+  xpReward: "0",
 };
 
 const SKILL_LEVEL_OPTIONS = [
@@ -1034,24 +1034,24 @@ function SkillsAndRewardsSection({
 
         <div className={styles.rewardStatsGrid}>
           <div className={styles.rewardCell}>
-            <div className={styles.rewardTitle}>XP</div>
+            <div className={styles.rewardTitle}>Hours</div>
             <input
               ref={xpRef}
               className={styles.xpValueBox}
               defaultValue={defaultXp}
               type="number"
               min="0"
-              style={{ width: "60px", textAlign: "center" }}
+              style={{ width: "80px", textAlign: "center" }}
             />
             <div className={styles.rewardIconWrap} aria-hidden="true">
               <div className={styles.challengeRewardBadge}>
-                <Image
+                {/* <Image
                   src="/images/icons/badge01.png"
                   alt="Challenge badge"
                   fill
                   className={styles.challengeRewardBadgeIcon}
                   sizes="54px"
-                />
+                /> */}
               </div>
             </div>
           </div>

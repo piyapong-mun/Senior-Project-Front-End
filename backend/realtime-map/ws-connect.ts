@@ -1,35 +1,87 @@
 import { jwtVerify } from "jose";
-import { saveConnection } from "./shared";
+import {
+  addConnection,
+  badRequest,
+  getRedis,
+  getRequiredEnv,
+  ok,
+  unauthorized,
+} from "./shared";
+
+type ConnectClaims = {
+  userId?: string;
+  roomId?: string;
+  scope?: string;
+};
 
 export const handler = async (event: any) => {
   try {
-    const token = event.queryStringParameters?.token;
+    const connectionId = event?.requestContext?.connectionId;
+    const token = event?.queryStringParameters?.token || "";
+    const secret = getRequiredEnv("MAP_WS_JWT_SECRET");
+
+    console.log("[ws-connect] connectionId =", connectionId);
+    console.log("[ws-connect] hasToken =", !!token);
+    console.log("[ws-connect] queryStringParameters =", event?.queryStringParameters || null);
+
+    if (!connectionId) {
+      return badRequest("Missing connectionId");
+    }
+
     if (!token) {
-      return { statusCode: 401, body: "Missing token" };
+      return unauthorized("Missing token");
     }
 
-    const secret = process.env.MAP_WS_JWT_SECRET;
-    if (!secret) {
-      return { statusCode: 500, body: "Missing MAP_WS_JWT_SECRET" };
+    const verified = await jwtVerify<ConnectClaims>(
+      token,
+      new TextEncoder().encode(secret)
+    );
+
+    const claims = verified.payload || {};
+    const userId = String(claims.userId || "");
+    const roomId = String(claims.roomId || "");
+    const scope = String(claims.scope || "");
+
+    console.log("[ws-connect] claims =", { userId, roomId, scope });
+
+    if (!userId || !roomId) {
+      return unauthorized("Invalid token payload");
     }
 
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-    const userId = String(payload.userId || "");
-    const roomId = String(payload.roomId || "student-explore");
-    const connectionId = String(event.requestContext.connectionId || "");
-
-    if (!userId || !connectionId) {
-      return { statusCode: 401, body: "Invalid token payload" };
+    if (scope !== "map:presence") {
+      return unauthorized("Invalid token scope");
     }
 
-    await saveConnection({
+    const redis = getRedis();
+
+    await addConnection(redis, {
       connectionId,
       userId,
       roomId,
     });
 
-    return { statusCode: 200, body: "Connected" };
-  } catch {
-    return { statusCode: 401, body: "Unauthorized" };
+    return ok({ connected: true });
+  } catch (error: any) {
+    console.error("[ws-connect] error =", error);
+
+    const message =
+      typeof error?.message === "string" ? error.message : "Connect failed";
+
+    if (
+      message.includes("JWT") ||
+      message.includes("signature") ||
+      message.includes("token") ||
+      message.includes("scope")
+    ) {
+      return unauthorized(message);
+    }
+
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        ok: false,
+        message,
+      }),
+    };
   }
 };

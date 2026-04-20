@@ -169,28 +169,64 @@ async function updatePortfolioBackend(
   type: PortfolioType,
   payload: any
 ) {
+  // For types where backend expects array directly (experience, education, skills, certificate)
+  // primary attempt uses PUT /student/{std_id}/portfolio/{type} with body as-is
+  const isArrayPayload = Array.isArray(payload);
+
+  // Try all plausible method+URL combinations.
+  // Backend returns 405 for wrong method even if path exists, so we try PUT, POST, PATCH on each path.
   const attempts = [
+    // 1. PUT array directly to /portfolio/{type}  (swagger shows this)
     {
       url: `${BACKEND}/student/${stdId}/portfolio/${type}`,
       method: "PUT",
       body: payload,
     },
+    // 2. POST array to /portfolio/{type}  (some backends map POST for upsert)
+    {
+      url: `${BACKEND}/student/${stdId}/portfolio/${type}`,
+      method: "POST",
+      body: payload,
+    },
+    // 3. PATCH array to /portfolio/{type}
+    {
+      url: `${BACKEND}/student/${stdId}/portfolio/${type}`,
+      method: "PATCH",
+      body: payload,
+    },
+    // 4. PUT wrapped object to /portfolio/{type}
+    ...(isArrayPayload ? [{
+      url: `${BACKEND}/student/${stdId}/portfolio/${type}`,
+      method: "PUT",
+      body: { [type]: payload },
+    }] : []),
+    // 5. PUT to /portfolio (no type in path)
     {
       url: `${BACKEND}/student/${stdId}/portfolio`,
       method: "PUT",
-      body: payload,
+      body: isArrayPayload ? { [type]: payload } : payload,
     },
+    // 6. POST to /portfolio
+    {
+      url: `${BACKEND}/student/${stdId}/portfolio`,
+      method: "POST",
+      body: isArrayPayload ? { [type]: payload } : payload,
+    },
+    // 7. PATCH to /portfolio
     {
       url: `${BACKEND}/student/${stdId}/portfolio`,
       method: "PATCH",
-      body: { type, ...payload },
+      body: isArrayPayload ? { type, [type]: payload } : { type, ...payload },
     },
+    // 8. PUT to /student root
     {
       url: `${BACKEND}/student/${stdId}`,
       method: "PUT",
-      body: { portfolio: payload, Portfolio: payload, ...payload },
+      body: isArrayPayload
+        ? { portfolio: { [type]: payload } }
+        : { portfolio: payload, Portfolio: payload, ...payload },
     },
-  ] as const;
+  ];
 
   let lastStatus = 500;
   let lastJson: any = { message: "Update failed" };
@@ -202,12 +238,14 @@ async function updatePortfolioBackend(
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
+          accept: "application/json",
         },
         body: JSON.stringify(attempt.body),
         cache: "no-store",
       });
 
       const json = await readResponseJson(res);
+      console.log(`[portfolio] ${attempt.method} ${attempt.url} → ${res.status}`);
       if (res.ok) {
         return { ok: true, status: res.status, json };
       }
@@ -215,6 +253,7 @@ async function updatePortfolioBackend(
       lastStatus = res.status;
       lastJson = json;
     } catch (error: any) {
+      console.error(`[portfolio] attempt error:`, error?.message);
       lastJson = { message: error?.message || "Update failed" };
     }
   }
@@ -291,11 +330,13 @@ function normalizeStudentInfo(portfolioRoot: any, dashboardRoot: any) {
     phone: pickString(
       rootObj?.phone,
       dashboardInfo?.phone,
+      dashboardInfo?.phone_number,
       infoObj?.Phone,
       infoObj?.phone
     ),
     email: pickString(
       rootObj?.email,
+      dashboardInfo?.email,
       infoObj?.Email,
       infoObj?.email,
       profileObj?.email
@@ -319,7 +360,14 @@ function normalizeStudentInfo(portfolioRoot: any, dashboardRoot: any) {
     profile_image_url: pickString(
       rootObj?.profile_image_url,
       rootObj?.avatar_image_url,
+      dashboardInfo?.profile_image_url,
+      dashboardInfo?.avatar_image_url,
+      dashboardInfo?.avatar_image,
       profileObj?.profile_image_url
+    ),
+    avatar_model_url: pickString(
+      rootObj?.avatar_model_url,
+      dashboardInfo?.avatar_model_url,
     ),
   };
 }
@@ -532,10 +580,8 @@ function buildBackendPayload(type: PortfolioType, body: any) {
       })
     );
 
-    return {
-      Education: items,
-      education: items,
-    };
+    // Return array directly for PUT /student/{std_id}/portfolio/education
+    return items;
   }
 
   if (type === "skills") {
@@ -550,10 +596,8 @@ function buildBackendPayload(type: PortfolioType, body: any) {
       })
     );
 
-    return {
-      Skills: items,
-      skills: items,
-    };
+    // Return array directly for PUT /student/{std_id}/portfolio/skills
+    return items;
   }
 
   if (type === "certificate") {
@@ -577,38 +621,39 @@ function buildBackendPayload(type: PortfolioType, body: any) {
       files: safeArray(item?.files),
     }));
 
-    return {
-      Certificates: items,
-      certificates: items,
-    };
+    // Return array directly for PUT /student/{std_id}/portfolio/certificate
+    return items;
   }
 
   if (type === "experience") {
-    const items = safeArray<any>(
+    const rawItems = safeArray<any>(
       body?.Experience ?? body?.experience ?? body?.experiences ?? body
-    ).map((item) => ({
-      id: pickString(
-        item?.id,
-        item?.experience_id,
-        item?.exp_id,
-        item?.activity_id
-      ),
-      period: pickString(item?.period),
-      title: pickString(item?.title, item?.activity_name, item?.name),
-      description: pickString(
-        item?.description,
-        item?.detail,
-        item?.activity_description
-      ),
-      source: normalizeSource(item?.source),
-      files: safeArray(item?.files),
-    }));
+    );
 
-    return {
-      Experience: items,
-      experience: items,
-      experiences: items,
-    };
+    // Map to backend schema for PUT /student/{std_id}/portfolio/experience
+    const items = rawItems.map((item) => {
+      const period = pickString(item?.period);
+      const [startYearStr, endYearStr] = period.includes("-")
+        ? period.split("-").map((s: string) => s.trim())
+        : [period, ""];
+      const startYear = Number(startYearStr) || 0;
+      const endYear = Number(endYearStr) || 0;
+      const fromSystem = String(item?.source ?? "").toLowerCase() !== "upload";
+
+      return {
+        activityID: pickString(item?.id, item?.activity_id, item?.experience_id, item?.exp_id),
+        topic: pickString(item?.title, item?.activity_name, item?.name),
+        description: pickString(item?.description, item?.detail, item?.activity_description),
+        startYear,
+        endYear,
+        fromSystem,
+        enable: true,
+        externalWebsite: pickString(item?.externalWebsite, item?.external_website),
+      };
+    });
+
+    // Backend expects array directly as body
+    return items;
   }
 
   return body;
@@ -632,13 +677,48 @@ export async function GET(req: Request) {
       );
     }
 
-    const [portfolioJson, dashboardJson] = await Promise.all([
+    const [portfolioJson, dashboardJson, studentJson] = await Promise.all([
       tryFetchJson(`${BACKEND}/student/${stdId}/portfolio`, sess.accessToken),
       tryFetchJson(`${BACKEND}/student/${stdId}/dashboard`, sess.accessToken),
+      tryFetchJson(`${BACKEND}/student/${stdId}`, sess.accessToken),
     ]);
 
     const portfolioRoot = portfolioJson?.data ?? portfolioJson ?? {};
-    const dashboardRoot = dashboardJson?.data ?? dashboardJson ?? {};
+    // merge student base info into dashboardRoot.student_info
+    const studentBase = studentJson?.data ?? studentJson ?? {};
+    const studentInfo = studentBase?.student_info ?? studentBase ?? {};
+    const dashboardData = dashboardJson?.data ?? dashboardJson ?? {};
+    const dashboardRoot = {
+      ...dashboardData,
+      student_info: {
+        ...studentInfo,
+        ...(dashboardData?.student_info ?? {}),
+      },
+    };
+
+    const normalizedExperiences = normalizeExperiences(portfolioRoot);
+
+    // ถ้า portfolio ไม่มี experience เลย ให้ดึง done_activities จาก dashboard มาแสดงเป็น platform experience
+    const doneActivities: any[] = Array.isArray(dashboardData?.done_activities) ? dashboardData.done_activities : [];
+    const platformActivities = doneActivities
+      .filter((a: any) => a?.activity_name || a?.ActivityName)
+      .map((a: any, i: number) => ({
+        id: String(a?.activity_id ?? a?.ActivityID ?? `platform-exp-${i}`),
+        period: (() => {
+          const start = String(a?.start_at ?? a?.run_start_at ?? "").slice(0, 4);
+          const end = String(a?.end_at ?? a?.run_end_at ?? "").slice(0, 4);
+          return start && end && start !== end ? `${start} - ${end}` : start || end || "";
+        })(),
+        title: String(a?.activity_name ?? a?.ActivityName ?? ""),
+        description: String(a?.activity_detail ?? a?.description ?? ""),
+        source: "platform",
+        files: [],
+      }))
+      .filter((e: any) => e.title);
+
+    const finalExperiences = normalizedExperiences.length > 0
+      ? normalizedExperiences
+      : platformActivities;
 
     return NextResponse.json({
       ok: true,
@@ -647,7 +727,8 @@ export async function GET(req: Request) {
         education: normalizeEducation(portfolioRoot),
         skills: normalizeSkills(portfolioRoot),
         certificates: normalizeCertificates(portfolioRoot),
-        experiences: normalizeExperiences(portfolioRoot),
+        experiences: finalExperiences,
+        platform_activities: platformActivities,
       },
     });
   } catch (e: any) {

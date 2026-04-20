@@ -58,7 +58,7 @@ const C = {
   orangeText: "#8a4b00",
   redBg: "rgba(239,68,68,0.15)",
   redText: "#991b1b",
-  chipBg: "rgba(59,130,246,0.10)",
+  chipBg: "#e1dce9",
   chipText: "#0c1019",
 };
 
@@ -116,9 +116,9 @@ function MetaChip({ value }: { value: string }) {
     <span
       style={{
         fontSize: 11,
-        fontWeight: 800,
+        fontWeight: 500,
         padding: "5px 10px",
-        borderRadius: 5,
+        borderRadius: 2,
         background: C.chipBg,
         color: C.chipText,
         whiteSpace: "nowrap",
@@ -450,17 +450,22 @@ export default function OrgExploreHud({
                   >
                     <div
                       style={{
-                        width: 42,
-                        height: 42,
+                        width: 50,
+                        height: 50,
                         borderRadius: 5,
-                        background: "rgba(59,130,246,0.10)",
-                        border: "1px solid rgba(59,130,246,0.18)",
+                        // background: "rgba(59,130,246,0.10)",
+                        // border: "1px solid rgba(59,130,246,0.18)",
                         display: "grid",
                         placeItems: "center",
                         flex: "0 0 auto",
                         fontSize: 18,
                       }}
                     >
+                      <img
+                            src="/images/icons/jigsaw-icon.png"
+                            alt=""
+                          // className={styles.activityBadgeImgFull}
+                          />
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>

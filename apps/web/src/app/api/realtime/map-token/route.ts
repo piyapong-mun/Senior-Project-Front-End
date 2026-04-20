@@ -5,15 +5,17 @@ import { SignJWT, decodeJwt } from "jose";
 const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "vcep_session";
 const MAP_ROOM_ID = "student-explore";
 
-function readSessionCookie(raw: string | undefined | null) {
+type SessionShape = {
+  idToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
+};
+
+function readSessionCookie(raw: string | undefined | null): SessionShape | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as {
-      idToken?: string;
-      accessToken?: string;
-      refreshToken?: string;
-    };
+    return JSON.parse(raw) as SessionShape;
   } catch {
     return null;
   }
@@ -22,11 +24,47 @@ function readSessionCookie(raw: string | undefined | null) {
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const session = readSessionCookie(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-    const idToken = session?.idToken;
 
-    if (!idToken) {
-      return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
+    const rawSessionCookie =
+      cookieStore.get(AUTH_COOKIE_NAME)?.value ||
+      cookieStore.get("vcep_session")?.value ||
+      null;
+
+    const parsedSession = readSessionCookie(rawSessionCookie);
+
+    const rawAccessToken =
+      cookieStore.get("vcep_access")?.value ||
+      cookieStore.get("accessToken")?.value ||
+      null;
+
+    const rawIdToken =
+      cookieStore.get("vcep_id_token")?.value ||
+      cookieStore.get("idToken")?.value ||
+      null;
+
+    const jwt =
+      parsedSession?.idToken ||
+      parsedSession?.accessToken ||
+      rawIdToken ||
+      rawAccessToken;
+
+    if (!jwt) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Unauthorized",
+          debug: {
+            expectedCookie: AUTH_COOKIE_NAME,
+            hasRawSessionCookie: !!rawSessionCookie,
+            hasParsedSession: !!parsedSession,
+            hasParsedIdToken: !!parsedSession?.idToken,
+            hasParsedAccessToken: !!parsedSession?.accessToken,
+            hasRawAccessToken: !!rawAccessToken,
+            hasRawIdToken: !!rawIdToken,
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const secret = process.env.MAP_WS_JWT_SECRET;
@@ -39,11 +77,14 @@ export async function GET() {
       );
     }
 
-    const decoded = decodeJwt(idToken);
+    const decoded = decodeJwt(jwt);
     const userId = String(decoded.sub || "");
 
     if (!userId) {
-      return NextResponse.json({ ok: false, message: "Invalid session" }, { status: 401 });
+      return NextResponse.json(
+        { ok: false, message: "Invalid session token" },
+        { status: 401 }
+      );
     }
 
     const token = await new SignJWT({
@@ -62,7 +103,14 @@ export async function GET() {
       token,
       roomId: MAP_ROOM_ID,
     });
-  } catch {
-    return NextResponse.json({ ok: false, message: "Failed to mint realtime token" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Failed to mint realtime token",
+        error: error?.message || "unknown error",
+      },
+      { status: 500 }
+    );
   }
 }

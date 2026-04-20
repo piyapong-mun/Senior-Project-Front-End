@@ -297,24 +297,6 @@
   place-items: center;
 }
 
-.qrGrid {
-  width: 96px;
-  height: 96px;
-  display: grid;
-  grid-template-columns: repeat(21, 1fr);
-  grid-template-rows: repeat(21, 1fr);
-  gap: 1px;
-  background: #fff;
-}
-
-.qrCell {
-  background: transparent;
-}
-
-.qrCellDark {
-  background: #111;
-}
-
 .qrCodeText {
   font-size: 12px;
   font-weight: 400;
@@ -416,15 +398,36 @@
 }
 
 .profileWrap {
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #ececec;
 }
 
 .avatarCircle {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  min-height: 54px;
   border-radius: 50%;
   object-fit: cover;
   background: #ececec;
+  display: block;
+}
+
+.avatarFallback {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  min-height: 54px;
+  border-radius: 50%;
+  background: #ececec;
+  display: flex;
 }
 
 .participantMainInfo {
@@ -461,15 +464,16 @@
   display: grid;
   place-items: center;
   font-size: 12px;
-  border: 0.5px solid #717171;
+  border: 0.5px solid #8c8c8c;
+  border-radius: 2px;
 }
 
 .statusDoing {
-  background: #a8dadc;
+  background: #e1daab;
 }
 
 .statusCompleted {
-  background: #347464;
+  background: #7fa69e;
   color: #fff;
 }
 
@@ -486,39 +490,11 @@
   background: #fcfcfc;
 }
 
-.emptyParticipantsHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.emptyParticipantsIconWrap {
-  width: 88px;
-  height: 88px;
-  border: 1px solid #d8d1ca;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f7f3ee;
-}
-
-.emptyParticipantsIcon {
-  opacity: 0.9;
-}
-
 .emptyParticipantsTitle {
   font-size: 22px;
   font-weight: 500;
   color: #2a2a2a;
   line-height: 1.3;
-}
-
-.emptyParticipantsText {
-  font-size: 13px;
-  font-weight: 300;
-  color: #70665f;
-  line-height: 1.6;
 }
 
 .emptyParticipantsText {
@@ -551,8 +527,6 @@
   color: #7a726b;
   line-height: 1.6;
 }
-
-
 
 .loadingCard {
   min-height: 300px;
@@ -591,6 +565,241 @@
   border-radius: 6px;
 }
 
+.clickableParticipantRow {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.clickableParticipantRow:hover {
+  background: #e4dbf0;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+  border: 1px solid #C7BED4
+}
+
+.clickableParticipantRow:focus-visible {
+  outline: 2px solid #84a59d;
+  outline-offset: 2px;
+}
+
+.reviewOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(34, 30, 28, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.reviewCard {
+  width: min(1120px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #efefef;
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.18);
+  padding: 24px 28px 28px;
+}
+
+.reviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.reviewTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reviewTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+  color: #222;
+  line-height: 1.2;
+}
+
+.reviewSubtitle {
+  font-size: 12px;
+  font-weight: 300;
+  color: #6f665f;
+}
+
+.reviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.reviewPanel {
+  border: 1px solid #b3b3b3;
+  background: #fcfcfc;
+  padding: 18px;
+}
+
+.reviewPanelTitle {
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #2b2b2b;
+}
+
+.reviewArtifactBox {
+  min-height: 118px;
+  border: 1px solid #b3b3b3;
+  background: #fff;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reviewOpenLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #b3b3b3;
+  background: #f7f7f7;
+  color: #222;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reviewCodeBox,
+.reviewEmptyMini {
+  font-size: 13px;
+  font-weight: 300;
+  color: #4b4b4b;
+  text-align: center;
+}
+
+.reviewJsonBox {
+  width: 100%;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reviewNoteBox {
+  margin-top: 12px;
+  border: 1px solid #b3b3b3;
+  background: #fff;
+  padding: 14px;
+  font-size: 13px;
+  font-weight: 300;
+  color: #3d3d3d;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reviewSkillList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.reviewSkillChip {
+  border: 1px solid #b3b3b3;
+  background: #fff;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #2d2d2d;
+}
+
+.reviewFooter {
+  border-top: 1px solid #e6ddd6;
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reviewTextareaLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #695f59;
+}
+
+.reviewTextarea {
+  width: 100%;
+  min-height: 130px;
+  border: 1px solid #b3b3b3;
+  background: #fff;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: #2f2f2f;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.reviewActionRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.reviewSecondaryButton,
+.reviewPrimaryButton {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #b3b3b3;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.reviewSecondaryButton {
+  background: #fff;
+  color: #2f2f2f;
+}
+
+.reviewPrimaryButton {
+  background: #bed4d0;
+  color: #1f1f1f;
+}
+
+.reviewPrimaryButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.reviewLoadingState,
+.reviewErrorState,
+.reviewEmptyState {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #b3b3b3;
+  background: #fcfcfc;
+  text-align: center;
+  padding: 24px;
+}
+
+.reviewErrorState {
+  color: #b91c1c;
+}
 
 @media (max-width: 1280px) {
   .heroCard {
@@ -605,7 +814,8 @@
 
 @media (max-width: 900px) {
   .summaryGrid,
-  .detailsGrid {
+  .detailsGrid,
+  .reviewGrid {
     grid-template-columns: 1fr;
   }
 
@@ -622,5 +832,15 @@
   .detailField {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .reviewCard {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    padding: 18px;
+  }
+
+  .reviewActionRow {
+    flex-direction: column;
   }
 }

@@ -114,6 +114,8 @@ const PARTICIPANTS = [
         score: 45,
         avatarBg: "#f1d6d8",
         initials: "CG",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p2",
@@ -122,6 +124,8 @@ const PARTICIPANTS = [
         score: 45,
         avatarBg: "#efd0bf",
         initials: "EW",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p3",
@@ -130,6 +134,8 @@ const PARTICIPANTS = [
         score: 43,
         avatarBg: "#c7dce7",
         initials: "JT",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p4",
@@ -138,6 +144,8 @@ const PARTICIPANTS = [
         score: 42,
         avatarBg: "#e5d7c8",
         initials: "AD",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p5",
@@ -146,8 +154,25 @@ const PARTICIPANTS = [
         score: 41,
         avatarBg: "#d8e7f1",
         initials: "OD",
+        level: 0,
+        profileImage: "",
     },
 ];
+
+const LEVEL_BADGES = [
+    "/images/icons/badge01.png",
+    "/images/icons/badge02.png",
+    "/images/icons/badge03.png",
+    "/images/icons/badge04.png",
+    "/images/icons/badge05.png",
+];
+
+function getLevelBadgeSrc(level: number): string {
+    const thresholds = [1, 3, 5, 10, 16];
+    const filled = thresholds.filter((lv) => level >= lv).length;
+    const index = filled > 0 ? Math.min(filled - 1, LEVEL_BADGES.length - 1) : -1;
+    return index >= 0 ? LEVEL_BADGES[index] : "/images/icons/badge01-icon.png";
+}
 
 const MONTH_DONUT_LABELS = [
     { label: "Jan", value: 3 },
@@ -670,17 +695,99 @@ export default function OrgDashboardPage() {
                 : [];
             setActivityRows(nextActivities);
 
-            const nextParticipants = Array.isArray(data?.participants)
-                ? data.participants.map((person: any, index: number) => ({
-                    id: toStringValue(person?.id, `participant-${index}`),
-                    name: toStringValue(person?.name, `Participant ${index + 1}`),
-                    subtitle: toStringValue(person?.subtitle, ""),
-                    score: toNumber(person?.score, 0),
-                    avatarBg: toStringValue(person?.avatarBg, "#f1d6d8"),
-                    initials: toStringValue(person?.initials, "PT"),
-                }))
-                : [];
-            setParticipantRows(nextParticipants);
+            // fetch participants from all activities and deduplicate by std_id
+            const activityIds = nextActivities.map((a) => a.id).filter(Boolean);
+            if (activityIds.length > 0) {
+                const allParticipantFetches = await Promise.all(
+                    activityIds.map((actId) =>
+                        fetch(`/api/organization/activity/${actId}/participants`, {
+                            cache: "no-store",
+                            credentials: "include",
+                        })
+                            .then((r) => r.json().catch(() => ({})))
+                            .then((d) => Array.isArray(d?.participants) ? d.participants : [])
+                            .catch(() => [])
+                    )
+                );
+
+                const seen = new Set<string>();
+                const deduped: (typeof PARTICIPANTS) = [];
+
+                for (const list of allParticipantFetches) {
+                    for (const person of list) {
+                        const uid = String(
+                            person?.std_id ?? person?.StdID ??
+                            person?.student?.std_id ??
+                            person?.participant_info?.participant_id ??
+                            person?.id ?? ""
+                        ).trim();
+                        if (!uid || seen.has(uid)) continue;
+                        seen.add(uid);
+
+                        const firstName = String(person?.first_name ?? person?.participant_info?.participant_name?.split(" ")[0] ?? "").trim();
+                        const lastName = String(person?.last_name ?? "").trim();
+                        const fullName = [firstName, lastName].filter(Boolean).join(" ") || String(person?.name ?? "Participant").trim();
+                        const initials = [firstName[0], lastName[0]].filter(Boolean).join("").toUpperCase() || "PT";
+                        const bio = String(
+                            person?.bio ?? person?.about ??
+                            person?.student?.bio ??
+                            person?.participant_info?.participant_faculty ?? ""
+                        ).trim();
+                        const uni = String(person?.university ?? person?.student?.university ?? person?.participant_info?.participant_university ?? "").trim();
+                        const subtitle = bio || uni || "";
+                        const avatarColors = ["#f1d6d8","#efd0bf","#c7dce7","#e5d7c8","#d7e8d3","#dcd7e8","#e8e3d7"];
+                        const avatarBg = avatarColors[deduped.length % avatarColors.length];
+
+                        const rawImg = String(
+                            person?.profile_image_url ?? person?.profileImageUrl ??
+                            person?.profile_image ?? person?.profileImage ??
+                            person?.student?.profile_image_url ?? person?.student?.profile_image ??
+                            person?.participant_info?.participant_avatar ?? ""
+                        ).trim();
+                        const profileImage = rawImg.startsWith("http") ? rawImg :
+                            rawImg && !rawImg.match(/^[0-9a-f-]{36}$/) ?
+                            `https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/${rawImg}` : "";
+
+                        deduped.push({
+                            id: uid,
+                            name: fullName,
+                            subtitle,
+                            score: toNumber(person?.score ?? person?.xp ?? person?.current_xp, 0),
+                            avatarBg,
+                            initials,
+                            level: 0, // will enrich below
+                            profileImage,
+                        });
+                    }
+                }
+
+                // enrich level + profileImage from /api/organization/student/{std_id}
+                const enrichedParticipants = await Promise.all(
+                    deduped.map(async (p) => {
+                        try {
+                            const r = await fetch(`/api/organization/student/${p.id}`, { cache: "no-store", credentials: "include" });
+                            if (r.ok) {
+                                const d = await r.json().catch(() => ({}));
+                                const lv = Number(d?.level ?? 0);
+                                const rawImg = String(d?.profile_image_url ?? d?.profileImageUrl ?? d?.profile_image ?? "").trim();
+                                const img = rawImg.startsWith("http") ? rawImg :
+                                    rawImg ? `https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/${rawImg}` : "";
+                                return {
+                                    ...p,
+                                    level: lv > 0 ? lv : p.level,
+                                    profileImage: img || p.profileImage,
+                                };
+                            }
+                        } catch {}
+                        return p;
+                    })
+                );
+                // sort by level descending
+                enrichedParticipants.sort((a, b) => b.level - a.level);
+                setParticipantRows(enrichedParticipants);
+            } else {
+                setParticipantRows([]);
+            }
 
             const nextEmployees: Employee[] = Array.isArray(data?.employees)
                 ? data.employees.map((emp: any, index: number) => ({
@@ -1353,8 +1460,17 @@ export default function OrgDashboardPage() {
                                     title={person.name}
                                 >
                                     <div className={styles.studentRowCard}>
-                                        <div className={styles.studentAvatar} style={{ background: person.avatarBg }}>
-                                            <span className={styles.studentAvatarInitials}>{person.initials}</span>
+                                        <div className={styles.studentAvatar} style={{ background: person.profileImage ? "transparent" : person.avatarBg }}>
+                                            {person.profileImage ? (
+                                                <img
+                                                    src={person.profileImage}
+                                                    alt={person.name}
+                                                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                                                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                                                />
+                                            ) : (
+                                                <span className={styles.studentAvatarInitials}>{person.initials}</span>
+                                            )}
                                         </div>
 
                                         <div className={styles.studentMeta}>
@@ -1363,13 +1479,14 @@ export default function OrgDashboardPage() {
                                         </div>
 
                                         <div className={styles.studentScoreArea}>
-                                            <div className={styles.studentScore}>{person.score}</div>
-                                            <div className={styles.studentMedal} aria-hidden="true">
-                                                <span className={styles.studentMedalRibbonLeft} />
-                                                <span className={styles.studentMedalRibbonRight} />
-                                                <span className={styles.studentMedalBadge} />
-                                                <span className={styles.studentMedalCore}>★</span>
-                                            </div>
+                                            <img
+                                                src={getLevelBadgeSrc(person.level)}
+                                                alt={`Level ${person.level}`}
+                                                width={28}
+                                                height={28}
+                                                style={{ objectFit: "contain" }}
+                                            />
+                                            <div className={styles.studentScore}>Lv.{person.level}</div>
                                         </div>
                                     </div>
                                 </button>

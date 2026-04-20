@@ -1,152 +1,384 @@
-.container {
+.page {
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 680px 580px;
+  gap: 44px;
+  align-items: start;
+  color: #000;
+  font-family: "Rounded Mplus 1c", sans-serif;
+  padding-bottom: 20px;
+}
+
+.column {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 1200px;
-  margin: 0 auto;
-  font-family: inherit;
-  color: #333;
-  padding: 16px;
+  gap: 20px;
 }
 
-.card {
-  background-color: #fff;
-  border: 1px solid #f3f4f6;
-  border-radius: 12px;
-  padding: 32px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  margin-bottom: 24px;
+.panel {
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  box-sizing: border-box;
 }
 
-.cardHeader {
+.summaryPanel {
+  padding: 28px 24px 24px;
+}
+
+.detailPanel,
+.qrPanel,
+.noticePanel {
+  padding: 24px 20px 20px;
+}
+
+.successPanel {
+  padding: 18px 20px;
+  background: #BED4D0;
+  border-color: #BED4D0;
+}
+
+.eyebrow {
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  margin-bottom: 10px;
+}
+
+.topRow {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  gap: 16px;
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-  letter-spacing: -0.025em;
   margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 500;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .backButton {
-  background: #f3f4f6;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #4b5563;
-  transition: all 0.2s ease;
-}
-
-.backButton:hover {
-  background-color: #e5e7eb;
-  color: #111827;
+  min-width: 78px;
+  height: 28px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: #fff;
+  color: #000;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
 }
 
 .description {
-  font-size: 0.9rem;
-  color: #4b5563;
-  line-height: 1.5;
-  margin-bottom: 24px;
-  max-width: 80%;
+  margin: 18px 0 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
 }
 
-.infoGrid {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  background-color: #f8fafc;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #f1f5f9;
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.infoColumn {
-  flex: 1;
+.metaCard {
+  min-height: 74px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+
+.metaLabel {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.metaValue {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.statusPill {
+  min-width: 92px;
+  height: 28px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.statusIncomplete {
+  background: #fde6e7;
+  color: #af2b3a;
+}
+
+.statusComplete {
+  background: #dff2dd;
+  color: #20511f;
+}
+
+.rewardSkillsSection {
+  margin-top: 18px;
+}
+
+.rewardSkillsTitle {
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 10px;
+}
+
+.rewardSkillsList {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
-.infoColumn p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.rewardSkillRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 74px;
+  min-height: 44px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
 }
 
-.infoColumn span {
-  display: block;
-  color: #0f172a;
-  font-weight: 600;
-  font-size: 1rem;
-  text-transform: none;
-  letter-spacing: normal;
-  margin-top: 4px;
+.rewardSkillName,
+.rewardSkillLevel,
+.rewardSkillPercent {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.35;
+  box-sizing: border-box;
 }
 
-.statusRed {
-  color: #dc2626;
-  font-weight: 600;
+.rewardSkillName {
+  padding: 0 14px;
 }
 
-.statusBlue {
-  color: #2563eb;
-  font-weight: 600;
+.rewardSkillLevel,
+.rewardSkillPercent {
+  justify-content: center;
+  border-left: 1px solid #d9d9d9;
 }
 
-.statusGreen {
-  color: #16a34a;
-  font-weight: 600;
+.previewStateRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.previewStateLabel {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.previewStateGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.previewStateBadge {
+  min-width: 92px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #b3b3b3;
+  background: #fff;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.previewStateBadgeActive {
+  background: #BED4D0;
+  border-color: #BED4D0;
+  color: #000;
+}
+
+.previewStateHint {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .sectionTitle {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 16px 0;
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 12px;
 }
 
-/* Congrats Banner specifically has teal background, no border, sharp corners */
-.congratsBanner {
-  background-color: #dcfce7 !important;
-  border-color: #bbf7d0 !important;
-  padding: 24px 32px;
+.detailRow + .detailRow {
+  margin-top: 12px;
 }
 
-.congratsTitle {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0 0 24px 0;
-  color: #166534;
+.detailLabel {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
 }
 
-.congratsStats {
+.detailValue {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.sectionDivider {
+  height: 1px;
+  background: #000;
+  margin: 18px 0;
+}
+
+.agendaList {
+  margin: 0;
+  padding-left: 18px;
   display: flex;
-  gap: 40px;
-  font-size: 0.85rem;
-  color: #166534;
-  font-weight: 600;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.qrContainer {
+.agendaItem {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.qrCard {
+  width: 100%;
+  min-height: 330px;
+  border: 1px solid #d8d8d8;
+  background: #fff;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  margin-top: 48px;
-  margin-bottom: 48px;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.qrCode {
-  width: 200px;
-  height: 200px;
-  object-fit: contain;
+.qrFrame {
+  width: 128px;
+  height: 128px;
+  padding: 8px;
+  border: 1.5px solid #000;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.qrGrid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(21, 1fr);
+  grid-template-rows: repeat(21, 1fr);
+}
+
+.qrCell {
+  background: #fff;
+}
+
+.qrCellDark {
+  background: #000;
+}
+
+.qrLabel {
+  font-size: 13px;
+  line-height: 1.2;
+  color: #000;
+  text-align: center;
+}
+
+.qrValue {
+  max-width: 220px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.65);
+  text-align: center;
+  word-break: break-word;
+}
+
+.qrHint {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.noticeCard + .noticeCard {
+  margin-top: 12px;
+}
+
+.noticeCard {
+  padding: 14px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+}
+
+.noticeTitle {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.noticeText {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.infoBox {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.successTitle {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.successMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+@media (max-width: 1280px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
 }

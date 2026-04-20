@@ -1,127 +1,465 @@
 "use client";
 
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
 import styles from "./page.module.css";
-import { Suspense } from "react";
+
+type RewardSkillItem = {
+  id: string;
+  skillName: string;
+  level: string;
+  percentText: string;
+};
+
+type MeetingStatus = "complete" | "incomplete";
+
+function formatDate(value: any) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-GB");
+}
+
+function formatDateTime(value: any) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${date.toLocaleDateString("en-GB")} ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+function formatTime(value: any) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function toArray(value: any) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeAgenda(raw: any): string[] {
+  const list = toArray(raw);
+
+  return list
+    .map((item: any) => {
+      if (typeof item === "string") return item.trim();
+      return String(
+        item?.title ??
+          item?.name ??
+          item?.text ??
+          item?.agenda ??
+          item?.detail ??
+          ""
+      ).trim();
+    })
+    .filter(Boolean);
+}
+
+function normalizeRewardSkills(raw: any): RewardSkillItem[] {
+  return toArray(raw)
+    .map((item: any, index: number) => ({
+      id: String(item?.id ?? item?.skill_id ?? `skill-${index}`),
+      skillName: String(item?.skillName ?? item?.skill_name ?? "Unknown skill"),
+      level: String(item?.level ?? item?.skill_level ?? "—"),
+      percentText: String(
+        item?.percentText ??
+          (item?.percent !== undefined && item?.percent !== null
+            ? `${item.percent}%`
+            : "—")
+      ),
+    }))
+    .filter((item: RewardSkillItem) => item.skillName.trim().length > 0);
+}
+
+function getStatusKey(status: string): MeetingStatus {
+  const s = status.toLowerCase();
+  if (s === "complete" || s === "completed") return "complete";
+  return "incomplete";
+}
+
+function StatusPill({ status }: { status: MeetingStatus }) {
+  return (
+    <span
+      className={`${styles.statusPill} ${
+        status === "complete" ? styles.statusComplete : styles.statusIncomplete
+      }`}
+    >
+      {status === "complete" ? "Complete" : "Incomplete"}
+    </span>
+  );
+}
+
+function QrPreview({
+  qrUrl,
+  qrValue,
+  blur,
+}: {
+  qrUrl: string;
+  qrValue: string;
+  blur: boolean;
+}) {
+  return (
+    <div className={styles.qrCard}>
+      <div className={styles.qrFrame}>
+        {qrUrl ? (
+          <img
+            src={qrUrl}
+            alt="Meeting QR Code"
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              objectFit: "contain",
+              filter: blur ? "blur(10px)" : "none",
+              transition: "filter 0.3s ease",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 12,
+              color: "rgba(0,0,0,0.5)",
+              textAlign: "center",
+            }}
+          >
+            QR unavailable
+          </div>
+        )}
+      </div>
+
+      <div className={styles.qrLabel}>Meeting QR Code</div>
+      <div className={styles.qrValue}>{qrValue || "—"}</div>
+    </div>
+  );
+}
 
 function MeetingProgressContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activityId = searchParams.get("activityId");
+
   const [meeting, setMeeting] = useState<any>(null);
   const [qrOrigin, setQrOrigin] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setQrOrigin(typeof window !== 'undefined' ? window.location.origin : "");
+    setQrOrigin(typeof window !== "undefined" ? window.location.origin : "");
   }, []);
 
-  //==============================
-  // fetch activity data
-  //==============================
   useEffect(() => {
     async function fetchActivity() {
-      const res = await fetch(`/api/student/meeting?activity_id=${activityId}`);
-      const json = await res.json();
+      if (!activityId) {
+        setError("Activity ID not found");
+        setLoading(false);
+        return;
+      }
 
-      if (json.ok) {
+      try {
+        setLoading(true);
+        setError("");
+
+        const res = await fetch(`/api/student/meeting?activity_id=${activityId}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.message || "Failed to load meeting");
+        }
+
         setMeeting(json.data);
-        console.log("meeting data:", json.data);
+      } catch (err: any) {
+        console.error("Failed to load meeting:", err);
+        setError(err?.message || "Failed to load meeting");
+      } finally {
+        setLoading(false);
       }
     }
-    if (activityId) {
-      fetchActivity();
-    }
+
+    fetchActivity();
   }, [activityId]);
 
-  const currentStatus = meeting?.submission_info?.Status === "" ? "In Progress" : meeting?.submission_info ? meeting?.submission_info?.Status : "In Progress";
+  const activity = meeting?.activity ?? {};
+  const meetingInfo = meeting?.meeting_info ?? {};
+  const submissionInfo = meeting?.submission_info ?? {};
+  const orgInfo = meeting?.org_info ?? meeting?.organization_info ?? meeting?.organization ?? {};
 
-  const getStatusClass = (status: string) => {
-    if (!status) return styles.statusInProgress;
-    const s = status.toLowerCase();
-    if (s === "complete" || s === "completed") return styles.statusComplete;
-    if (s === "incomplete") return styles.statusRed;
-    return styles.statusInProgress;
-  };
+  const currentStatus: string =
+    submissionInfo?.Status === ""
+      ? "In Progress"
+      : submissionInfo?.Status || "In Progress";
 
-  const isComplete = currentStatus?.toLowerCase() === "complete" || currentStatus?.toLowerCase() === "completed";
+  const meetingStatus = getStatusKey(currentStatus);
+  const isComplete = meetingStatus === "complete";
 
-  // Formatted dates
-  const dueDate = useMemo(() => {
-    if (!meeting?.activity?.RunEndAt) return "----";
-    const date = new Date(meeting.activity.RunEndAt);
-    return date.toLocaleDateString('en-GB'); // dd/mm/yyyy
-  }, [meeting?.activity?.RunEndAt]);
+  const description =
+    activity?.Description ||
+    meetingInfo?.description ||
+    meetingInfo?.meeting_detail ||
+    "No description";
 
-  const submitDate = useMemo(() => {
-    if (!meeting?.submission_info?.SubmittedAt) return "----";
-    const date = new Date(meeting.submission_info.SubmittedAt);
-    return date.toLocaleDateString('en-GB');
-  }, [meeting?.submission_info?.SubmittedAt]);
+  const organizationName =
+    orgInfo?.org_name ||
+    activity?.OrganizationName ||
+    activity?.organization ||
+    meetingInfo?.organization ||
+    "—";
 
-  // Score & EXP fallbacks
-  const score = meeting?.submission_info?.Score || 0;
-  const exp = meeting?.submission_info?.XP || 0;
+  const dueDate = activity?.IsOpenEnded
+    ? "Open Ended"
+    : activity?.RunEndAt
+    ? formatDateTime(activity.RunEndAt)
+    : "—";
 
-  console.log("meeting:", meeting);
+  const startRaw = activity?.RunStartAt || meetingInfo?.start_time || meetingInfo?.StartTime;
+  const endRaw = activity?.RunEndAt || meetingInfo?.end_time || meetingInfo?.EndTime;
 
-  console.log("qr:", `${qrOrigin}/student/activities/meeting-submit?activity_id=${activityId || ""}&qrdata=${meeting?.meeting_info?.qrcode_checkin || "checkin"}`);
+  const formatValue =
+    meetingInfo?.format ||
+    meetingInfo?.meeting_format ||
+    meetingInfo?.location_type ||
+    (meetingInfo?.meeting_link ? "Online" : meetingInfo?.location ? "On-site" : "—");
 
-  console.log("qrdata:", meeting?.meeting_info?.qrcode_checkin || "checkin");
+  const timeRange =
+    startRaw && endRaw ? `${formatTime(startRaw)} - ${formatTime(endRaw)}` : "—";
+
+  const speaker =
+    meetingInfo?.speaker ||
+    meetingInfo?.host ||
+    meetingInfo?.presenter ||
+    meetingInfo?.moderator ||
+    "—";
+
+  const location =
+    meetingInfo?.location ||
+    meetingInfo?.meeting_link ||
+    meetingInfo?.link ||
+    activity?.Location ||
+    "—";
+
+  const checkedInAt =
+    submissionInfo?.SubmittedAt ||
+    submissionInfo?.submitted_at ||
+    meetingInfo?.checked_in_at ||
+    activity?.RunStartAt ||
+    "";
+
+  const score = Number(submissionInfo?.Score ?? submissionInfo?.score ?? 0);
+  const exp = Number(submissionInfo?.XP ?? submissionInfo?.xp ?? 0);
+
+  const rewardSkills = useMemo(
+    () =>
+      normalizeRewardSkills(
+        meetingInfo?.reward_skills ??
+          meetingInfo?.RewardSkills ??
+          activity?.reward_skills ??
+          meeting?.reward_skills
+      ),
+    [meetingInfo, activity, meeting]
+  );
+
+  const agenda = useMemo(
+    () =>
+      normalizeAgenda(
+        meetingInfo?.agenda ??
+          meetingInfo?.Agenda ??
+          meetingInfo?.agendas ??
+          meetingInfo?.topics
+      ),
+    [meetingInfo]
+  );
+
+  const qrData = String(
+    meetingInfo?.qrcode_checkin ??
+      meetingInfo?.qrCode ??
+      meetingInfo?.qr_code ??
+      "checkin"
+  );
+
+  const qrTarget = qrOrigin
+    ? `${qrOrigin}/student/activities/meeting-submit?activity_id=${activityId || ""}&qrdata=${qrData}`
+    : "";
+
+  const qrImageUrl = qrTarget
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+        qrTarget
+      )}`
+    : "";
+
+  const metaItems = [
+    { label: "Organization", value: organizationName },
+    { label: "Due date", value: dueDate },
+    { label: "Type", value: "Meeting" },
+    { label: "Format", value: formatValue || "—" },
+    { label: "Time", value: timeRange },
+    { label: "Status", value: isComplete ? "Complete" : "Incomplete" },
+  ];
+
+  if (loading) {
+    return <div className={styles.page}>Loading...</div>;
+  }
+
+  if (error) {
+    return <div className={styles.page}>{error}</div>;
+  }
 
   return (
-    <div className={styles.container}>
-      {/* HEADER CARD */}
-      <section className={styles.card}>
-        <div className={styles.cardHeader}>
-          <h1 className={styles.title}>
-            {meeting?.activity?.ActivityName || "Loading..."}
-          </h1>
-          <button className={styles.backButton} onClick={() => router.back()}>
-            Back
-          </button>
-        </div>
-        <p className={styles.description}>
-          {meeting?.activity?.Description === "" ? "No description" : meeting?.activity?.Description}
-        </p>
+    <div className={styles.page}>
+      <div className={styles.column}>
+        <section className={`${styles.panel} ${styles.summaryPanel}`}>
+          <div className={styles.topRow}>
+            <div>
+              <div className={styles.eyebrow}>Student Activity</div>
+              <h1 className={styles.title}>
+                {activity?.ActivityName || "Meeting"}
+              </h1>
+            </div>
 
-        <div className={styles.infoGrid}>
-          <div className={styles.infoColumn}>
-            <p>Hours : <span>{meeting?.activity?.Hours}</span></p>
-            <p>Due date: <span>{dueDate}</span></p>
+            <div className={styles.headerActions}>
+              <StatusPill status={meetingStatus} />
+              <button className={styles.backButton} onClick={() => router.back()}>
+                Back
+              </button>
+            </div>
           </div>
-          <div className={styles.infoColumn}>
-            <p>Status : <span className={getStatusClass(currentStatus)}>{currentStatus}</span></p>
-            <p>Type : <span>Meeting</span></p>
-          </div>
-        </div>
-      </section>
 
-      {/* CONGRATULATIONS BANNER */}
-      {isComplete && (
-        <section className={`${styles.card} ${styles.congratsBanner}`}>
-          <h2 className={styles.congratsTitle}>Congratulations !!!</h2>
-          <div className={styles.congratsStats}>
-            <span>Submit Date : {submitDate}</span>
-            {/* <span>Score : {score}</span> */}
-            <span>EXP : {exp}</span>
+          <p className={styles.description}>{description}</p>
+
+          <div className={styles.metaGrid}>
+            {metaItems.map((item) => (
+              <div key={item.label} className={styles.metaCard}>
+                <div className={styles.metaLabel}>{item.label}</div>
+                <div className={styles.metaValue}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {rewardSkills.length > 0 && (
+            <div className={styles.rewardSkillsSection}>
+              <div className={styles.rewardSkillsTitle}>Skills you will receive</div>
+              <div className={styles.rewardSkillsList}>
+                {rewardSkills.map((skill) => (
+                  <div key={skill.id} className={styles.rewardSkillRow}>
+                    <div className={styles.rewardSkillName}>{skill.skillName}</div>
+                    <div className={styles.rewardSkillLevel}>{skill.level}</div>
+                    <div className={styles.rewardSkillPercent}>{skill.percentText}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className={styles.previewStateRow}>
+            <span className={styles.previewStateLabel}>Preview state</span>
+            <div className={styles.previewStateGroup} aria-label="Preview state display only">
+              <span
+                className={`${styles.previewStateBadge} ${
+                  meetingStatus === "incomplete" ? styles.previewStateBadgeActive : ""
+                }`}
+              >
+                Incomplete
+              </span>
+              <span
+                className={`${styles.previewStateBadge} ${
+                  meetingStatus === "complete" ? styles.previewStateBadgeActive : ""
+                }`}
+              >
+                Complete
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.previewStateHint}>
+            This status updates automatically after attendance has been marked and verified.
           </div>
         </section>
-      )}
 
-      {/* QR CODE CARD */}
-      <section className={styles.card}>
-        <h2 className={styles.sectionTitle}>Meeting QR Code</h2>
+        <section className={`${styles.panel} ${styles.detailPanel}`}>
+          <div className={styles.sectionTitle}>Meeting details</div>
 
-        <div className={styles.qrContainer}>
-          <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrOrigin ? `${qrOrigin}/student/activities/meeting-submit?activity_id=${activityId || ""}&qrdata=${meeting?.meeting_info?.qrcode_checkin || "checkin"}` : "")}`}
-            alt="Meeting QR Code"
-            className={styles.qrCode}
-            style={{ filter: isComplete ? 'blur(10px)' : 'none', transition: 'filter 0.3s ease' }}
-          />
-        </div>
-      </section>
+          <div className={styles.detailRow}>
+            <div className={styles.detailLabel}>Speaker / Host</div>
+            <div className={styles.detailValue}>{speaker}</div>
+          </div>
+
+          <div className={styles.detailRow}>
+            <div className={styles.detailLabel}>Location</div>
+            <div className={styles.detailValue}>{location}</div>
+          </div>
+
+          {agenda.length > 0 && (
+            <>
+              <div className={styles.sectionDivider} />
+              <div className={styles.sectionTitle}>Agenda</div>
+              <ul className={styles.agendaList}>
+                {agenda.map((item) => (
+                  <li key={item} className={styles.agendaItem}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      </div>
+
+      <div className={styles.column}>
+        {isComplete ? (
+          <section className={`${styles.panel} ${styles.successPanel}`}>
+            <div className={styles.successTitle}>Congratulations !!!</div>
+            <div className={styles.successMetaRow}>
+              <span>Checked in: {formatDate(checkedInAt)}</span>
+              <span>Score: {score}</span>
+              <span>XP: +{exp}</span>
+            </div>
+          </section>
+        ) : null}
+
+        <section className={`${styles.panel} ${styles.qrPanel}`}>
+          <div className={styles.sectionTitle}>Meeting QR Code</div>
+
+          <QrPreview qrUrl={qrImageUrl} qrValue={qrData} blur={isComplete} />
+
+          <div className={styles.qrHint}>
+            Show this QR code at the meeting check-in point or use it to confirm attendance.
+          </div>
+        </section>
+
+        <section className={`${styles.panel} ${styles.noticePanel}`}>
+          <div className={styles.sectionTitle}>Attendance notes</div>
+
+          <div className={styles.noticeCard}>
+            <div className={styles.noticeTitle}>Before the meeting</div>
+            <div className={styles.noticeText}>
+              Arrive 10-15 minutes early, prepare your student ID, and review the meeting topic before joining.
+            </div>
+          </div>
+
+          <div className={styles.noticeCard}>
+            <div className={styles.noticeTitle}>After the meeting</div>
+            <div className={styles.noticeText}>
+              Wait for attendance confirmation and verification from the organization before the activity status changes.
+            </div>
+          </div>
+
+          <div className={styles.infoBox}>
+            Attendance status cannot be changed manually on this page.
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

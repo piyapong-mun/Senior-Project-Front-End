@@ -1,53 +1,122 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
-import { Suspense } from "react";
+import { useMemo, useState, useEffect, Suspense } from "react";
 import styles from "./page.module.css";
+
+function decodeArtifact(artifactBase64: string | undefined | null) {
+  if (!artifactBase64) return {};
+
+  try {
+    const binary = atob(artifactBase64);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const decoded = new TextDecoder().decode(bytes);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error("Failed to decode artifact:", error);
+    return {};
+  }
+}
+
+function getFileNameFromUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname || "";
+    const last = pathname.split("/").pop() || "Attached file";
+    return decodeURIComponent(last);
+  } catch {
+    return "Attached file";
+  }
+}
 
 function ChallengeProgressContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activityId = searchParams.get("activityId");
+
   const [challenge, setChallenge] = useState<any>(null);
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [localFileUrl, setLocalFileUrl] = useState("");
+  const [existingFileUrl, setExistingFileUrl] = useState("");
+  const [existingFileName, setExistingFileName] = useState("");
   const [isFileUpdate, setIsFileUpdate] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
-  // ==============================
-  // Fetch activity data
-  // ==============================
   useEffect(() => {
     async function fetchActivity() {
-      const res = await fetch(`/api/student/challenge?activity_id=${activityId}`);
-      const json = await res.json();
-      if (json.ok) {
-        setChallenge(json.data);
+      try {
+        const res = await fetch(`/api/student/challenge?activity_id=${activityId}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (json.ok) {
+          setChallenge(json.data);
+        }
+      } catch (error) {
+        console.error("Failed to load challenge:", error);
       }
     }
-    fetchActivity();
+
+    if (activityId) {
+      fetchActivity();
+    }
   }, [activityId]);
 
-  // Decode artifact []byte from Go (base64 → JSON)
   const artifact = useMemo(() => {
-    const art = challenge?.submission_info?.Artifact;
-    if (!art) return [];
-    const decodedStr = Buffer.from(art, "base64").toString("utf-8");
-    return JSON.parse(decodedStr);
+    return decodeArtifact(challenge?.submission_info?.Artifact);
   }, [challenge]);
 
   const currentStatus: string = challenge?.submission_info
     ? challenge?.submission_info?.Status || "In Progress"
     : "In Progress";
 
-  // Map status → pill style
   const getStatusPillClass = (status: string) => {
     const s = status.toLowerCase();
-    if (s === "complete" || s === "completed") return `${styles.statusPill} ${styles.statusComplete}`;
-    if (s === "submitted") return `${styles.statusPill} ${styles.statusSubmitted}`;
+    if (s === "complete" || s === "completed") {
+      return `${styles.statusPill} ${styles.statusComplete}`;
+    }
+    if (s === "submitted") {
+      return `${styles.statusPill} ${styles.statusSubmitted}`;
+    }
     return `${styles.statusPill} ${styles.statusIncomplete}`;
   };
+
+  useEffect(() => {
+    if (artifact?.text_submission) {
+      setDescription(String(artifact.text_submission));
+    } else {
+      setDescription("");
+    }
+
+    if (artifact?.file_submission) {
+      const url = String(artifact.file_submission);
+      setExistingFileUrl(url);
+      setExistingFileName(getFileNameFromUrl(url));
+    } else {
+      setExistingFileUrl("");
+      setExistingFileName("");
+    }
+  }, [artifact]);
+
+  useEffect(() => {
+    if (!file) {
+      setLocalFileUrl("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setLocalFileUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [file]);
+
+  useEffect(() => {
+    const s = currentStatus.toLowerCase();
+    setIsComplete(s === "completed" || s === "complete");
+  }, [currentStatus]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -58,70 +127,51 @@ function ChallengeProgressContent() {
 
   const handleRemoveFile = () => {
     setFile(null);
-    setIsFileUpdate(false);
+    setLocalFileUrl("");
+    setExistingFileUrl("");
+    setExistingFileName("");
+    setIsFileUpdate(true);
   };
 
-  // ==================
-  // Submit
-  // ==================
   const handleSubmit = async () => {
-    const formData = new FormData();
-    formData.append("activity_id", activityId || "");
-    formData.append("description", description);
-    formData.append("file", file || "");
-    formData.append("file_submission", artifact.file_submission || "");
-    formData.append("is_file_update", isFileUpdate.toString());
+    try {
+      const formData = new FormData();
+      formData.append("activity_id", activityId || "");
+      formData.append("description", description);
+      formData.append("file_submission", existingFileUrl || "");
+      formData.append("is_file_update", isFileUpdate.toString());
 
-    const res = await fetch("/api/student/submission/challenge", {
-      method: "POST",
-      body: formData,
-    });
-    const json = await res.json();
-    if (json.ok) {
-      router.push("/student/activities");
+      if (file) {
+        formData.append("file", file);
+      }
+
+      const res = await fetch("/api/student/submission/challenge", {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await res.json();
+
+      if (json.ok) {
+        router.push("/student/activities");
+        return;
+      }
+
+      console.error("Submit failed:", json);
+    } catch (error) {
+      console.error("Submit failed:", error);
     }
   };
-
-  // ==============================
-  // Prefill existing submission
-  // ==============================
-  useEffect(() => {
-    async function fetchFile() {
-      if (artifact?.text_submission) {
-        setDescription(artifact.text_submission);
-      }
-      if (artifact?.file_submission) {
-        const res = await fetch(artifact.file_submission);
-        if (res.ok) {
-          const blob = await res.blob();
-          const fetched = new File([blob], "Click to Open", { type: "text/plain" });
-          setFile(fetched);
-        }
-      }
-    }
-    fetchFile();
-  }, [artifact]);
-
-  // ==============================
-  // Check completion
-  // ==============================
-  useEffect(() => {
-    if (
-      currentStatus.toLowerCase() === "completed" ||
-      currentStatus.toLowerCase() === "complete"
-    ) {
-      setIsComplete(true);
-    }
-  }, [challenge]);
 
   const isReadOnly = isComplete;
   const canSubmit = description.trim().length > 0 && !isReadOnly;
 
-  // Meta items
   const dueDate = challenge?.activity?.IsOpenEnded
     ? "Open Ended"
     : challenge?.activity?.RunEndAt
-    ? `${challenge.activity.RunEndAt.split("T")[0]} ${challenge.activity.RunEndAt.split("T")[1]?.split("Z")[0] ?? ""}`
+    ? `${challenge.activity.RunEndAt.split("T")[0]} ${
+        challenge.activity.RunEndAt.split("T")[1]?.split("Z")[0] ?? ""
+      }`
     : "—";
 
   const metaItems = [
@@ -129,7 +179,12 @@ function ChallengeProgressContent() {
     { label: "Hours", value: challenge?.activity?.Hours ?? "—" },
     { label: "Due Date", value: dueDate },
     { label: "Difficulty", value: challenge?.challenge_info?.difficulty ?? "—" },
-    { label: "XP Reward", value: challenge?.challenge_info?.xp ? `+${challenge.challenge_info.xp} XP` : "—" },
+    {
+      label: "XP Reward",
+      value: challenge?.challenge_info?.xp
+        ? `+${challenge.challenge_info.xp} XP`
+        : "—",
+    },
     { label: "Status", value: currentStatus },
   ];
 
@@ -137,11 +192,12 @@ function ChallengeProgressContent() {
   const deliverables: string[] = challenge?.challenge_info?.deliverables ?? [];
   const requirements: string[] = challenge?.challenge_info?.requirements ?? [];
 
+  const displayFileName = file?.name || existingFileName;
+  const displayFileUrl = file ? localFileUrl : existingFileUrl;
+
   return (
     <div className={styles.page}>
-      {/* ─── LEFT COLUMN ─────────────────────────────────── */}
       <div className={styles.column}>
-        {/* Summary panel */}
         <section className={`${styles.panel} ${styles.summaryPanel}`}>
           <div className={styles.eyebrow}>Challenge</div>
 
@@ -149,6 +205,7 @@ function ChallengeProgressContent() {
             <h1 className={styles.title}>
               {challenge?.activity?.ActivityName ?? "Loading..."}
             </h1>
+
             <div className={styles.headerActions}>
               <span className={getStatusPillClass(currentStatus)}>{currentStatus}</span>
               <button className={styles.backButton} onClick={() => router.back()}>
@@ -176,9 +233,15 @@ function ChallengeProgressContent() {
               <div className={styles.rewardSkillsList}>
                 {rewardSkills.map((skill: any, i: number) => (
                   <div key={i} className={styles.rewardSkillRow}>
-                    <div className={styles.rewardSkillName}>{skill.skillName ?? skill.skill_name}</div>
-                    <div className={styles.rewardSkillLevel}>{skill.level}</div>
-                    <div className={styles.rewardSkillPercent}>{skill.percentText ?? skill.percent}</div>
+                    <div className={styles.rewardSkillName}>
+                      {skill.skillName ?? skill.skill_name}
+                    </div>
+                    <div className={styles.rewardSkillLevel}>
+                      {skill.level ?? skill.skill_level ?? "—"}
+                    </div>
+                    <div className={styles.rewardSkillPercent}>
+                      {skill.percentText ?? skill.percent ?? "—"}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -186,7 +249,6 @@ function ChallengeProgressContent() {
           )}
         </section>
 
-        {/* Problem / Expected outcome */}
         <section className={`${styles.panel} ${styles.contentPanel}`}>
           <div className={styles.sectionBlock}>
             <div className={styles.sectionTitle}>Problem statement</div>
@@ -205,7 +267,6 @@ function ChallengeProgressContent() {
           </div>
         </section>
 
-        {/* Requirements & Deliverables */}
         {(requirements.length > 0 || deliverables.length > 0) && (
           <section className={`${styles.panel} ${styles.requirementsPanel}`}>
             {requirements.length > 0 && (
@@ -213,7 +274,9 @@ function ChallengeProgressContent() {
                 <div className={styles.sectionTitle}>Requirements</div>
                 <ul className={styles.requirementList}>
                   {requirements.map((item: string) => (
-                    <li key={item} className={styles.requirementItem}>{item}</li>
+                    <li key={item} className={styles.requirementItem}>
+                      {item}
+                    </li>
                   ))}
                 </ul>
               </>
@@ -222,7 +285,9 @@ function ChallengeProgressContent() {
             {deliverables.length > 0 && (
               <div className={styles.deliverableWrap}>
                 {deliverables.map((item: string) => (
-                  <span key={item} className={styles.deliverableChip}>{item}</span>
+                  <span key={item} className={styles.deliverableChip}>
+                    {item}
+                  </span>
                 ))}
               </div>
             )}
@@ -230,9 +295,7 @@ function ChallengeProgressContent() {
         )}
       </div>
 
-      {/* ─── RIGHT COLUMN ────────────────────────────────── */}
       <div className={styles.column}>
-        {/* Congratulations / feedback panel */}
         {isComplete && (
           <section className={`${styles.panel} ${styles.successPanel}`}>
             <div className={styles.successTitle}>Congratulations !!!</div>
@@ -262,7 +325,6 @@ function ChallengeProgressContent() {
           </section>
         )}
 
-        {/* Submission form */}
         <section className={`${styles.panel} ${styles.submissionPanel}`}>
           <div className={styles.sectionTitle}>Submission</div>
 
@@ -280,20 +342,21 @@ function ChallengeProgressContent() {
           <div className={styles.fieldGroup}>
             <label className={styles.fieldLabel}>Upload File</label>
             <div className={styles.uploadBox}>
-              {file ? (
+              {displayFileName ? (
                 <div className={styles.uploadFileCard}>
                   <div>
                     <div className={styles.uploadFileName}>
-                      <a
-                        href={artifact.file_submission}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {file.name}
-                      </a>
+                      {displayFileUrl ? (
+                        <a href={displayFileUrl} target="_blank" rel="noopener noreferrer">
+                          {displayFileName}
+                        </a>
+                      ) : (
+                        <span>{displayFileName}</span>
+                      )}
                     </div>
                     <div className={styles.uploadFileHint}>Attached to this submission</div>
                   </div>
+
                   {!isReadOnly && (
                     <button
                       type="button"
@@ -337,7 +400,6 @@ function ChallengeProgressContent() {
           </div>
         </section>
 
-        {/* Tips panel */}
         <section className={`${styles.panel} ${styles.tipPanel}`}>
           <div className={styles.sectionTitle}>Submission tips</div>
           <div className={styles.tipList}>

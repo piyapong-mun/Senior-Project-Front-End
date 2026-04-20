@@ -160,8 +160,8 @@ const FORM_DEFAULTS: MeetingFormDefaults = {
   activityStartTime: "",
   activityEndDate: "",
   activityEndTime: "",
-  maxParticipants: "0",
-  xpReward: "20",
+  maxParticipants: "99",
+  xpReward: "",
   badgeButtonText: "upload",
   certificateButtonText: "upload",
   qrCodeValue: "ACT-MEETING-2026-001",
@@ -1542,7 +1542,7 @@ function SkillsAndRewardsSection({
 
         <div className={styles.rewardStatsGrid}>
           <div className={styles.rewardCell}>
-            <div className={styles.rewardTitle}>XP</div>
+            <div className={styles.rewardTitle}>Hours</div>
             <input
               ref={xpRef}
               className={styles.xpValueBox}

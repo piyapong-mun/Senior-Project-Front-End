@@ -57,7 +57,9 @@ type ActivityItem = {
   title: string;
   sub: string;
   xp: number;
+  hours: number;
   status: string;
+  detailPath: string;
 };
 
 type MissionItem = {
@@ -145,6 +147,30 @@ type DashboardApiResponse = {
   message?: string;
 };
 
+type ActivityStatsResponse = {
+  ok: boolean;
+  data?: {
+    all_activities?: Array<{
+      ActivityID?: string;
+      Activity_id?: string;
+      activity_id?: string;
+      ActivityName?: string;
+      Activity_name?: string;
+      activity_name?: string;
+      ActivityType?: string;
+      Activity_type?: string;
+      activity_type?: string;
+      submission_status?: string;
+      SubmissionStatus?: string;
+      status?: string;
+      Status?: string;
+      Hours?: number | string;
+      hours?: number | string;
+    }>;
+  };
+  message?: string;
+};
+
 type ModalKind = "editProfile" | "badges" | "certificate" | null;
 type TileId = "badges" | "certificate" | "portfolio";
 
@@ -209,6 +235,200 @@ function shortDateTime(value?: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+
+function getActivityDetailPath(activityType?: string) {
+  const type = String(activityType ?? "").toLowerCase();
+
+  if (type === "challenge") return "/student/activities/challenge-progress";
+  if (type === "course") return "/student/activities/course-progress";
+  if (type === "meeting") return "/student/activities/meeting-progress";
+
+  return "/student/activities";
+}
+
+function getActivityIdForStats(activity: any, index: number) {
+  return String(
+    activity?.ActivityID ||
+    activity?.Activity_id ||
+    activity?.activity_id ||
+    activity?.activityId ||
+    `activity-${index}`
+  );
+}
+
+function getActivityTypeForStats(activity: any) {
+  return String(
+    activity?.ActivityType ||
+    activity?.Activity_type ||
+    activity?.activity_type ||
+    "activity"
+  ).toLowerCase();
+}
+
+function getActivityStatusForStats(activity: any) {
+  return String(
+    activity?.submission_status ||
+    activity?.SubmissionStatus ||
+    activity?.status ||
+    activity?.Status ||
+    ""
+  ).toLowerCase();
+}
+
+function getStatusRank(status: string) {
+  if (status === "completed" || status === "complete") return 5;
+  if (status === "submitted") return 4;
+  if (status === "in progress" || status === "in_progress") return 3;
+  if (status === "failed" || status === "fail" || status === "incomplete") {
+    return 2;
+  }
+  return 1;
+}
+
+function normalizeOverviewStatus(raw: any) {
+  const s = String(raw ?? "").toLowerCase();
+
+  if (s === "completed" || s === "complete") return "Completed";
+  if (s === "submitted") return "Submitted";
+  if (s === "failed" || s === "fail" || s === "incomplete") return "Incomplete";
+  return "In progress";
+}
+
+function dedupeActivitiesFromStats(statsData?: ActivityStatsResponse["data"]) {
+  const rawList: any[] = Array.isArray(statsData?.all_activities)
+    ? statsData!.all_activities!
+    : [];
+
+  const uniqueMap = new Map<string, any>();
+
+  rawList.forEach((activity: any, index: number) => {
+    const id = getActivityIdForStats(activity, index);
+    const currentStatus = getActivityStatusForStats(activity);
+
+    if (!uniqueMap.has(id)) {
+      uniqueMap.set(id, activity);
+      return;
+    }
+
+    const existing = uniqueMap.get(id);
+    const existingStatus = getActivityStatusForStats(existing);
+
+    if (getStatusRank(currentStatus) >= getStatusRank(existingStatus)) {
+      uniqueMap.set(id, activity);
+    }
+  });
+
+  return Array.from(uniqueMap.values());
+}
+
+function mapOverviewActivities(statsData?: ActivityStatsResponse["data"]): ActivityItem[] {
+  return dedupeActivitiesFromStats(statsData).map((item, index) => {
+    const type = getActivityTypeForStats(item);
+
+    return {
+      id: getActivityIdForStats(item, index),
+      title: String(
+        item?.ActivityName ||
+        item?.Activity_name ||
+        item?.activity_name ||
+        "Activity"
+      ),
+      sub: type,
+      xp: 0,
+      hours: Number(item?.Hours ?? item?.hours ?? 0),
+      status: normalizeOverviewStatus(getActivityStatusForStats(item)),
+      detailPath: getActivityDetailPath(type),
+    };
+  });
+}
+
+function buildCompletionSegmentsFromStats(
+  statsData: ActivityStatsResponse["data"] | undefined,
+  schedules: ScheduleItem[]
+): CompletionSegment[] {
+  const deduped = dedupeActivitiesFromStats(statsData);
+
+  const completedItems = deduped
+    .filter((item) => {
+      const s = getActivityStatusForStats(item);
+      return s === "completed" || s === "complete";
+    })
+    .map(
+      (item) =>
+        String(
+          item?.ActivityName ||
+          item?.Activity_name ||
+          item?.activity_name ||
+          "Activity"
+        )
+    );
+
+  const incompleteItems = deduped
+    .filter((item) => {
+      const s = getActivityStatusForStats(item);
+      return s === "failed" || s === "fail" || s === "incomplete";
+    })
+    .map(
+      (item) =>
+        String(
+          item?.ActivityName ||
+          item?.Activity_name ||
+          item?.activity_name ||
+          "Activity"
+        )
+    );
+
+  const inProgressItems = deduped
+    .filter((item) => {
+      const s = getActivityStatusForStats(item);
+      return s === "submitted" || s === "in progress" || s === "in_progress" || s === "";
+    })
+    .map(
+      (item) =>
+        String(
+          item?.ActivityName ||
+          item?.Activity_name ||
+          item?.activity_name ||
+          "Activity"
+        )
+    );
+
+  return [
+    {
+      key: "completed",
+      title: "Completed",
+      count: completedItems.length,
+      color: "#9FD5A8",
+      colorClass: styles.badgeFillGreen,
+      items: completedItems,
+    },
+    {
+      key: "incomplete",
+      title: "Incomplete",
+      count: incompleteItems.length,
+      color: "#E58F82",
+      colorClass: styles.badgeFillRed,
+      items: incompleteItems,
+    },
+    {
+      key: "registered",
+      title: "Registered",
+      count: schedules.length,
+      color: "#7EC6D9",
+      colorClass: styles.badgeFillBlue,
+      items: schedules.map((x) => x.title),
+    },
+    {
+      key: "inProgress",
+      title: "In Progress",
+      count: inProgressItems.length,
+      color: "#F1C97B",
+      colorClass: styles.badgeFillYellowSoft,
+      items: inProgressItems,
+    },
+  ];
 }
 
 const PUBLIC_ASSET_BASE =
@@ -330,17 +550,23 @@ function mapStudentToDashboard(api: DashboardApiResponse["data"]) {
   }));
 
   const doneActivities: ActivityItem[] = Array.isArray(api?.done_activities)
-    ? api!.done_activities!.map((item, index) => ({
-      id: item.activity_id || `done-${index}`,
-      title: item.activity_name || "Activity",
-      sub: item.activity_type || "Activity",
-      xp: Number(item.xp ?? 0),
-      status: item.status || "",
-    }))
+    ? api!.done_activities!.map((item, index) => {
+      const activityType = item.activity_type || "Activity";
+
+      return {
+        id: item.activity_id || `done-${index}`,
+        title: item.activity_name || "Activity",
+        sub: activityType,
+        xp: Number(item.xp ?? 0),
+        hours: Number((item as any).hours ?? 0),
+        status: item.status || "",
+        detailPath: getActivityDetailPath(activityType),
+      };
+    })
     : [];
 
   const schedules: ScheduleItem[] = Array.isArray(api?.schedules)
-  ? api!.schedules!.map((item: any, index) => ({
+    ? api!.schedules!.map((item: any, index) => ({
       id: item.activity_id || `schedule-${index}`,
       title: item.activity_name || "Schedule",
       sub: item.activity_type || "Activity",
@@ -348,7 +574,7 @@ function mapStudentToDashboard(api: DashboardApiResponse["data"]) {
       endAt: item.end_at || "",
       calendarColor: normalizeScheduleColor(item.calendar_color),
     }))
-  : [];
+    : [];
 
   const missions: MissionItem[] = Array.isArray(api?.today_missions)
     ? api!.today_missions!.map((item, index) => ({
@@ -464,6 +690,7 @@ export default function ClientDashboard() {
   const [me, setMe] = useState<StudentMe | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [doneActivities, setDoneActivities] = useState<ActivityItem[]>([]);
+  const [overviewActivities, setOverviewActivities] = useState<ActivityItem[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [missions, setMissions] = useState<MissionItem[]>([]);
   const [completionSegments, setCompletionSegments] = useState<CompletionSegment[]>([]);
@@ -535,12 +762,17 @@ export default function ClientDashboard() {
         setLoading(true);
         setError(null);
 
-        const [dashboardRes, avatarRes] = await Promise.all([
+        const [dashboardRes, activityStatsRes, avatarRes] = await Promise.all([
           fetch("/api/student", {
             method: "GET",
             credentials: "include",
             cache: "no-store",
           }),
+          fetch("/api/student/activitystats", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          }).catch(() => null),
           fetch("/api/options/avatars/student", {
             method: "GET",
             credentials: "include",
@@ -555,6 +787,22 @@ export default function ClientDashboard() {
         }
 
         const mapped = mapStudentToDashboard(json.data);
+
+        let mappedOverviewActivities: ActivityItem[] = mapped.doneActivities;
+        let mappedCompletionSegments: CompletionSegment[] = mapped.completionSegments;
+
+        if (activityStatsRes && activityStatsRes.ok) {
+          const activityStatsJson: ActivityStatsResponse | null =
+            await activityStatsRes.json().catch(() => null);
+
+          if (activityStatsJson?.ok) {
+            mappedOverviewActivities = mapOverviewActivities(activityStatsJson.data);
+            mappedCompletionSegments = buildCompletionSegmentsFromStats(
+              activityStatsJson.data,
+              mapped.schedules
+            );
+          }
+        }
 
         let avatarOptions: AvatarOption[] = [];
         if (avatarRes && avatarRes.ok) {
@@ -591,9 +839,10 @@ export default function ClientDashboard() {
           );
           setSkills(mapped.skills);
           setDoneActivities(mapped.doneActivities);
+          setOverviewActivities(mappedOverviewActivities);
           setSchedules(mapped.schedules);
           setMissions(mapped.missions);
-          setCompletionSegments(mapped.completionSegments);
+          setCompletionSegments(mappedCompletionSegments);
           setXpDailyBars(mapped.xpDailyBars);
           setXpWeeklyBars(mapped.xpWeeklyBars);
           setPhotoUrl(mapped.me.profileImageUrl);
@@ -606,6 +855,7 @@ export default function ClientDashboard() {
           setMe(null);
           setSkills([]);
           setDoneActivities([]);
+          setOverviewActivities([]);
           setSchedules([]);
           setMissions([]);
           setCompletionSegments([]);
@@ -873,8 +1123,11 @@ export default function ClientDashboard() {
             />
 
             <ActivityMissionSplit
-              activities={doneActivities}
-              missions={missions}
+              activities={overviewActivities}
+              onViewAll={() => router.push("/student/activities")}
+              onOpenActivity={(activity) =>
+                router.push(`${activity.detailPath}?activityId=${activity.id}`)
+              }
             />
 
             <BottomSplit
@@ -1156,7 +1409,7 @@ function MidRow({
   skills: Skill[];
   onClickTile: (id: TileId) => void;
 }) {
-  const badgeThresholds = [3, 6, 7, 8, 10];
+  const badgeThresholds = [1, 3, 5, 10, 16];
   const filledMedals = badgeThresholds.filter((lv) => me.level >= lv).length;
   const currentBadgeIndex =
     filledMedals > 0 ? Math.min(filledMedals - 1, LEVEL_BADGES.length - 1) : -1;
@@ -1294,73 +1547,122 @@ function MidRow({
 
 function ActivityMissionSplit({
   activities,
-  missions,
+  onViewAll,
+  onOpenActivity,
 }: {
   activities: ActivityItem[];
-  missions: MissionItem[];
+  onViewAll: () => void;
+  onOpenActivity: (activity: ActivityItem) => void;
 }) {
+  function statusPillClass(status: string) {
+    const s = String(status ?? "").trim().toLowerCase();
+
+    if (s === "completed" || s === "complete") {
+      return styles.overviewStatusComplete;
+    }
+
+    if (
+      s === "in progress" ||
+      s === "in_progress" ||
+      s === "submitted" ||
+      s === "waiting" ||
+      s === "waiting feedback"
+    ) {
+      return styles.overviewStatusProgress;
+    }
+
+    if (s === "failed" || s === "fail" || s === "incomplete") {
+      return styles.overviewStatusIncomplete;
+    }
+
+    return styles.overviewStatusProgress;
+  }
+
+  function statusLabel(status: string) {
+    const s = String(status ?? "").trim().toLowerCase();
+
+    if (s === "completed" || s === "complete") {
+      return "Completed";
+    }
+
+    if (
+      s === "in progress" ||
+      s === "in_progress" ||
+      s === "submitted" ||
+      s === "waiting" ||
+      s === "waiting feedback"
+    ) {
+      return "In progress";
+    }
+
+    if (s === "failed" || s === "fail" || s === "incomplete") {
+      return "Incomplete";
+    }
+
+    return "In progress";
+  }
+
   return (
     <section className={cx(styles.card, styles.splitCard)}>
-      <div className={styles.splitCardBg} />
-      <div className={styles.splitDivider} aria-hidden />
-
       <div className={styles.activityPane}>
         <div className={styles.activityPaneHead}>
           <div className={styles.activityOverviewTitle}>Activity Overview</div>
 
-          <button className={styles.viewAllBtn} type="button">
+          <button className={styles.viewAllBtn} type="button" onClick={onViewAll}>
             <span>view all</span>
           </button>
         </div>
 
-        <div className={styles.activityIconWrap} aria-hidden>
-          <img
-            src="/images/icons/jigsaw-icon.png"
-            alt=""
-            className={styles.activityIconImg}
-            draggable={false}
-          />
-        </div>
-
         <div className={styles.activityScrollArea}>
-          <div className={styles.activityRow}>
-            {activities.length > 0 ? (
-              activities.map((a) => (
-                <button key={a.id} type="button" className={styles.activityCard}>
-                  <div className={styles.activityCardBg} />
+          {activities.length > 0 ? (
+            <div className={styles.activityTable}>
+              {activities.map((activity) => (
+                <button
+                  key={activity.id}
+                  type="button"
+                  className={styles.activityRowLink}
+                  onClick={() => onOpenActivity(activity)}
+                >
+                  <article className={styles.overviewRow}>
+                    <div className={styles.overviewIconCell} aria-hidden>
+                      <img
+                        src="/images/icons/jigsaw-icon.png"
+                        alt=""
+                        className={styles.overviewBadgeImg}
+                        draggable={false}
+                      />
+                    </div>
 
-                  <div className={styles.activityCardText}>
-                    <div className={styles.activityCardTitle}>{a.title}</div>
-                    <div className={styles.activityCardSub}>{a.sub}</div>
-                  </div>
+                    <div className={styles.overviewTitleCell}>
+                      <div className={styles.overviewName}>{activity.title}</div>
+                    </div>
 
-                  <div className={styles.activityRewardIcon} aria-hidden>⭐</div>
+                    <div className={styles.overviewMetaCol}>
+                      <div className={styles.overviewMetaLabel}>Category</div>
+                      <div className={styles.overviewMetaValue}>{activity.sub}</div>
+                    </div>
 
-                  <div className={styles.activityRewardText}>{a.xp} XP</div>
+                    <div className={styles.overviewMetaCol}>
+                      <div className={styles.overviewMetaLabel}>Hours</div>
+                      <div className={styles.overviewMetaValue}>{activity.hours}</div>
+                    </div>
+
+                    <div className={styles.overviewStatusCol}>
+                      <div
+                        className={cx(
+                          styles.overviewStatusPill,
+                          statusPillClass(activity.status)
+                        )}
+                      >
+                        {statusLabel(activity.status)}
+                      </div>
+                    </div>
+                  </article>
                 </button>
-              ))
-            ) : (
-              <div style={{ padding: 16 }}>No activities</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.missionPane}>
-        <div className={styles.missionPaneTitle}>Today&apos;s mission</div>
-
-        <div className={styles.missionPaneList}>
-          {missions.length > 0 ? (
-            missions.map((mission) => (
-              <div key={mission.id} className={styles.missionPaneItem}>
-                <div className={styles.missionPaneText}>{mission.title}</div>
-                <div className={styles.missionPaneXp}>
-                  {shortDateTime(mission.startAt)}
-                </div>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
-            <div style={{ padding: 12 }}>No missions</div>
+            <div className={styles.overviewEmpty}>No activities yet.</div>
           )}
         </div>
       </div>
@@ -1541,18 +1843,6 @@ function BottomSplit({
                       )}
                     />
 
-                    <text
-                      x={seg.labelX}
-                      y={seg.labelY}
-                      textAnchor="middle"
-                      className={cx(
-                        seg.key === "inProgress"
-                          ? styles.donutFigureBigNumber
-                          : styles.donutFigureNumber
-                      )}
-                    >
-                      {seg.count}
-                    </text>
                   </g>
                 ))}
 

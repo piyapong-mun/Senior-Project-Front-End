@@ -212,8 +212,8 @@ const FORM_DEFAULTS = {
   activityStartTime: "",
   activityEndDate: "",
   activityEndTime: "",
-  maxParticipants: "0",
-  xpReward: "60",
+  maxParticipants: "99",
+  xpReward: "",
 };
 
 const INITIAL_MODULES: ModuleItem[] = [];
@@ -1024,7 +1024,7 @@ function SkillsAndRewardsSection({
 
         <div className={styles.rewardStatsGrid}>
           <div className={styles.rewardCell}>
-            <div className={styles.rewardTitle}>XP / Hours</div>
+            <div className={styles.rewardTitle}>Hours</div>
             <input
               className={styles.xpValueBox}
               value={xp}
