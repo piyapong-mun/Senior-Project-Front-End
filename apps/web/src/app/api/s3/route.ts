@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { decodeJwt } from "jose";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
+
+export const runtime = "nodejs";
 
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "vcep_session";
+const S3_REGION =
+    process.env.AWS_REGION ||
+    process.env.AWS_DEFAULT_REGION ||
+    "ap-southeast-2";
+
+const s3 = new S3Client({
+    region: S3_REGION,
+});
 
 
 // =====================
@@ -67,42 +76,42 @@ function getSessionTokens(req: Request): SessionTokens | null {
 // =====================
 // ------------------------------------------------------------------------------------------------------
 const uploadToS3 = async (file: File, idToken: string, bucketName: string, folderName: string) => {
-    const region = process.env.AWS_REGION || "ap-southeast-2";
-    const identityPoolId = process.env.COGNITO_IDENTITY_POOL_ID || "";
-    const userPoolId = process.env.COGNITO_USER_POOL_ID || "";
+    const jwt = decodeJwt(idToken);
+    const cognitoUserId = String(jwt.sub || "").trim();
 
-    // Convert File to Buffer
+    if (!cognitoUserId) {
+        throw new Error("Invalid token");
+    }
+
+    const safeFolderName = folderName.replace(/^\/+|\/+$/g, "");
+    const safeFileName = file.name.replace(/[\\/]+/g, "_");
+    const key = `${safeFolderName}/${cognitoUserId}/${safeFileName}`;
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 1. Setup the credential provider
-    const credentialsProvider = fromCognitoIdentityPool({
-        identityPoolId: identityPoolId,
-        logins: {
-            [`cognito-idp.${region}.amazonaws.com/${userPoolId}`]: idToken
-        },
-        clientConfig: { region }
-    });
-
-    // 2. Initialize S3 with the provider
-    const s3Client = new S3Client({
-        region,
-        credentials: credentialsProvider
-    });
-
-    // 3. Get your unique Identity ID (used for the folder name)
-    const { identityId } = await credentialsProvider();
-
-    // 4. Upload the file
     const command = new PutObjectCommand({
         Bucket: bucketName,
-        Key: `${folderName}/${identityId}/${file.name}`, // Files go into: identityId/filename.png
+        Key: key,
         Body: buffer,
         ContentType: file.type,
+        CacheControl: "no-cache, no-store, must-revalidate",
     });
 
-    const result = await s3Client.send(command);
-    return result;
+    const result = await s3.send(command);
+
+    const publicBaseUrl = (
+        process.env.S3_PUBLIC_BASE_URL ||
+        process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL ||
+        `https://${bucketName}.s3.${S3_REGION}.amazonaws.com`
+    ).replace(/\/+$/, "");
+
+    return {
+        bucket: bucketName,
+        key,
+        url: `${publicBaseUrl}/${key}`,
+        etag: result.ETag || null,
+    };
 };
 // ------------------------------------------------------------------------------------------------------
 
@@ -111,32 +120,38 @@ const uploadToS3 = async (file: File, idToken: string, bucketName: string, folde
 // =====================
 // ------------------------------------------------------------------------------------------------------
 export async function PUT(req: Request) {
-    const tokens = getSessionTokens(req);
-    console.log("tokens", tokens);
-    if (!tokens) {
-        return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    try {
+        const tokens = getSessionTokens(req);
+        if (!tokens) {
+            return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+        }
+
+        const formData = await req.formData();
+        const file = formData.get("file");
+        const bucketName = formData.get("bucketName")?.toString().trim() || "";
+        const folderName = formData.get("folderName")?.toString().trim() || "";
+
+        if (!(file instanceof File)) {
+            return NextResponse.json({ ok: false, error: "MISSING_FILE" }, { status: 400 });
+        }
+
+        if (!bucketName) {
+            return NextResponse.json({ ok: false, error: "MISSING_BUCKET_NAME" }, { status: 400 });
+        }
+
+        if (!folderName) {
+            return NextResponse.json({ ok: false, error: "MISSING_FOLDER_NAME" }, { status: 400 });
+        }
+
+        const result = await uploadToS3(file, tokens.idToken, bucketName, folderName);
+        return NextResponse.json({ ok: true, result });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "UPLOAD_FAILED";
+        return NextResponse.json(
+            { ok: false, error: message },
+            { status: 500 }
+        );
     }
-
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const bucketName = formData.get("bucketName") as string | null;
-    const folderName = formData.get("folderName") as string | null;
-
-    if (!file) {
-        return NextResponse.json({ ok: false, error: "MISSING_FILE" }, { status: 400 });
-    }
-
-    if (!bucketName) {
-        return NextResponse.json({ ok: false, error: "MISSING_BUCKET_NAME" }, { status: 400 });
-    }
-
-    if (!folderName) {
-        return NextResponse.json({ ok: false, error: "MISSING_FOLDER_NAME" }, { status: 400 });
-    }
-
-    const result = await uploadToS3(file, tokens.idToken, bucketName, folderName);
-    return NextResponse.json({ ok: true, result });
-
 }
 // ------------------------------------------------------------------------------------------------------
 
@@ -150,4 +165,3 @@ export async function PUT(req: Request) {
 //     method: "PUT",
 //     body: formData,
 // });
-

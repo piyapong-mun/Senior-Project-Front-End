@@ -5,11 +5,7 @@ body {
 
 .panel {
   width: 100%;
-  /* max-width: 1280px; */
   min-height: 100%;
-  /* border: 1px solid #2a2a2a; */
-  /* border-radius: 8px; */
-  /* background: #fafafa; */
   padding: 18px;
   box-sizing: border-box;
 }
@@ -250,6 +246,24 @@ body {
   margin-top: 8px;
 }
 
+.tableRowLink {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.tableRowLink:hover {
+  background: #f8fcfc;
+  border-color: #a8dadc;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.tableRowLink:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
 .numCell {
   text-align: center;
 }
@@ -285,6 +299,20 @@ body {
   color: #7b2930;
 }
 
+.emptyState {
+  min-height: 120px;
+  border: 1px solid #ececec;
+  border-radius: 6px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: #555;
+}
+
 .tableBody::-webkit-scrollbar {
   width: 8px;
 }
@@ -300,10 +328,6 @@ body {
 }
 
 @media (max-width: 1100px) {
-  .filterGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .tableHeader,
   .tableRow {
     grid-template-columns: 56px minmax(180px, 2fr) minmax(140px, 1.4fr) 110px 110px 90px;
@@ -312,7 +336,61 @@ body {
 }
 
 @media (max-width: 860px) {
-  .filterGrid {
+  .headerRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterCard {
+    height: auto;
+    padding: 18px;
+  }
+
+  .filterTitle,
+  .filterLayout,
+  .nameField,
+  .dateFields,
+  .organizationField,
+  .typeField,
+  .statusField,
+  .searchButton {
+    position: static;
+  }
+
+  .filterLayout {
+    display: grid;
     grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 44px;
+  }
+
+  .nameField,
+  .dateFields,
+  .organizationField,
+  .typeField,
+  .statusField {
+    width: 100%;
+    height: auto;
+  }
+
+  .dateFields {
+    display: grid;
+    grid-template-columns: 1fr 20px 1fr;
+    align-items: center;
+  }
+
+  .dateFields .filterInputSmall:first-child,
+  .dateFields .filterInputSmall:last-child,
+  .dateDash {
+    position: static;
+  }
+
+  .dateFields .filterInputSmall {
+    width: 100%;
+  }
+
+  .searchButton {
+    width: 100%;
+    right: auto;
   }
 }

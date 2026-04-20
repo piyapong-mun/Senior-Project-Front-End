@@ -1,0 +1,438 @@
+/* ─────────────────────────────────────────────
+   page.module.css — ChallengeProgress
+   Design mirrors ActivityChallengeProgress
+───────────────────────────────────────────── */
+
+.page {
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 680px 580px;
+  gap: 44px;
+  align-items: start;
+  color: #000;
+  font-family: "Rounded Mplus 1c", sans-serif;
+  padding-bottom: 20px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Panels ────────────────────────────────── */
+.panel {
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.summaryPanel     { padding: 28px 24px 24px; }
+.contentPanel,
+.requirementsPanel,
+.tipPanel         { padding: 24px; }
+.submissionPanel  { padding: 24px 20px 20px; }
+
+.successPanel {
+  padding: 18px 20px;
+  background: #BED4D0;
+  border-color: #BED4D0;
+}
+
+/* ── Summary panel ─────────────────────────── */
+.eyebrow {
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  margin-bottom: 10px;
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 500;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.backButton {
+  min-width: 78px;
+  height: 28px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-family: inherit;
+  border-radius: 2px;
+}
+
+.description {
+  margin: 18px 0 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+/* ── Meta grid ─────────────────────────────── */
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metaCard {
+  min-height: 74px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+
+.metaLabel {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.metaValue {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* ── Status pill ───────────────────────────── */
+.statusPill {
+  min-width: 92px;
+  height: 28px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 2px;
+}
+
+.statusIncomplete {
+  background: #fde6e7;
+  color: #af2b3a;
+}
+
+.statusSubmitted {
+  background: #fff1cf;
+  color: #876300;
+}
+
+.statusComplete {
+  background: #dff2dd;
+  color: #20511f;
+}
+
+/* ── Reward skills ─────────────────────────── */
+.rewardSkillsSection { margin-top: 18px; }
+
+.rewardSkillsTitle {
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 10px;
+}
+
+.rewardSkillsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rewardSkillRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 74px;
+  min-height: 44px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+}
+
+.rewardSkillName,
+.rewardSkillLevel,
+.rewardSkillPercent {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.rewardSkillName { padding: 0 14px; }
+
+.rewardSkillLevel,
+.rewardSkillPercent {
+  justify-content: center;
+  border-left: 1px solid #d9d9d9;
+}
+
+/* ── Section titles / text ─────────────────── */
+.sectionTitle {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.sectionBlock + .sectionBlock { margin-top: 18px; }
+
+.sectionText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.sectionDivider {
+  height: 1px;
+  background: #000;
+  margin: 18px 0;
+}
+
+/* ── Requirements ──────────────────────────── */
+.requirementList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.requirementItem {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.deliverableWrap {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.deliverableChip {
+  min-height: 32px;
+  padding: 7px 12px;
+  border: 1px solid #b3b3b3;
+  background: #f7f7f7;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+/* ── Success panel ─────────────────────────── */
+.successTitle {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.successCard {
+  min-height: 42px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  margin-bottom: 8px;
+}
+
+.successCardLabel {
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.successCardValue {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.successMetaRow {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+/* ── Submission form ───────────────────────── */
+.fieldGroup + .fieldGroup { margin-top: 16px; }
+
+.fieldLabel {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1.5px solid rgba(0, 0, 0, 0.45);
+  background: #f7f7f7;
+  border-radius: 2px;
+  font-family: inherit;
+  color: rgba(0, 0, 0, 0.8);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.input {
+  height: 39px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.textarea {
+  min-height: 160px;
+  resize: vertical;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.textarea:disabled,
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Upload box ────────────────────────────── */
+.uploadBox {
+  border: 1px dashed rgba(0, 0, 0, 0.25);
+  background: #fcfcfc;
+  padding: 16px;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.uploadEmpty {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.uploadButton {
+  width: 112px;
+  height: 36px;
+  border: 1px solid #b3b3b3;
+  background: #f7f7f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.hiddenInput { display: none; }
+
+.uploadFileCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #d7d7d7;
+}
+
+.uploadFileName {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.uploadFileName a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.uploadFileHint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.inlineTextButton {
+  border: 0;
+  background: transparent;
+  color: #b42318;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+/* ── Action row ────────────────────────────── */
+.actionRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.primaryButton {
+  min-width: 144px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1.5px solid #000;
+  background: #a8dadc;
+}
+
+.primaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Tips ──────────────────────────────────── */
+.tipList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tipItem {
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+}
+
+/* ── Responsive ────────────────────────────── */
+@media (max-width: 1280px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+}

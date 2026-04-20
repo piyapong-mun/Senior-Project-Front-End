@@ -5,12 +5,12 @@ body {
 
 .dash {
   width: 100%;
-  /* max-width: 1300px; */
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(400px, 0.85fr);
   gap: 20px;
   align-items: start;
   box-sizing: border-box;
+  padding-bottom: 28px;
 }
 
 .leftRail {
@@ -155,7 +155,6 @@ body {
   flex-direction: column;
 }
 
-
 .skillHead {
   display: flex;
   align-items: center;
@@ -213,7 +212,7 @@ body {
 
 .skillCol {
   width: 52px;
-  min-width: 52px;
+  min-width: 90px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -261,13 +260,40 @@ body {
   text-overflow: ellipsis;
 }
 
-.trackPink { background: #d23f7e; }
-.trackYellow { background: #f6bd60; }
-.trackGreen { background: #84a59d; }
-.trackSoftPink { background: #f5cac3; }
-.trackBlue { background: #1270b0; }
-.trackOrange { background: #e0a971; }
-.trackRose { background: #ffa3b5; }
+.skillPhase {
+  min-height: 14px;
+  margin-bottom: 6px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 400;
+  color: #6b6b6b;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trackPink {
+  background: #d23f7e;
+}
+.trackYellow {
+  background: #f6bd60;
+}
+.trackGreen {
+  background: #84a59d;
+}
+.trackSoftPink {
+  background: #f5cac3;
+}
+.trackBlue {
+  background: #1270b0;
+}
+.trackOrange {
+  background: #e0a971;
+}
+.trackRose {
+  background: #ffa3b5;
+}
 
 .trackGreenWide {
   width: 100%;
@@ -279,6 +305,12 @@ body {
   padding: 16px 18px;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.companyHead {
+  display: flex;
+  align-items: center;
+  margin-bottom: 25px;
 }
 
 .companyList {
@@ -293,10 +325,10 @@ body {
 
 .companyItem {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding-bottom: 10px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.14);
 }
 
@@ -306,8 +338,8 @@ body {
 }
 
 .companyLogo {
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: 2px solid #ddd;
   padding: 2px;
@@ -315,6 +347,27 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.companyLogoFrame {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+}
+
+.companyLogoImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .companyLogoInner {
@@ -324,31 +377,36 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   color: #fff;
 }
 
 .companyInfo {
   min-width: 0;
+  padding-top: 2px;
 }
 
 .companyName {
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.15;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
   color: #111;
 }
 
 .companySubtitle {
-  margin-top: 3px;
-  font-size: 8px;
-  line-height: 1.25;
-  color: rgba(0, 0, 0, 0.55);
+  margin-top: 5px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.6);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .activityCard {
-  height: 250px;
+  height: 390px;
   padding: 18px 20px 16px;
   position: relative;
   overflow: hidden;
@@ -415,11 +473,29 @@ body {
 
 .activityScrollArea {
   width: 100%;
-  height: 170px;
+  height: 310px;
   overflow-y: auto;
   padding-right: 6px;
   box-sizing: border-box;
   position: static;
+}
+
+.activityRowLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 2px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.activityRowLink:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.09);
+}
+
+.activityRowLink:hover .activityRow {
+  border-color: #c7bed4;
+  background: #e6e1ed;
 }
 
 .activityTable {
@@ -464,7 +540,6 @@ body {
 .activityBadgeImgFull {
   width: 54px;
   height: 54px;
-  /* border-radius: 50%; */
   object-fit: cover;
   display: block;
 }
@@ -533,8 +608,8 @@ body {
 }
 
 .statusPill {
-  width: 100%;
-  min-height: 22px;
+  width: 120px;
+  min-height: 100%;
   border-radius: 2px;
   font-size: 11px;
   font-weight: 500;
@@ -580,7 +655,6 @@ body {
   background: #8a8a8a;
   border-radius: 999px;
 }
-
 
 .calendarCard {
   position: relative;
@@ -674,9 +748,15 @@ body {
   gap: 2px;
 }
 
-.calendarWeekEnd { color: #17a1fa; }
-.calendarOtherMonth { color: #616161; }
-.calendarMutedCell .calendarDay { color: #b3b3b3; }
+.calendarWeekEnd {
+  color: #17a1fa;
+}
+.calendarOtherMonth {
+  color: #616161;
+}
+.calendarMutedCell .calendarDay {
+  color: #b3b3b3;
+}
 
 .trackBar {
   width: 22px;

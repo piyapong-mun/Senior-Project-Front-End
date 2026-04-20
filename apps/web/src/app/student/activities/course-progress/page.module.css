@@ -1,0 +1,632 @@
+.page {
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 680px 580px;
+  gap: 44px;
+  align-items: start;
+  color: #000;
+  font-family: "Rounded Mplus 1c", sans-serif;
+  padding-bottom: 20px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel {
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.summaryPanel {
+  padding: 28px 24px 24px;
+}
+
+.modulePanel {
+  padding: 24px 20px 20px;
+}
+
+.viewerPanel,
+.assessmentPanel {
+  padding: 24px 20px 20px;
+}
+
+.successPanel {
+  padding: 18px 20px;
+  background: #BED4D0;
+  border-color: #BED4D0;
+}
+
+.eyebrow {
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  margin-bottom: 10px;
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 500;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.backButton {
+  min-width: 78px;
+  height: 28px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: #fff;
+  color: #000;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.description {
+  margin: 18px 0 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metaCard {
+  min-height: 74px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+
+.metaLabel {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.metaValue {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.statusPill {
+  min-width: 96px;
+  height: 28px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.statusProgress {
+  background: #fff1cf;
+  color: #876300;
+}
+
+.statusComplete {
+  background: #dff2dd;
+  color: #20511f;
+}
+
+.rewardSkillsSection {
+  margin-top: 18px;
+}
+
+.rewardSkillsTitle {
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 10px;
+}
+
+.rewardSkillsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rewardSkillRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 74px;
+  min-height: 44px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+}
+
+.rewardSkillName,
+.rewardSkillLevel,
+.rewardSkillPercent {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.rewardSkillName {
+  padding: 0 14px;
+}
+
+.rewardSkillLevel,
+.rewardSkillPercent {
+  justify-content: center;
+  border-left: 1px solid #d9d9d9;
+}
+
+.previewStateRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.previewStateLabel {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.previewStateGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.previewStateBadge {
+  min-width: 92px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #b3b3b3;
+  background: #fff;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.previewStateBadgeActive {
+  background: #a8dadc;
+  border-color: #a8dadc;
+  color: #000;
+}
+
+.previewStateHint {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.sectionTitle {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.moduleScrollArea {
+  max-height: 640px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.moduleCard + .moduleCard {
+  margin-top: 14px;
+}
+
+.moduleHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.moduleTitle {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.moduleDescription {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.64);
+}
+
+.moduleProgressBadge {
+  min-width: 48px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d7d7d7;
+  background: #f7f7f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.lessonList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lessonButton {
+  width: 100%;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid #d7d7d7;
+  background: #f7f7f7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.lessonButtonActive {
+  background: #C7BED4;
+  border-color: #C7BED4;
+}
+
+.lessonButtonLocked {
+  opacity: 0.72;
+}
+
+.lessonMainInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.lessonTopLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.lessonOrder,
+.lessonContentBadge,
+.lessonQuizBadge {
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid #d7d7d7;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.lessonQuizBadge {
+  background: #BED4D0;
+}
+
+.lessonButtonTitle {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.lessonButtonMeta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.lessonRightInfo {
+  flex-shrink: 0;
+}
+
+.lessonStateText {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.viewerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.viewerPath {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.55);
+  margin-bottom: 8px;
+}
+
+.viewerMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.viewerMeta {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  text-transform: capitalize;
+}
+
+.viewerMetaDot {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.progressBadge {
+  min-width: 88px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d7d7d7;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.videoBox,
+.articleBox {
+  width: 100%;
+  min-height: 250px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+  box-sizing: border-box;
+}
+
+.videoBox {
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+}
+
+.playIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  padding-left: 4px;
+  box-sizing: border-box;
+}
+
+.videoCaption {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: center;
+}
+
+.articleBox {
+  padding: 20px;
+}
+
+.articleTitle,
+.lessonSummaryTitle,
+.noQuizTitle {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.articleText,
+.lessonSummary,
+.assignmentText,
+.quizHelperText {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.lessonSummaryCard,
+.noQuizWrap {
+  margin-top: 16px;
+  min-height: 110px;
+  padding: 16px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+}
+
+.quizWrap {
+  min-height: 180px;
+  padding: 16px;
+  border: 1px solid #d9d9d9;
+  background: #f7f7f7;
+}
+
+.questionPrompt {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.choiceList {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choiceRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d7d7d7;
+  background: #fff;
+  font-size: 14px;
+}
+
+.infoText {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.actionRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.primaryButton,
+.secondaryButton {
+  min-width: 150px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1.5px solid #000;
+  background: #a8dadc;
+}
+
+.secondaryButton {
+  border: 1.5px solid #000;
+  background: #fff;
+}
+
+.successTitle {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.successCard {
+  min-height: 42px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.successCardLabel {
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.successCardValue {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.successMetaRow {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+@media (max-width: 1280px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── extras not in original ActivityCourseProgress ── */
+
+.lessonButtonMeta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* videoBox override: support real iframe (not just placeholder) */
+.videoBox {
+  overflow: hidden;
+  padding: 0;
+  min-height: 280px;
+  display: block;
+}
+
+.noLessonWrap {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.noLessonText {
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.emptyModule {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+  padding: 10px 0 4px;
+}
+
+.loadingText {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.55);
+  padding: 24px 0;
+}

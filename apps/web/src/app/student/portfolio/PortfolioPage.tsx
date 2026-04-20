@@ -131,55 +131,36 @@ const emptySkillForm: SkillFormState = {
     source: "upload",
 };
 
-const platformSkillOptions: SkillItem[] = [
-    { id: "ps1", name: "Presentation", kind: "soft", source: "platform", isSelected: true },
-    { id: "ps2", name: "Communication", kind: "soft", source: "platform", isSelected: false },
-    { id: "ps3", name: "Teamwork", kind: "soft", source: "platform", isSelected: false },
-    { id: "ps4", name: "Problem Solving", kind: "soft", source: "platform", isSelected: false },
-    { id: "ps5", name: "React", kind: "technical", source: "platform", isSelected: false },
-    { id: "ps6", name: "TypeScript", kind: "technical", source: "platform", isSelected: false },
-    { id: "ps7", name: "Cloud Computing", kind: "technical", source: "platform", isSelected: false },
-];
+// platform options จะ load จาก API จริงใน fetchPortfolioData
+const platformSkillOptions: SkillItem[] = [];
+const platformCertificateOptions: CertificateItem[] = [];
 
-const platformCertificateOptions: CertificateItem[] = [
-    { id: "pc1", title: "AWS Basic Cloud Computing", date: "01/07/2025", source: "platform", files: [] },
-    { id: "pc2", title: "VCEP Python Basic", date: "01/07/2025", source: "platform", files: [] },
-    { id: "pc3", title: "Frontend Foundations", date: "15/08/2025", source: "platform", files: [] },
-    { id: "pc4", title: "UI Design Principles", date: "01/09/2025", source: "platform", files: [] },
-];
-
-const platformExperienceOptions: ExperienceItem[] = [
-    {
-        id: "pe1",
-        period: "2024 - 2025",
-        title: "Python Basic",
-        description:
-            "Accessed basic Python classes in the VCEP platform and learned programming fundamentals, syntax, and problem-solving practice.",
-        source: "platform",
-        files: [],
-    },
-    {
-        id: "pe2",
-        period: "2025",
-        title: "UI Layout Explanation Task",
-        description:
-            "Designed and explained interface layouts with attention to readability, hierarchy, and responsive structure.",
-        source: "platform",
-        files: [],
-    },
-    {
-        id: "pe3",
-        period: "2025",
-        title: "Responsive Web Page Workshop",
-        description:
-            "Built responsive page sections and improved alignment, spacing, and component scaling for multiple screen sizes.",
-        source: "platform",
-        files: [],
-    },
-];
+// platform experience options จะ load จาก API จริงใน fetchPortfolioData
+const platformExperienceOptions: ExperienceItem[] = [];
 
 function makeId(prefix: string) {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const PUBLIC_ASSET_BASE =
+    process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL ||
+    process.env.NEXT_PUBLIC_ASSETS_PUBLIC_BASE ||
+    "https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com";
+
+function resolveImageUrl(value: string | null | undefined): string {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "";
+    // already full URL
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    // s3:// scheme — strip bucket, use key
+    if (raw.startsWith("s3://")) {
+        const withoutScheme = raw.replace("s3://", "");
+        const slashIdx = withoutScheme.indexOf("/");
+        const key = slashIdx >= 0 ? withoutScheme.slice(slashIdx + 1) : "";
+        return key ? `${PUBLIC_ASSET_BASE.replace(/\/+$/, "")}/${key.replace(/^\/+/, "")}` : "";
+    }
+    // bare key (with or without leading slash)
+    return `${PUBLIC_ASSET_BASE.replace(/\/+$/, "")}/${raw.replace(/^\/+/, "")}`;
 }
 
 function getSourceIcon(source: ItemSource) {
@@ -251,8 +232,8 @@ function toEducationItem(item: any, index: number): EducationItem {
         degree: String(item?.degree ?? item?.degree_level ?? "").trim(),
         faculty: String(item?.faculty ?? "").trim(),
         fieldOfStudy: String(item?.fieldOfStudy ?? item?.field_of_study ?? item?.major ?? "").trim(),
-        startYear: String(item?.startYear ?? item?.start_year ?? item?.start_date ?? "").trim(),
-        endYear: String(item?.endYear ?? item?.end_year ?? item?.end_date ?? "").trim(),
+        startYear: String(item?.startYear ?? item?.start_year ?? item?.startDate ?? item?.start_date ?? "").trim(),
+        endYear: String(item?.endYear ?? item?.end_year ?? item?.endDate ?? item?.end_date ?? "").trim(),
         gpa: String(item?.gpa ?? "").trim(),
     };
 }
@@ -333,6 +314,7 @@ export default function PortfolioPage() {
     const [skills, setSkills] = useState<SkillItem[]>([]);
     const [certificates, setCertificates] = useState<CertificateItem[]>([]);
     const [experiences, setExperiences] = useState<ExperienceItem[]>([]);
+    const [apiPlatformExperiences, setApiPlatformExperiences] = useState<ExperienceItem[]>([]);
 
     // const [educationList, setEducationList] = useState([
     //     "Suankularb Wittayalai (2015 - 2021) (GPA: 3.99)",
@@ -451,15 +433,43 @@ export default function PortfolioPage() {
         birthInputRef.current?.focus();
     }
 
-    function onPhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    async function onPhotoChange(e: ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const url = URL.createObjectURL(file);
+        // show preview immediately
+        const blobUrl = URL.createObjectURL(file);
         setPhotoUrl((prev) => {
             if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
-            return url;
+            return blobUrl;
         });
+
+        // upload to S3
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/student/profile-image", {
+                method: "POST",
+                body: formData,
+            });
+
+            const result = await res.json().catch(() => null);
+            if (!res.ok || !result?.ok) {
+                throw new Error(result?.message || "Upload failed");
+            }
+
+            // replace blob URL with real S3 URL
+            if (result.url) {
+                setPhotoUrl((prev) => {
+                    if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+                    return result.url;
+                });
+            }
+        } catch (err: any) {
+            console.error("Profile image upload failed:", err);
+            alert(err?.message || "Failed to upload photo");
+        }
     }
 
     function openPersonalEditor() {
@@ -906,11 +916,11 @@ export default function PortfolioPage() {
             setLoadedForm(nextForm);
 
             setPhotoUrl(
-                String(
+                resolveImageUrl(
                     info.profile_image_url ||
                     info.avatar_image_url ||
                     ""
-                ).trim()
+                )
             );
 
             setEducationList(
@@ -965,6 +975,22 @@ export default function PortfolioPage() {
                         .filter((item: ExperienceItem) => item.title)
                     : []
             );
+
+            // platform activities from backend (completed activities)
+            if (Array.isArray(portfolio.platform_activities)) {
+                setApiPlatformExperiences(
+                    portfolio.platform_activities
+                        .map((item: any) => ({
+                            id: item.id || item.activity_id || makeId("platform-exp"),
+                            period: item.period || "",
+                            title: item.title || item.activity_name || item.name || "",
+                            description: item.description || "",
+                            source: "platform" as ItemSource,
+                            files: [],
+                        }))
+                        .filter((item: ExperienceItem) => item.title)
+                );
+            }
         } catch (error) {
             console.error("Failed to fetch portfolio:", error);
 
@@ -1444,11 +1470,16 @@ export default function PortfolioPage() {
                                 <div className={styles.sectionEditorGroup}>
                                     <div className={styles.sectionEditorHeading}>Select from platform</div>
                                     <div className={styles.optionList}>
-                                        {platformExperienceOptions.map((item) => (
+                                        {apiPlatformExperiences.length === 0 && (
+                                            <div className={styles.optionMeta} style={{ padding: "8px 0", color: "#8a827b" }}>
+                                                ยังไม่มีกิจกรรมที่เสร็จสมบูรณ์จากแพลตฟอร์ม
+                                            </div>
+                                        )}
+                                        {apiPlatformExperiences.map((item) => (
                                             <button key={item.id} type="button" className={styles.optionCardTall} onClick={() => onSelectPlatformExperience(item)}>
                                                 <img src={getSourceIcon("platform")} alt="Platform" className={styles.inlineSourceIcon} />
                                                 <div className={styles.optionTextBlock}>
-                                                    <div className={styles.optionTitle}>[{item.period}] - {item.title}</div>
+                                                    <div className={styles.optionTitle}>{item.period ? `[${item.period}] - ` : ""}{item.title}</div>
                                                     <div className={styles.optionMeta}>{item.description}</div>
                                                 </div>
                                             </button>

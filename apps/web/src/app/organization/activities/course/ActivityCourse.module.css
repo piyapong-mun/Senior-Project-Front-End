@@ -1,0 +1,2184 @@
+/* =========================
+   0) Page Layout
+========================= */
+.page {
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 680px 580px;
+  gap: 44px;
+  align-items: start;
+  font-family: "Rounded Mplus 1c", sans-serif;
+  color: #000;
+  padding-bottom: 20px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* =========================
+   1) Base Card
+========================= */
+.panel {
+  background: #fefefe;
+  border: 1px solid #efefef;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.infoPanel {
+  min-height: 399px;
+  padding: 28px 18px 34px;
+}
+
+.typePanel {
+  min-height: 139px;
+  padding: 20px 29px;
+}
+
+.detailsPanel {
+  min-height: 607px;
+  padding: 28px 32px 24px;
+}
+
+.actionPanel {
+  min-height: 139px;
+  padding: 22px 20px;
+}
+
+.rewardsPanel {
+  min-height: 399px;
+  padding: 24px 19px 16px;
+}
+
+.settingsPanel {
+  min-height: 593px;
+  padding: 29px 19px 24px;
+}
+
+/* =========================
+   2) Inputs + Labels
+========================= */
+.labelText,
+.sectionTitle {
+  display: block;
+  font-size: 16px;
+  line-height: 26px;
+  margin-bottom: 8px;
+  color: #000;
+}
+
+.sectionTitle {
+  font-size: 18px;
+}
+
+.largeInput,
+.descriptionTextarea,
+.standardInput,
+.fullWidthInput,
+.bioTextarea,
+.smallDateInput,
+.smallTimeInput,
+.maxParticipantInput,
+.skillModalInput,
+.skillModalSelect {
+  width: 100%;
+  background: #f7f7f7;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  box-sizing: border-box;
+  color: rgba(0, 0, 0, 0.75);
+  font-family: inherit;
+  outline: none;
+}
+
+.largeInput,
+.standardInput,
+.fullWidthInput {
+  height: 39px;
+  padding: 0 14px;
+  font-size: 16px;
+}
+
+.largeInput {
+  height: 65px;
+  display: block;
+  margin-bottom: 13px;
+}
+
+.descriptionTextarea {
+  min-height: 186px;
+  resize: none;
+  padding: 12px 14px;
+  font-size: 16px;
+}
+
+.bioTextarea {
+  min-height: 82px;
+  resize: none;
+  padding: 10px 14px;
+  font-size: 16px;
+}
+
+.fullWidthInput {
+  height: 39px;
+}
+
+.smallDateInput,
+.smallTimeInput {
+  height: 25px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.maxParticipantInput {
+  width: 159px;
+  height: 36px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 300;
+  padding: 0 10px;
+}
+
+.skillModalInput,
+.skillModalSelect {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 15px;
+}
+
+.largeInput::placeholder,
+.descriptionTextarea::placeholder,
+.standardInput::placeholder,
+.fullWidthInput::placeholder,
+.bioTextarea::placeholder,
+.smallDateInput::placeholder,
+.smallTimeInput::placeholder,
+.maxParticipantInput::placeholder,
+.skillModalInput::placeholder {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.largeInput:focus,
+.descriptionTextarea:focus,
+.standardInput:focus,
+.fullWidthInput:focus,
+.bioTextarea:focus,
+.smallDateInput:focus,
+.smallTimeInput:focus,
+.maxParticipantInput:focus,
+.skillModalInput:focus,
+.skillModalSelect:focus {
+  border-color: rgba(0, 0, 0, 0.8);
+}
+
+/* =========================
+   3) Activity Type
+========================= */
+.segmentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 99px;
+  border: 1px solid #000;
+  overflow: hidden;
+}
+
+.segmentButton {
+  border: 5px solid #C7BED4;
+  background: #fff;
+  font-family: inherit;
+  font-size: 20px;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.segmentButton + .segmentButton {
+  border-left-width: 1px;
+}
+
+.segmentButtonActive {
+  background: #C7BED4;
+}
+
+.segmentButton:hover {
+  background: #e9e5f0;
+}
+
+/* =========================
+   4) Location + Speaker
+========================= */
+.locationBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.locationRow {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.locationChoice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  font-size: 20px;
+  color: #000;
+  cursor: pointer;
+}
+
+
+.locationFieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.locationInputWrap {
+  position: relative;
+}
+
+.locationInputDisabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.locationHelperText {
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.placeSearchDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.14);
+  z-index: 50;
+}
+
+.placeSearchState,
+.placeSearchError {
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.placeSearchState {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.placeSearchError {
+  color: #b42318;
+}
+
+.placeSuggestionButton {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  text-align: left;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.placeSuggestionButton:last-child {
+  border-bottom: 0;
+}
+
+.placeSuggestionButton:hover {
+  background: #e9e5f0;
+}
+
+.placeSuggestionTitle {
+  font-size: 14px;
+  line-height: 1.35;
+  color: #000;
+}
+
+.placeSuggestionHint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.selectedPlaceCard {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+  background: #f9fcfc;
+  padding: 12px 14px;
+}
+
+.selectedPlaceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.selectedPlaceTitle {
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #000;
+}
+
+.selectedPlaceDetail,
+.selectedPlaceMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.clearSelectedPlaceButton {
+  min-width: 58px;
+  height: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.clearSelectedPlaceButton:hover {
+  background: #f3f3f3;
+}
+
+.selectedPlaceLink {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #0b57d0;
+  text-decoration: underline;
+}
+
+.divider {
+  height: 1px;
+  background: #000;
+  margin: 18px 0 16px;
+}
+
+.formBlock {
+  margin-bottom: 14px;
+}
+
+.checkInBlock {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.checkInTitle {
+  width: 150px;
+  font-size: 18px;
+  line-height: 26px;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.qrPreviewCard {
+  width: 193px;
+  height: 180px;
+  border-radius: 4px;
+  border: 1px solid #d8d8d8;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 12px 10px;
+}
+
+.qrPreviewFrame {
+  width: 118px;
+  height: 118px;
+  padding: 8px;
+  border: 1.5px solid #000;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.qrGrid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(21, 1fr);
+  grid-template-rows: repeat(21, 1fr);
+}
+
+.qrCell {
+  background: #fff;
+}
+
+.qrCellDark {
+  background: #000;
+}
+
+.qrCodeLabel {
+  font-size: 12px;
+  line-height: 1.2;
+  color: #000;
+  text-align: center;
+}
+
+.qrCodeValue {
+  max-width: 150px;
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.65);
+  text-align: center;
+  word-break: break-word;
+}
+
+/* =========================
+   5) Activity Status
+========================= */
+.actionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+  position: relative;
+}
+
+.actionGrid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 0.5px);
+  width: 1px;
+  background: #000;
+}
+
+.actionButton {
+  min-height: 92px;
+  border: 5px solid #C7BED4;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 20px;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.statusButtonActive {
+  background: #C7BED4;
+  border-color: #C7BED4;
+}
+
+.statusButtonInactive {
+  background: #fff;
+  border-color: #C7BED4;
+}
+
+.actionButton:hover {
+  background: #e9e5f0;
+}
+
+.actionIcon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+/* =========================
+   6) Skills + Rewards
+========================= */
+.rewardsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 11px;
+}
+
+.rewardsTitle {
+  font-size: 16px;
+  line-height: 26px;
+  text-align: left;
+}
+
+.smallIcon {
+  width: 26px;
+  height: 19px;
+  color: #000;
+}
+
+.addSkillButton {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addSkillIcon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  display: block;
+}
+
+.skillList {
+  height: 171px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin: 0 11px;
+}
+
+.skillList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.skillList::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+
+.skillRow {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 1fr 95px 49px;
+  align-items: center;
+  background: #f7f7f7;
+  border: 1px solid #b3b3b3;
+  border-radius: 2px;
+  margin-bottom: 9px;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.skillName,
+.skillLevel,
+.skillPercent {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  font-weight: 300;
+}
+
+.skillSearchFieldWrap {
+  position: relative;
+  z-index: 2;
+}
+
+.skillSearchResultBox {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1.5px solid rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  background: #fff;
+  margin: 0;
+  z-index: 30;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.skillRow {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 60px 34px;
+  align-items: center;
+  background: #f7f7f7;
+  border: 1px solid #b3b3b3;
+  border-radius: 2px;
+  margin-bottom: 9px;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.skillName,
+.skillLevel,
+.skillPercent {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  font-weight: 300;
+}
+
+.skillName {
+  min-width: 0;
+  padding: 0 16px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skillLevel,
+.skillPercent {
+  justify-content: center;
+  border-left: 1px solid #b3b3b3;
+}
+
+.removeSkillButton {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-left: 1px solid #b3b3b3;
+  background: #fff;
+  color: #b42318;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.removeSkillButton:hover {
+  background: #fdecec;
+}
+
+.skillLevel,
+.skillPercent {
+  justify-content: center;
+  border-left: 1px solid #b3b3b3;
+}
+
+.skillWeightSummary {
+  margin: 8px 11px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.skillSearchResultBox {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1.5px solid rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  background: #fff;
+  margin-bottom: 10px;
+}
+
+.skillSearchItem {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.skillSearchItem:last-child {
+  border-bottom: 0;
+}
+
+.skillSearchItem:hover {
+  background: #e9e5f0;
+}
+
+.skillSearchItemActive {
+  background: #e9e5f0;
+}
+
+.skillSearchItemName {
+  font-size: 14px;
+  color: #000;
+}
+
+.skillSearchItemCategory {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.skillSearchState {
+  padding: 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.skillSearchError {
+  padding: 12px;
+  font-size: 13px;
+  color: #b42318;
+}
+
+.selectedSkillSummary {
+  min-height: 20px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.rewardStatsGrid {
+  margin-top: 14px;
+  border-top: 1px solid #000;
+  display: grid;
+  grid-template-columns: 145px 1fr 1fr;
+}
+
+.rewardCell {
+  min-height: 140px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 12px 14px;
+  box-sizing: border-box;
+}
+
+.rewardCell + .rewardCell {
+  border-left: 1px solid #000;
+}
+
+.rewardTitle {
+  font-size: 16px;
+  line-height: 26px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.xpValueBox,
+.uploadButton {
+  background: #f7f7f7;
+  border: 1px solid #b3b3b3;
+  border-radius: 2px;
+  font-family: inherit;
+  color: #000;
+}
+
+.xpValueBox {
+  width: 63px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 300;
+}
+
+.uploadButton {
+  width: 112px;
+  height: 64px;
+  font-size: 12px;
+  font-weight: 300;
+  cursor: pointer;
+}
+
+.rewardIconWrap {
+  margin-top: auto;
+  width: 69px;
+  height: 71px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6f6f6f;
+}
+
+.rewardIconSvg {
+  width: 52px;
+  height: 52px;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.rewardUploadWrap {
+  position: relative;
+}
+
+.uploadButton {
+  width: 112px;
+  height: 84px;
+  font-size: 12px;
+  font-weight: 300;
+  cursor: pointer;
+  background: #f7f7f7;
+  border: 1px solid #b3b3b3;
+  border-radius: 2px;
+  font-family: inherit;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.rewardPreviewContent {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.rewardPreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rewardPreviewPdf {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+
+.rewardPreviewOverlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.rewardPreviewName {
+  display: block;
+  font-size: 10px;
+  line-height: 1.2;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clearUploadButton {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #b3b3b3;
+  border-radius: 999px;
+  background: #fff;
+  color: #b42318;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clearUploadButton:hover {
+  background: #fdecec;
+}
+
+.rewardUploadError {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #b42318;
+  text-align: center;
+}
+
+/* =========================
+   7) Add Skill Modal
+========================= */
+.skillModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(113, 113, 113, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 140;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.skillModalCard {
+  width: min(420px, 100%);
+  background: #fefefe;
+  border: 1px solid #efefef;
+  border-radius: 6px;
+  box-shadow: 2px 6px 18px rgba(0, 0, 0, 0.14);
+  padding: 20px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: visible;
+}
+
+.skillModalTitle {
+  font-size: 22px;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.skillModalField {
+  margin-bottom: 12px;
+}
+
+.skillModalLabel {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.skillModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.skillModalSecondaryButton,
+.skillModalPrimaryButton {
+  min-width: 92px;
+  height: 38px;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.skillModalSecondaryButton {
+  border: 1.5px solid #000;
+  background: #fff;
+}
+
+.skillModalPrimaryButton {
+  border: 1.5px solid #000;
+  background: #C7BED4;
+}
+
+/* =========================
+   8) Access + Schedule
+========================= */
+.accessGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  position: relative;
+}
+
+.accessGrid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 0.5px);
+  width: 1px;
+  background: #000;
+}
+
+.accessCard {
+  min-height: 106px;
+  border: 5px solid #C7BED4;
+  background: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  box-sizing: border-box;
+  transition: background 0.15s ease;
+}
+
+.accessCardActive {
+  background: #C7BED4;
+}
+
+.accessCard:hover {
+  background: #e9e5f0;
+}
+
+.accessTitle {
+  font-size: 20px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.optionIcon {
+  width: 63px;
+  height: 61px;
+}
+
+.joinModeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  position: relative;
+}
+
+.joinModeGrid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 0.5px);
+  width: 1px;
+  background: #000;
+}
+
+.joinModeButton {
+  min-height: 45px;
+  border: 5px solid #C7BED4;
+  background: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.joinModeButtonActive {
+  background: #C7BED4;
+}
+
+.joinModeButton:hover {
+  background: #e9e5f0;
+}
+
+.maxParticipantRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.maxParticipantGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.maxParticipantLabel {
+  font-size: 16px;
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.unlimitedToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  color: #000;
+}
+
+/* =========================
+   9) Date / Time Picker
+========================= */
+.periodSection {
+  position: relative;
+  padding: 0;
+}
+
+.periodTitle {
+  font-size: 16px;
+  line-height: 26px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.periodGrid {
+  display: grid;
+  grid-template-columns: 1fr 36px 1fr;
+  gap: 20px;
+  align-items: end;
+  position: relative;
+}
+
+.periodColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.periodLabel {
+  font-size: 13px;
+  line-height: 13px;
+  text-align: left;
+}
+
+.periodFieldGrid {
+  display: grid;
+  grid-template-columns: 122px 69px;
+  gap: 7px;
+  align-items: center;
+}
+
+.periodFieldWrap {
+  position: relative;
+}
+
+.periodArrow {
+  align-self: end;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  line-height: 1;
+  color: #000;
+  transform: translateY(-3px);
+}
+
+.dateTriggerButton,
+.timeTriggerButton {
+  width: 100%;
+  height: 25px;
+  padding: 0 8px;
+  font-size: 13px;
+  text-align: left;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  background: #f7f7f7;
+  color: rgba(0, 0, 0, 0.75);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.triggerButtonActive {
+  border-color: rgba(0, 0, 0, 0.85);
+  background: #ffffff;
+}
+
+.floatingPicker {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+}
+
+.floatingPickerRight {
+  left: auto;
+  right: 0;
+}
+
+.calendarPopup {
+  width: 316px;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  background: #fff;
+  padding: 14px 12px 16px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+  box-sizing: border-box;
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.calendarNavButton {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #b3b3b3;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.calendarMonthTitle {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.calendarWeekHeader {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 8px;
+}
+
+.calendarWeekDay {
+  font-size: 12px;
+  text-align: center;
+  color: #000;
+}
+
+.calendarWeekDayAccent {
+  color: #1e90ff;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendarDayButton {
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: #000;
+  cursor: pointer;
+}
+
+.calendarDayMuted {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.calendarDayWeekend {
+  color: #1e90ff;
+}
+
+.calendarDayInRange {
+  background: rgba(132, 165, 157, 0.2);
+}
+
+.calendarDaySelected {
+  background: #84a59d;
+  color: #fff;
+}
+
+.timePopup {
+  width: 296px;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  background: #fff;
+  padding: 12px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+  box-sizing: border-box;
+}
+
+.timePopupTitle {
+  font-size: 15px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.timeOptionList {
+  max-height: 200px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.timeOptionButton {
+  height: 34px;
+  border: 1px solid #b3b3b3;
+  border-radius: 4px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.timeOptionButtonActive {
+  background: #C7BED4;
+  border-color: #C7BED4;
+}
+
+/* =========================
+   10) Checkbox
+========================= */
+.checkBox {
+  width: 25px;
+  height: 25px;
+  border-radius: 2px;
+  border: 1.5px solid #000;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.checkBoxChecked {
+  background: #C7BED4;
+}
+
+/* =========================
+   11) Responsive
+========================= */
+@media (max-width: 1140px) {
+  .page {
+    grid-template-columns: 1fr;
+    max-width: 700px;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 700px) {
+  .infoPanel,
+  .typePanel,
+  .detailsPanel,
+  .actionPanel,
+  .rewardsPanel,
+  .settingsPanel {
+    min-height: auto;
+  }
+
+  .segmentGrid,
+  .accessGrid,
+  .joinModeGrid,
+  .actionGrid,
+  .rewardStatsGrid,
+  .periodGrid,
+  .locationRow {
+    grid-template-columns: 1fr;
+  }
+
+  .accessGrid::before,
+  .joinModeGrid::before,
+  .actionGrid::before {
+    display: none;
+  }
+
+  .rewardStatsGrid {
+    border-top: 1px solid #000;
+  }
+
+  .rewardCell + .rewardCell {
+    border-left: 0;
+    border-top: 1px solid #000;
+  }
+
+  .periodFieldGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .maxParticipantRow,
+  .maxParticipantGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .maxParticipantInput {
+    width: 100%;
+  }
+
+  .periodArrow {
+    display: none;
+  }
+
+  .timeOptionList {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* =========================
+   12) Challenge-specific
+========================= */
+.challengeDetailsPanel {
+  min-height: 607px;
+  padding: 28px 32px 24px;
+}
+
+.challengeFields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.challengeFieldBlock {
+  width: 100%;
+}
+
+.challengeTextarea {
+  min-height: 88px;
+}
+
+.challengeLevelGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  position: relative;
+}
+
+.challengeLevelButton {
+  min-height: 48px;
+  border: 5px solid #C7BED4;
+  background: #fff;
+  font-family: inherit;
+  font-size: 20px;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.challengeLevelButton:hover {
+  background: #e9e5f0;
+}
+
+.challengeLevelButtonActive {
+  background: #C7BED4;
+}
+
+.submissionTextarea {
+  min-height: 85px;
+}
+
+.accessCardIconWrap {
+  width: 72px;
+  height: 72px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 6px auto 0;
+}
+
+.accessAudienceIcon {
+  object-fit: contain;
+}
+
+.inviteOnlyPlus {
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+  position: relative;
+}
+
+.inviteOnlyPlus::before,
+.inviteOnlyPlus::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+}
+
+.inviteOnlyPlus::before {
+  width: 16px;
+  height: 1.5px;
+}
+
+.inviteOnlyPlus::after {
+  width: 1.5px;
+  height: 16px;
+}
+
+.personIcon {
+  position: relative;
+  width: 56px;
+  height: 62px;
+}
+
+.personIconHead {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f1c768;
+  border: 1.5px solid rgba(0, 0, 0, 0.7);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+}
+
+.personIconBody {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 34px;
+  height: 42px;
+  border-radius: 16px 16px 4px 4px;
+  background: #b9b1f3;
+  border: 1.5px solid rgba(0, 0, 0, 0.7);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+}
+
+.personIconBody::before,
+.personIconBody::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  width: 10px;
+  height: 24px;
+  background: #b9b1f3;
+  border: 1.5px solid rgba(0, 0, 0, 0.7);
+  box-sizing: border-box;
+}
+
+.personIconBody::before {
+  left: -6px;
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  transform: rotate(6deg);
+}
+
+.personIconBody::after {
+  right: -6px;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  transform: rotate(-6deg);
+}
+
+.challengeRewardBadge {
+  width: 54px;
+  height: 54px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.challengeRewardBadgeIcon {
+  object-fit: contain;
+}
+
+/* =========================
+   13) Course-specific
+========================= */
+.courseModulesPanel {
+  height: 650px;
+  padding: 29px 32px 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.coursePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.coursePanelTitle {
+  font-size: 20px;
+  font-weight: 500;
+  color: #000;
+  line-height: 1.1;
+}
+
+.coursePanelTitleSmall {
+  font-size: 20px;
+  font-weight: 500;
+  color: #000;
+  line-height: 1.1;
+}
+
+.squareIconButton,
+.smallOutlineButton,
+.smallGhostButton {
+  border-radius: 2px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  color: #58756f;
+}
+
+.squareIconButton {
+  width: 60px;
+  height: 40px;
+  border: 2px solid #000;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.smallOutlineButton,
+.smallGhostButton {
+  width: 34px;
+  height: 24px;
+  border: 1.5px solid rgba(0, 0, 0, 0.45);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.smallGhostButton {
+  width: 28px;
+  height: 28px;
+  background: #fff;
+  color: #b42318;
+}
+
+.smallGhostButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.headerDivider {
+  height: 1px;
+  background: #000;
+  margin: 10px 0 18px;
+}
+
+.courseModuleScrollArea {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.courseModuleScrollArea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.courseModuleScrollArea::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+
+.courseModuleList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.courseModuleCard {
+  width: 100%;
+  min-height: 58px;
+  border-radius: 2px;
+  background: #d7d7d7;
+  border: 1px solid #717171;
+  text-align: left;
+  padding: 10px 14px;
+  color: #676769;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.courseModuleCardActive {
+  background: #BED4D0;
+  border-color: #212121;
+}
+
+.courseModuleCardTitle {
+  font-size: 16px;
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+
+.courseModuleCardLessons {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #636060;
+}
+
+.courseEditorPanel {
+  grid-column: 1 / -1;
+  min-height: 724px;
+  padding: 32px;
+}
+
+.courseEditorGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 0.95fr);
+  column-gap: 36px;
+  align-items: start;
+}
+
+.courseEditorColumn {
+  min-width: 0;
+}
+
+.verticalDivider {
+  width: 1px;
+  background: #000;
+  min-height: 630px;
+}
+
+.courseEditorEmpty {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.lessonTabs,
+.assessmentTabs {
+  display: grid;
+  gap: 12px;
+}
+
+.lessonTabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 24px;
+}
+
+.assessmentTabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 28px;
+}
+
+.lessonTab,
+.assessmentTab {
+  min-height: 44px;
+  border-radius: 2px;
+  border-top: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-right: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-left: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-bottom: 0;
+  background: #f7f7f7;
+  font-family: inherit;
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+
+.lessonTabActive,
+.assessmentTabActive {
+  background: #D4C8BE;
+  color: #000;
+  font-weight: 500;
+}
+
+.lessonForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.courseNotesTextarea {
+  min-height: 88px;
+}
+
+.lessonFeatureRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 26px;
+}
+
+.lessonFeatureButton {
+  border: 0;
+  padding: 0 0 6px;
+  background: transparent;
+  border-bottom: 1px solid #000;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-start;
+  font-family: inherit;
+  font-size: 18px;
+  color: #000;
+  cursor: pointer;
+}
+
+.quizFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+}
+
+.quizFieldBlock,
+.assignmentPanel {
+  min-width: 0;
+}
+
+.assignmentPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.assignmentTextarea {
+  min-height: 160px;
+}
+
+.questionSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.questionsCard {
+  border-radius: 2px;
+  background: #fefefe;
+  border: 1px solid #717171;
+  padding: 14px 16px;
+  box-sizing: border-box;
+}
+
+.questionTabStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.questionTab {
+  min-width: 44px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 2px;
+  border-top: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-right: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-left: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-bottom: 0;
+  background: #f7f7f7;
+  font-family: inherit;
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.questionTabActive {
+  background: #D4C8BE;
+  color: #000;
+  font-weight: 500;
+}
+
+.questionCard {
+  border: 1px solid #b3b3b3;
+  border-radius: 2px;
+  padding: 16px;
+  background: #fefefe;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.quizDisabledPlaceholder {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.4);
+  text-align: center;
+  padding: 24px;
+}
+
+.questionTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.questionLabel {
+  font-size: 18px;
+  color: #000;
+}
+
+.questionPromptTextarea {
+  min-height: 40px;
+  margin-bottom: 12px;
+}
+
+.choiceListWrap {
+  margin-top: 12px;
+}
+
+.choiceList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.choiceRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px 38px;
+  gap: 8px;
+  align-items: center;
+}
+
+.choiceInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  background: #f7f7f7;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  box-sizing: border-box;
+  color: rgba(0, 0, 0, 0.75);
+  font-family: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+.choiceActionButton,
+.choiceDeleteButton {
+  width: 38px;
+  height: 38px;
+  border-radius: 2px;
+  border: 1.5px solid rgba(0, 0, 0, 0.45);
+  background: #f7f7f7;
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.choiceActionButton {
+  color: #5b8178;
+}
+
+.choiceActionButtonActive {
+  background: #cfe3dc;
+}
+
+.choiceDeleteButton {
+  color: #c45e54;
+}
+
+.choiceDeleteButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1140px) {
+  .courseEditorGrid {
+    grid-template-columns: 1fr;
+    row-gap: 24px;
+  }
+
+  .verticalDivider {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .courseModulesPanel,
+  .courseEditorPanel {
+    min-height: auto;
+    height: auto;
+    padding: 24px 18px;
+  }
+
+  .settingsPanel {
+    min-height: auto;
+    height: auto;
+  }
+
+  .courseModuleScrollArea,
+  .settingsScrollArea {
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .floatingPicker,
+  .floatingPickerRight {
+    left: 0;
+    right: auto;
+  }
+
+  .calendarPopup,
+  .timePopup {
+    width: min(316px, calc(100vw - 72px));
+  }
+
+  .lessonTabs,
+  .assessmentTabs,
+  .quizFieldGrid,
+  .lessonFeatureRow,
+  .choiceRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.courseModuleTitleEditor {
+  margin-bottom: 18px;
+}
+
+.courseModuleNameInput {
+  margin-bottom: 0;
+}
+
+.rewardsHeaderEmpty {
+  padding: 0 11px;
+  margin-bottom: 8px;
+}
+
+.skillListEmpty {
+  height: 171px;
+  margin: 0 11px;
+  border: 2px dashed rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addSkillButtonCenter {
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.addSkillButtonCenter:hover {
+  opacity: 1;
+}
+/* =========================
+   Chained Date→Time Picker (added to match Meeting)
+========================= */
+.periodLabelEnd {
+  font-size: 13px;
+  line-height: 13px;
+  grid-column: 4 / 6;
+}
+
+.periodInputRow {
+  display: grid;
+  grid-template-columns: 122px 69px 36px 122px 69px;
+  gap: 7px;
+  align-items: center;
+}
+
+.floatingPickerUp {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.chainedPickerPopup {
+  width: 316px;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.chainedPickerHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fafaf8;
+}
+
+.chainedPickerBack {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #b3b3b3;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+  font-family: inherit;
+}
+
+.chainedPickerBack:hover {
+  background: #f0f0f0;
+}
+
+.chainedPickerTitle {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  line-height: 1.3;
+}
+
+.chainedPickerPopup .calendarPopup {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+}
+
+.chainedPickerPopup .timePopup {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+}
+
+
+/* timeOption classes for chained TimePopup */
+.timeOption,
+.timeOptionButton {
+  height: 34px;
+  border: 1px solid #b3b3b3;
+  border-radius: 4px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.timeOptionSelected,
+.timeOptionButtonActive {
+  background: #C7BED4;
+  border-color: #C7BED4;
+}
+/* periodLabelRow — align กับ periodInputRow grid */
+.periodLabelRow {
+  display: grid;
+  grid-template-columns: 122px 69px 36px 122px 69px;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.periodLabelRow .periodLabel {
+  grid-column: 1 / 3;
+}

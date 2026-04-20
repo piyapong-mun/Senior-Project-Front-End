@@ -45,28 +45,37 @@ export default function ConfirmEmailPage() {
     inputsRef.current[0]?.focus();
   }, []);
 
-  // ✅ init sentAt from localStorage (or set now if not found)
+  // init sentAt from localStorage (or set now if not found)
   useEffect(() => {
-    if (!email) return;
+  if (!email) return;
 
-    const k = keyFor(email);
-    const raw = localStorage.getItem(k);
-    let sentAtMs = raw ? Number(raw) : NaN;
+  const k = keyFor(email);
+  const raw = localStorage.getItem(k);
+  let sentAtMs = raw ? Number(raw) : NaN;
 
-    if (!Number.isFinite(sentAtMs) || sentAtMs <= 0) {
-      sentAtMs = Date.now(); // first time opening confirm page => assume code sent now
-      localStorage.setItem(k, String(sentAtMs));
-    }
+  // ✅ ถ้าไม่มี key หรือ key เก่าจนหมด TTL แล้ว → reset เป็น now
+  const isStale =
+    !Number.isFinite(sentAtMs) ||
+    sentAtMs <= 0 ||
+    Date.now() - sentAtMs > OTP_TTL_SEC * 1000; // expired แล้ว
 
-    const update = () => {
-      const left = Math.max(0, Math.ceil((sentAtMs + OTP_TTL_SEC * 1000 - Date.now()) / 1000));
-      setSecondsLeft(left);
-    };
+  if (isStale) {
+    sentAtMs = Date.now();
+    localStorage.setItem(k, String(sentAtMs));
+  }
 
-    update();
-    const t = setInterval(update, 1000);
-    return () => clearInterval(t);
-  }, [email]);
+  const update = () => {
+    const left = Math.max(
+      0,
+      Math.ceil((sentAtMs + OTP_TTL_SEC * 1000 - Date.now()) / 1000)
+    );
+    setSecondsLeft(left);
+  };
+
+  update();
+  const t = setInterval(update, 1000);
+  return () => clearInterval(t);
+}, [email]);
 
   // ✅ cooldown ticker
   useEffect(() => {

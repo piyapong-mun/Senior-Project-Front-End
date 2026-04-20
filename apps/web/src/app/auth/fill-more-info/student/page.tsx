@@ -130,13 +130,18 @@ function SelectorBox({
   options,
   selectedIds,
   onToggle,
+  onAdd,
 }: {
   title: string;
   options: OptionItem[];
   selectedIds: string[];
   onToggle: (id: string) => void;
+  onAdd?: (name: string) => Promise<void>;
 }) {
   const [q, setQ] = useState("");
+  const [addName, setAddName] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addErr, setAddErr] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -144,10 +149,20 @@ function SelectorBox({
     return options.filter((o) => o.name.toLowerCase().includes(s));
   }, [options, q]);
 
-  const selectedNames = useMemo(() => {
-    const set = new Set(selectedIds);
-    return options.filter((o) => set.has(o.id)).map((o) => o.name);
-  }, [options, selectedIds]);
+  const handleAdd = async () => {
+    const name = addName.trim();
+    if (!name || !onAdd) return;
+    setAdding(true);
+    setAddErr(null);
+    try {
+      await onAdd(name);
+      setAddName("");
+    } catch (e: any) {
+      setAddErr(e?.message || "Failed to add");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
     <div className={styles.selectorBox}>
@@ -186,10 +201,47 @@ function SelectorBox({
         })}
       </div>
 
-      {selectedNames.length > 0 && (
-        <p className={styles.note} style={{ marginTop: 14 }}>
-          Selected: {selectedNames.join(", ")}
-        </p>
+      {onAdd && (
+        <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
+          <input
+            className={styles.searchInput}
+            style={{
+              flex: 1,
+              border: "2px solid rgba(0,0,0,0.22)",
+              borderRadius: 4,
+              padding: "0 10px",
+              height: 40,
+              fontSize: 14,
+            }}
+            placeholder="Add new..."
+            value={addName}
+            onChange={(e) => { setAddName(e.target.value); setAddErr(null); }}
+            onKeyDown={(e) => e.key === "Enter" ? handleAdd() : null}
+            disabled={adding}
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={adding || !addName.trim()}
+            style={{
+              height: 40,
+              padding: "0 16px",
+              borderRadius: 4,
+              border: "2px solid rgba(0,0,0,0.22)",
+              background: "#84A59D",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: adding || !addName.trim() ? "not-allowed" : "pointer",
+              opacity: adding || !addName.trim() ? 0.6 : 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {adding ? "..." : "+ Add"}
+          </button>
+        </div>
+      )}
+      {addErr && (
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#7a2f2f" }}>{addErr}</p>
       )}
     </div>
   );
@@ -288,7 +340,7 @@ export default function FillMoreInfoStudentPage() {
     (async () => {
       try {
         const [jobsRes, skillsRes] = await Promise.all([
-          fetch("/api/options/jobs", { cache: "no-store" }),
+          fetch("/api/options/careers", { cache: "no-store" }),
           fetch("/api/options/skills", { cache: "no-store" }),
         ]);
 
@@ -301,7 +353,9 @@ export default function FillMoreInfoStudentPage() {
 
         if (skillsRes.ok) {
           const skillsJson = await skillsRes.json();
-          setSkillOptions(normalizeOptionResponse(skillsJson));
+          // normalizeOptionResponse รองรับอยู่แล้ว
+          const skills = normalizeOptionResponse(skillsJson);
+          setSkillOptions(skills);
         } else {
           setSkillOptions([]);
         }
@@ -345,6 +399,23 @@ export default function FillMoreInfoStudentPage() {
     setJobSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+  };
+
+  // ✅ เพิ่ม job of interest ใหม่ผ่าน POST /api/options/jobs
+  const handleAddJob = async (name: string) => {
+    const r = await fetch("/api/options/careers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ career_name: name, field: "" }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data?.ok) {
+      throw new Error(data?.message || "Failed to add career");
+    }
+    // เพิ่มเข้า options list และ auto-select
+    const newItem: OptionItem = { id: data.item.id, name: data.item.name };
+    setJobOptions((prev) => [...prev, newItem]);
+    setJobSelected((prev) => [...prev, newItem.id]);
   };
 
   const toggleSkill = (id: string) => {
@@ -532,8 +603,13 @@ export default function FillMoreInfoStudentPage() {
                 className={styles.pickField}
                 onClick={() => setOpenJob((v) => !v)}
               >
-                <span className={styles.pickPlaceholder}>
-                  {jobSelected.length ? `${jobSelected.length} selected` : "Job of interest"}
+                <span className={jobSelected.length ? undefined : styles.pickPlaceholder}>
+                  {jobSelected.length
+                    ? jobOptions
+                        .filter((o) => jobSelected.includes(o.id))
+                        .map((o) => o.name)
+                        .join(", ")
+                    : "Job of interest"}
                 </span>
               </button>
 
@@ -543,6 +619,7 @@ export default function FillMoreInfoStudentPage() {
                   options={jobOptions}
                   selectedIds={jobSelected}
                   onToggle={toggleJob}
+                  onAdd={handleAddJob}
                 />
               )}
 
@@ -551,8 +628,13 @@ export default function FillMoreInfoStudentPage() {
                 className={styles.pickField}
                 onClick={() => setOpenSkill((v) => !v)}
               >
-                <span className={styles.pickPlaceholder}>
-                  {skillSelected.length ? `${skillSelected.length} selected` : "Your skills"}
+                <span className={skillSelected.length ? undefined : styles.pickPlaceholder}>
+                  {skillSelected.length
+                    ? skillOptions
+                        .filter((o) => skillSelected.includes(o.id))
+                        .map((o) => o.name)
+                        .join(", ")
+                    : "Your skills"}
                 </span>
               </button>
 
@@ -618,24 +700,21 @@ export default function FillMoreInfoStudentPage() {
               );
             })}
           </div>
+
+          <div className={styles.nextWrap}>
+            <button
+              className={styles.nextBtn}
+              type="button"
+              onClick={handleNext}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Next"}
+            </button>
+          </div>
+          <div className={styles.errorWrap}>
+            {err ? <p className={styles.errorText}>{err}</p> : null}
+          </div>
         </section>
-
-        <div className={styles.nextWrap}>
-          <button
-            className={styles.nextBtn}
-            type="button"
-            onClick={handleNext}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : "Next"}
-          </button>
-
-          {err && (
-            <p className={styles.note} style={{ marginTop: 8 }}>
-              {err}
-            </p>
-          )}
-        </div>
       </main>
     </div>
   );

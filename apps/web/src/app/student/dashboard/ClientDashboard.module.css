@@ -335,8 +335,8 @@ body {
   left: 0;
   width: 250px;
   height: 56px;
-  border-radius: 3px;
-  background: #cdb4db;
+  border-radius: 2px;
+  background: #C7BED4;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.16);
@@ -382,8 +382,8 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 2px;
-  background: #457b9d;
-  border: 1px solid #457b9d;
+  background: #d5bdaf;
+  border: 2px solid #b49e91;
   box-sizing: border-box;
   box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.12);
 }
@@ -502,9 +502,9 @@ body {
   left: 0;
   width: 76px;
   height: 68px;
-  border-radius: 4px;
-  background: #eae2b7;
-  border: 1px solid #111;
+  border-radius: 2px;
+  background: #C7BED4;
+  border: 1px solid #C7BED4;
   box-sizing: border-box;
   z-index: 2;
 }
@@ -517,9 +517,9 @@ body {
   left: 4px;
   width: 76px;
   height: 68px;
-  border-radius: 4px;
-  border: 1px solid #111;
-  background: transparent;
+  border-radius: 2px;
+  border: 2px solid #C7BED4;
+  background: #f9f9f9;
   box-sizing: border-box;
   z-index: -1;
 }
@@ -571,7 +571,7 @@ body {
 
 /* hover */
 .tileBtn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-4px);
 }
 
 .tileBtn:active {
@@ -725,12 +725,12 @@ body {
 ========================================================= */
 
 /* -------------------------
-   4.1 Activity | Mission
+   4.1 Activity Overview
 ------------------------- */
 .splitCard {
   position: relative;
-  height: 174px;
-  min-height: 185px;
+  height: 390px;
+  min-height: 420px;
   padding: 0;
   border-radius: 6px;
   border: 1px solid #efefef;
@@ -740,88 +740,75 @@ body {
   box-sizing: border-box;
 }
 
-
-.splitCardBg {
-  position: absolute;
-  inset: 0;
-  border-top: 1px solid #efefef;
-  border-right: 1px solid #efefef;
-  border-left: 1px solid #efefef;
-  border-bottom: 0;
-  border-radius: 2px;
-  background: #fefefe;
-}
-
-.splitDivider {
-  position: absolute;
-  top: 24px;
-  left: 62%;
-  width: 1px;
-  height: calc(100% - 32px);
-  background: #000;
-  opacity: 0.8;
+.splitCardBg,
+.splitDivider,
+.missionPane,
+.missionPaneTitle,
+.missionPaneList,
+.missionPaneItem,
+.missionPaneText,
+.missionPaneXp {
+  display: none;
 }
 
 .activityPane {
   position: relative;
-  width: 62%;
-  height: 174px;
-  min-height: 174px;
-  padding: 22px 18px 6px 22px;
+  width: 100%;
+  height: 100%;
+  padding: 18px 20px 16px;
   box-sizing: border-box;
 }
 
 .activityPaneHead {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .activityOverviewTitle {
   font-size: 16px;
-  font-weight: 500;
-  font-family: Inter, Arial, sans-serif;
-  color: #000;
   line-height: 1;
+  font-weight: 500;
+  color: #000;
+  font-family: Inter, Arial, sans-serif;
 }
 
-.activityIconWrap {
-  position: absolute;
-  top: 10px;
-  left: 150px;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.activityIconImg {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  transform: rotate(-12deg);
+.activityIconWrap,
+.activityIconImg,
+.activityRow,
+.activityCard,
+.activityCardBg,
+.activityCardText,
+.activityCardTitle,
+.activityCardSub,
+.activityRewardIcon,
+.activityRewardText {
+  display: none;
 }
 
 .viewAllBtn {
-  width: 58px;
-  height: 18px;
-  border: 0.5px solid rgba(42, 42, 42, 0.45);
+  min-width: 72px;
+  height: 26px;
+  border: 1px solid rgba(42, 42, 42, 0.28);
   border-radius: 2px;
   background: #fff;
-  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08);
-  font-size: 11px;
-  font-weight: 300;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 400;
   color: #2a2a2a;
   cursor: pointer;
-  padding: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  padding: 0 12px;
+}
+
+.viewAllBtn:hover {
+  background: #f5cac3;
+  border-color: rgba(42, 42, 42, 0.42);
 }
 
 .viewAllBtn span {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 100%;
@@ -830,199 +817,200 @@ body {
 
 .activityScrollArea {
   width: 100%;
-  height: 122px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #717171 #efefef;
-  padding-bottom: 10px;
+  height: 310px;
+  overflow-y: auto;
+  padding-right: 6px;
   box-sizing: border-box;
 }
 
 .activityScrollArea::-webkit-scrollbar {
-  height: 10px;
+  width: 8px;
 }
 
 .activityScrollArea::-webkit-scrollbar-track {
   background: #efefef;
-  border: 0.2px solid #000;
-  border-radius: 2px;
+  border-radius: 999px;
 }
 
 .activityScrollArea::-webkit-scrollbar-thumb {
-  background: #717171;
-  border: 0.2px solid #000;
-  border-radius: 2px;
+  background: #8a8a8a;
+  border-radius: 999px;
 }
 
-.activityRow {
+.activityTable {
+  width: 100%;
   display: flex;
-  align-items: center;
-  gap: 21px;
-  width: max-content;
-  min-width: 100%;
-  padding: 1px 0 14px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.activityCard {
-  position: relative;
-  width: 111.2px;
-  min-width: 111.2px;
-  flex: 0 0 auto;
-  height: 104px;
+.activityRowLink {
+  display: block;
+  width: 100%;
   border: 0;
   padding: 0;
   background: transparent;
-  cursor: pointer;
   text-align: left;
-}
-
-.activityCardBg {
-  position: absolute;
-  inset: 0;
+  color: inherit;
   border-radius: 2px;
-  background:
-    radial-gradient(circle at 18% 20%, rgba(176, 222, 255, 0.75) 0 22%, transparent 23%),
-    radial-gradient(circle at 78% 18%, rgba(255, 228, 181, 0.72) 0 24%, transparent 25%),
-    radial-gradient(circle at 66% 62%, rgba(255, 210, 245, 0.72) 0 20%, transparent 21%),
-    radial-gradient(circle at 30% 70%, rgba(210, 235, 210, 0.7) 0 22%, transparent 23%),
-    #f6f1ec;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.activityCardText {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 10px;
+.activityRowLink:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.09);
 }
 
-.activityCardTitle {
-  font-size: 10px;
-  line-height: 1.18;
-  color: #000;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.activityRowLink:hover .overviewRow {
+  border-color: #c7bed4;
+  background: #e6e1ed;
 }
 
-.activityCardSub {
-  margin-top: 6px;
-  font-size: 10px;
-  color: rgba(0, 0, 0, 0.55);
-}
-
-.activityRewardIcon {
-  position: absolute;
-  right: 6px;
-  bottom: 8px;
-  font-size: 28px;
-  line-height: 1;
-}
-
-.activityRewardText {
-  position: absolute;
-  left: 16px;
-  bottom: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #000;
-}
-
-.missionPane {
-  position: absolute;
-  top: 23px;
-  right: 18px;
-  width: calc(38% - 34px);
-  min-width: 220px;
-  box-sizing: border-box;
-}
-
-.missionPaneTitle {
-  font-size: 16px;
-  font-weight: 500;
-  font-family: Inter, Arial, sans-serif;
-  color: #000;
-  line-height: 1;
-  margin-bottom: 16px;
-}
-
-.missionPaneList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.missionPaneItem {
+.overviewRow {
   position: relative;
   width: 100%;
-  min-height: 31px;
-  padding: 6px 12px;
+  min-height: 65px;
+  display: grid;
+  grid-template-columns: 72px minmax(200px, 1.6fr) 92px 92px 120px;
+  align-items: stretch;
+  border: 1px solid rgba(42, 42, 42, 0.14);
   border-radius: 2px;
-  background: #e6d3f2;
-  border: 0.5px solid rgba(42, 42, 42, 0.5);
-  box-shadow: inset 2px 2px 1px #cdb4db;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
   box-sizing: border-box;
+}
+
+.overviewIconCell,
+.overviewTitleCell,
+.overviewMetaCol,
+.overviewStatusCol {
+  position: static;
+}
+
+.overviewIconCell {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  padding: 12px;
 }
 
-.missionPaneText {
-  font-size: 11px;
-  color: #000;
-  line-height: 1.2;
+.overviewBadgeImg {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  display: block;
 }
 
-.missionPaneXp {
+.overviewTitleCell {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  text-align: left;
+  border-right: 1px solid #d7d7d7;
+}
+
+.overviewName {
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 500;
+  color: #222;
+  word-break: break-word;
+}
+
+.overviewMetaCol {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 8px;
+  border-right: 1px solid #d7d7d7;
+}
+
+.overviewMetaLabel {
   font-size: 11px;
-  color: #000;
+  line-height: 1;
+  font-weight: 400;
+  color: #555;
+  text-align: center;
+}
+
+.overviewMetaValue {
+  margin-top: 8px;
+  font-size: 12px;
   line-height: 1.2;
-  text-align: right;
+  font-weight: 500;
+  color: #111;
+  text-align: center;
+}
+
+.overviewStatusCol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+.overviewStatusPill {
+  min-width: 102px;
+  height: 34px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1f1f1f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 10px;
+}
+
+.overviewStatusComplete {
+  background: #bfeabb;
+}
+
+.overviewStatusProgress {
+  background: #ffd186;
+}
+
+.overviewStatusIncomplete {
+  background: #fab8bb;
+}
+
+.overviewEmpty {
+  padding: 16px 0;
+  font-size: 13px;
+  color: #888;
+  text-align: center;
 }
 
 @media (max-width: 1100px) {
   .splitCard {
-    min-height: unset;
-  }
-
-  .splitDivider {
-    display: none;
-  }
-
-  .activityPane,
-  .missionPane {
-    position: relative;
-    width: 100%;
-    min-width: 0;
-    right: auto;
-    top: auto;
-  }
-
-  .activityPane {
-    padding: 22px 18px 8px 22px;
-  }
-
-  .missionPane {
-    padding: 0 18px 18px 22px;
-  }
-
-  .activityFakeScroll {
-    width: 100%;
+    min-height: 360px;
+    height: auto;
   }
 }
 
 @media (max-width: 760px) {
-  .activityRow {
-    gap: 12px;
+  .overviewRow {
+    grid-template-columns: 44px minmax(0, 1fr);
   }
 
-  .activityCard {
-    width: 120px;
-    min-width: 120px;
+  .overviewMetaCol,
+  .overviewStatusCol {
+    grid-column: 2;
+    border-right: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .overviewIconCell {
+    padding: 10px 6px;
+  }
+
+  .overviewBadgeImg {
+    width: 30px;
+    height: 30px;
   }
 }
 
@@ -1612,10 +1600,10 @@ body {
 
 .avatarBig {
   height: 300px;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25) inset;
+  /* box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25) inset; */
   border-radius: 2px;
   background-color: #f7f7f7;
-  border: 0.5px solid rgba(42, 42, 42, 0.5);
+  border: 0.5px solid rgba(133, 131, 131, 0.5);
   box-sizing: border-box;
   overflow: hidden;
   position: relative;
@@ -1651,10 +1639,10 @@ body {
 
 .avatarThumbCard {
   width: 100px;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25) inset;
+  /* box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25) inset; */
   border-radius: 2px;
   background-color: #f7f7f7;
-  border: 0.5px solid rgba(42, 42, 42, 0.5);
+  border: 0.5px solid rgba(133, 131, 131, 0.5);
   box-sizing: border-box;
   padding: 10px 10px 8px;
   cursor: pointer;
@@ -1673,8 +1661,8 @@ body {
 .avatarThumbImg {
   height: 84px;
   border-radius: 1px;
-  background: rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* background: rgba(0, 0, 0, 0.06); */
+  /* border: 1px solid rgba(0, 0, 0, 0.1); */
   overflow: hidden;
 }
 

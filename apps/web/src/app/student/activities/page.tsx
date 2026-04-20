@@ -22,7 +22,7 @@ export default function StudentActiviesDashboardPage() {
               height: "calc(100vh - 36px)",
               overflow: "auto",
               background: "#FFFFFF",
-              borderRadius: 10,
+              borderRadius: 5,
               padding: 24,
               boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
               display: "flex",

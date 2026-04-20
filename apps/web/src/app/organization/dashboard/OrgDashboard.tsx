@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { Fragment, useMemo, useState, useEffect, type ChangeEvent, useCallback } from "react";
+import { useMemo, useState, useEffect, useRef, type ChangeEvent, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { ORGANIZATION_SIDEBAR_ITEMS } from "@/lib/config/organization/routes";
 import styles from "./OrgDashboard.module.css";
-
-// Backend Json Type
-import { OrgDashboard, EmployeeInfo, ActivityStatsInfo, SkillStatsInfo, UniversityStatsInfo, ActivityInfo, CompleteStatsInfo } from "@/app/api/org/dashboard/route";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useAnimations, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 
 type OrgForm = {
@@ -30,32 +32,38 @@ type OrgForm = {
     tiktok: string;
 };
 
+type AvatarOption = {
+    id: string;
+    modelUrl: string;
+    unlockLevel: number;
+};
+
 type Employee = {
     id: string;
+    userId: string;
+    orgId: string;
     firstName: string;
     lastName: string;
     position: string;
     phone: string;
     email: string;
     canCheckChallenge: boolean;
-    avatarIndex: number; // 0..n
+    avatarId: string | null;
+    legacyAvatarIndex: number | null;
 };
 
-const AVATARS = [
-    "/images/avatar%20picture/avatar1.png",
-    "/images/avatar%20picture/avatar2.png",
-    "/images/avatar%20picture/avatar3.png",
-];
-
-const emptyEmp = (id: string): Employee => ({
+const emptyEmp = (id: string, userId = "", orgId = ""): Employee => ({
     id,
+    userId,
+    orgId,
     firstName: "",
     lastName: "",
     position: "",
     phone: "",
     email: "",
     canCheckChallenge: false,
-    avatarIndex: 0,
+    avatarId: null,
+    legacyAvatarIndex: null,
 });
 
 
@@ -75,6 +83,8 @@ type OrgActivityRow = {
     category: string;
     kind: Exclude<ActivityFilter, "all">;
     xp: number;
+    status: string;
+    statusLabel: string;
     statusTone: ActivityStatusTone;
 };
 
@@ -96,63 +106,6 @@ const SKILL_BARS: GraphBar[] = [
     { label: "Backend", value: 8 },
 ];
 
-const ORG_ACTIVITY_ROWS: OrgActivityRow[] = [
-    {
-        id: "a1",
-        title: "Frontend Basics & Web Terminology Quiz",
-        difficulty: "Beginner",
-        category: "Course",
-        kind: "Courses",
-        xp: 20,
-        statusTone: "join",
-    },
-    {
-        id: "a2",
-        title: "UI Layout Explanation Task",
-        difficulty: "Beginner",
-        category: "Course",
-        kind: "Courses",
-        xp: 15,
-        statusTone: "pending",
-    },
-    {
-        id: "a3",
-        title: "Responsive Web Page Workshop",
-        difficulty: "Intermediate",
-        category: "Challenge",
-        kind: "Challenges",
-        xp: 50,
-        statusTone: "join",
-    },
-    {
-        id: "a4",
-        title: "Frontend Performance Analysis Case",
-        difficulty: "Advanced",
-        category: "Challenge",
-        kind: "Challenges",
-        xp: 65,
-        statusTone: "pending",
-    },
-    {
-        id: "a5",
-        title: "UX Feedback Review Meeting",
-        difficulty: "Beginner",
-        category: "Meeting",
-        kind: "Meetings",
-        xp: 10,
-        statusTone: "ended",
-    },
-    {
-        id: "a6",
-        title: "Design Handoff Review Session",
-        difficulty: "Intermediate",
-        category: "Meeting",
-        kind: "Meetings",
-        xp: 18,
-        statusTone: "join",
-    },
-];
-
 const PARTICIPANTS = [
     {
         id: "p1",
@@ -161,6 +114,8 @@ const PARTICIPANTS = [
         score: 45,
         avatarBg: "#f1d6d8",
         initials: "CG",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p2",
@@ -169,6 +124,8 @@ const PARTICIPANTS = [
         score: 45,
         avatarBg: "#efd0bf",
         initials: "EW",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p3",
@@ -177,6 +134,8 @@ const PARTICIPANTS = [
         score: 43,
         avatarBg: "#c7dce7",
         initials: "JT",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p4",
@@ -185,6 +144,8 @@ const PARTICIPANTS = [
         score: 42,
         avatarBg: "#e5d7c8",
         initials: "AD",
+        level: 0,
+        profileImage: "",
     },
     {
         id: "p5",
@@ -193,8 +154,25 @@ const PARTICIPANTS = [
         score: 41,
         avatarBg: "#d8e7f1",
         initials: "OD",
+        level: 0,
+        profileImage: "",
     },
 ];
+
+const LEVEL_BADGES = [
+    "/images/icons/badge01.png",
+    "/images/icons/badge02.png",
+    "/images/icons/badge03.png",
+    "/images/icons/badge04.png",
+    "/images/icons/badge05.png",
+];
+
+function getLevelBadgeSrc(level: number): string {
+    const thresholds = [1, 3, 5, 10, 16];
+    const filled = thresholds.filter((lv) => level >= lv).length;
+    const index = filled > 0 ? Math.min(filled - 1, LEVEL_BADGES.length - 1) : -1;
+    return index >= 0 ? LEVEL_BADGES[index] : "/images/icons/badge01-icon.png";
+}
 
 const MONTH_DONUT_LABELS = [
     { label: "Jan", value: 3 },
@@ -209,32 +187,233 @@ const TYPE_DONUT_LABELS = [
     { label: "Challenges", value: 3 },
 ];
 
-export default function OrgDashboardPage() {
 
+// ─── Employee Avatar Viewer ───────────────────────────────────────────────────
+
+function pickIdleClip(names: string[]) {
+    const lowered = names.map((name) => name.toLowerCase());
+    const idleIndex = lowered.findIndex((name) => name.includes("idle"));
+    if (idleIndex >= 0) return names[idleIndex];
+    const loopIndex = lowered.findIndex((name) => name.includes("walk") || name.includes("run"));
+    if (loopIndex >= 0) return names[loopIndex];
+    return names[0];
+}
+
+function AnimatedAvatarGLB({ url }: { url: string }) {
+    const group = useRef<THREE.Group>(null);
+    const gltf = useGLTF(url);
+    const clonedScene = useMemo(() => cloneSkinned(gltf.scene), [gltf.scene]);
+    const { actions, names, mixer } = useAnimations(gltf.animations, group);
+
+    useEffect(() => {
+        if (!names?.length) return;
+
+        names.forEach((name) => {
+            const action = actions[name];
+            if (!action) return;
+            action.stop();
+            action.reset();
+        });
+
+        const idleName = pickIdleClip(names);
+        const activeAction = actions[idleName];
+        if (!activeAction) return;
+
+        activeAction.reset();
+        activeAction.setLoop(THREE.LoopRepeat, Infinity);
+        activeAction.setEffectiveWeight(1);
+        activeAction.setEffectiveTimeScale(1);
+        activeAction.fadeIn(0.2);
+        activeAction.play();
+
+        return () => {
+            activeAction.stop();
+        };
+    }, [actions, names, url]);
+
+    useFrame((_, delta) => mixer?.update(delta));
+
+    return (
+        <group ref={group}>
+            <primitive object={clonedScene as any} />
+        </group>
+    );
+}
+
+function EmployeeAvatarViewer({ modelUrl }: { modelUrl: string | null }) {
+    if (!modelUrl) {
+        return (
+            <div
+                style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#f7f7f7",
+                    color: "#9ca3af",
+                    fontSize: 10,
+                    fontWeight: 600,
+                }}
+            >
+                No avatar
+            </div>
+        );
+    }
+
+    return (
+        <Canvas
+            camera={{ position: [0, 1.25, 1.8] as [number, number, number], fov: 42 }}
+            gl={{ alpha: true, antialias: true }}
+            dpr={[1, 1.5]}
+            onCreated={({ gl }) => {
+                gl.setClearColor(0x000000, 0);
+            }}
+            style={{ width: "100%", height: "100%", display: "block" }}
+        >
+            <ambientLight intensity={0.9} />
+            <directionalLight position={[3, 5, 3]} intensity={1.1} />
+            <Suspense fallback={null}>
+                <group position={[0, -1.3, 0]} scale={2.0} rotation={[-0.5, -0.5, 0]}>
+                    <AnimatedAvatarGLB key={modelUrl} url={modelUrl} />
+                </group>
+            </Suspense>
+        </Canvas>
+    );
+}
+
+function EmployeeAvatarOptionPreview({ modelUrl }: { modelUrl: string | null }) {
+    return (
+        <div
+            style={{
+                position: "relative",
+                width: "100%",
+                height: "100%",
+                minWidth: 0,
+                minHeight: 0,
+                overflow: "hidden",
+                borderRadius: 12,
+                background: "#f7f7f7",
+                pointerEvents: "none",
+            }}
+        >
+            <div style={{ position: "absolute", inset: 0 }}>
+                <EmployeeAvatarViewer modelUrl={modelUrl} />
+            </div>
+        </div>
+    );
+}
+
+// ─── 3D Building Viewer ──────────────────────────────────────────────────────
+
+// FALLBACK_GLB: ไฟล์เล็กที่โหลดได้เสมอ ป้องกัน useGLTF hook เรียกแบบ conditional
+const FALLBACK_GLB = "https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/building-models/building-model-typeB.glb";
+
+function NormalizedBuildingInner({ url }: { url: string }) {
+  // useGLTF ต้องเรียกเสมอ (ไม่ conditional) — ใช้ fallback ถ้า url ว่าง
+  const { scene } = useGLTF(url || FALLBACK_GLB);
+  const normalized = useMemo(() => {
+    const root = scene.clone(true);
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const scale = 2.2 / Math.max(size.y, 0.0001);
+    root.scale.setScalar(scale);
+    root.updateMatrixWorld(true);
+    const scaledBox = new THREE.Box3().setFromObject(root);
+    const center = scaledBox.getCenter(new THREE.Vector3());
+    root.position.set(-center.x, -scaledBox.min.y, -center.z);
+    return root;
+  }, [scene]);
+  return <primitive object={normalized as any} />;
+}
+
+function OrgBuildingViewer({ modelUrl }: { modelUrl: string | null }) {
+  if (!modelUrl) {
+    return (
+      <div style={{
+        width: "100%", height: "100%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "#f7f7f7",
+        color: "#9ca3af", fontSize: 12, fontWeight: 500,
+      }}>
+        No building
+      </div>
+    );
+  }
+  return (
+    <Canvas
+      frameloop="demand"
+      // กล้องห่างขึ้น fov เล็กลง = model ดูพอดีใน frame 220px
+      camera={{ position: [0, 1.6, 7.2] as [number,number,number], fov: 25 }}
+      gl={{ alpha: true, antialias: true }}
+      onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
+      style={{ width: "100%", height: "100%" }}
+    >
+      {/* แสงนุ่ม เหมือน card อื่น — ambient สว่าง + directional อ่อน */}
+      <ambientLight intensity={1.4} />
+      <directionalLight position={[5, 10, 6]} intensity={0.7} />
+      <directionalLight position={[-4, 4, -4]} intensity={0.25} />
+      <Suspense fallback={null}>
+        {/* ขยับ model ลงเล็กน้อย + หมุนมุมเดียวกับ fill-more-info */}
+        <group position={[0, -0.85, 0] as [number,number,number]} rotation={[-0.06, -0.5, 0] as [number,number,number]}>
+          <NormalizedBuildingInner url={modelUrl} />
+        </group>
+      </Suspense>
+    </Canvas>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function OrgDashboardPage() {
+    const router = useRouter();
     const [isEditOrgOpen, setIsEditOrgOpen] = useState(false);
     const [isSavedOpen, setIsSavedOpen] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
+    const [pageError, setPageError] = useState("");
+    const [orgSaving, setOrgSaving] = useState(false);
+    const [logoUploading, setLogoUploading] = useState(false);
 
     const [orgDraft, setOrgDraft] = useState<OrgForm>({
-        orgName: "PeakSystems",
-        companySize: "50-100 employees",
-        businessType: "Technology / Software",
-        location: "Philadelphia, PA",
-        aboutUs:
-            "Quality work requires attention to detail. The best solutions often come from collaboration. Simple ideas can have profound impacts. Every challenge presents an opportunity for growth.",
-
+        orgName: "",
+        companySize: "",
+        businessType: "",
+        location: "",
+        aboutUs: "",
         logoFile: null,
         logoPreview: null,
-
-        email: "emmadavis@hotmail.com",
-        phone: "(746) 807-2977",
-        website: "https://peaksystems.example",
-
+        email: "",
+        phone: "",
+        website: "",
         linkedin: "",
         facebook: "",
         instagram: "",
         youtube: "",
         tiktok: "",
     });
+
+    const [summary, setSummary] = useState({
+        totalActivities: 0,
+        totalParticipants: 0,
+        meetings: 0,
+        courses: 0,
+        challenges: 0,
+        published: 0,
+        draft: 0,
+    });
+
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [building, setBuilding] = useState<{ buildingId: string; buildingName: string; modelUrl: string | null; previewUrl: string | null } | null>(null);
+    const [participantRows, setParticipantRows] = useState<typeof PARTICIPANTS>([]);
+    const [activityRows, setActivityRows] = useState<OrgActivityRow[]>([]);
+    const [participantBars, setParticipantBars] = useState<GraphBar[]>([]);
+    const [skillBars, setSkillBars] = useState<GraphBar[]>([]);
+
+    const [activeEmployeeEmail, setActiveEmployeeEmail] = useState<string>("");
+    const [activeOrgId, setActiveOrgId] = useState<string>("");
+    const [avatarOptions, setAvatarOptions] = useState<AvatarOption[]>([]);
+    const [loadingAvatarOptions, setLoadingAvatarOptions] = useState(true);
 
     const setOrgField =
         (key: keyof OrgForm) =>
@@ -265,113 +444,11 @@ export default function OrgDashboardPage() {
 
     const openEditOrg = () => setIsEditOrgOpen(true);
     const closeEditOrg = () => setIsEditOrgOpen(false);
-
-    const handleSaveOrg = async (e: React.FormEvent) => {
-        // !TODO: Add API PUT/PATCH here
-        // Prevent default
-        e.preventDefault();
-
-        // ตรงนี้ค่อยต่อ API PUT/PATCH ภายหลัง    
-        // Format data
-        const formData = new FormData();
-        formData.append("about_org", orgDraft.aboutUs);
-        formData.append("size", orgDraft.companySize);
-        formData.append("location", orgDraft.location);
-        formData.append("logo", orgDraft.logoFile || "");
-        formData.append("logoPreview", orgDraft.logoPreview || "");
-        formData.append("website_url", orgDraft.website);
-
-        // add file to S3
-        // const file = orgDraft.logoFile;
-        // if (file) {
-        //     const formData = new FormData();
-        //     formData.append("file", file);
-        //     const res = await fetch(`${BACKEND}/upload`, {
-        //         method: "POST",
-        //         headers: {
-        //             Authorization: `Bearer ${accessToken}`,
-        //         },
-        //         body: formData,
-        //     });
-        //     if (!res.ok) {
-        //         throw new Error("Failed to upload file");
-        //     }
-        //     const data = await res.json();
-        //     formData.append("logo", data.url);
-        // }
-
-        // Test add file to S3
-        const file = orgDraft.logoFile;
-        if (file) {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("bucketName", "vcep-assets-dev")
-            formData.append("folderName", "org-logos")
-
-
-
-
-            const res = await fetch(`/api/s3`, {
-                method: "PUT",
-                body: formData,
-            });
-            if (!res.ok) {
-                throw new Error("Failed to upload file");
-            }
-            const data = await res.json();
-            formData.append("logo", data.url);
-        }
-
-        // Backend Template
-        // {
-        // "about_org": "string",
-        // "building_id": "string",
-        // "contact": "{ \"email\": \"[EMAIL_ADDRESS]\", \"phone\": \"1234567890\" }",
-        // "logo": "string",
-        // "org_name": "string",
-        // "position_x": 0,
-        // "position_y": 0,
-        // "size": "string",
-        // "website_url": "string"
-        // }
-
-        // pack email, phone, facebook, instagram, youtube, tiktok
-        const contact = {
-            email: orgDraft.email,
-            phone: orgDraft.phone,
-            facebook: orgDraft.facebook,
-            instagram: orgDraft.instagram,
-            youtube: orgDraft.youtube,
-            tiktok: orgDraft.tiktok,
-        };
-        // Pack to json
-        const contactJson = JSON.stringify(contact);
-        formData.append("contact", contactJson);
-
-        console.log(orgDraft);
-        setIsEditOrgOpen(false);
-        setIsSavedOpen(true);
-    };
-
     const closeSaved = () => setIsSavedOpen(false);
-    // ====== mock data (เดี๋ยวค่อยเปลี่ยนเป็น fetch จาก API) ======
-    const [employees, setEmployees] = useState<Employee[]>([
-        {
-            id: "e1",
-            firstName: "Sophia",
-            lastName: "Brown",
-            position: "HR",
-            phone: "0812345678",
-            email: "sophia@company.com",
-            canCheckChallenge: true,
-            avatarIndex: 0,
-        },
-    ]);
 
-
-    // ====== modal add employee ======
     const [isOpen, setIsOpen] = useState(false);
     const [draft, setDraft] = useState<Employee>(() => emptyEmp("draft"));
+    const [employeeModalMode, setEmployeeModalMode] = useState<"add" | "edit">("add");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>("");
 
@@ -386,11 +463,26 @@ export default function OrgDashboardPage() {
                 setDraft((prev) => ({ ...prev, [k]: v } as Employee));
             };
 
-    const setDraftAvatar = (i: number) => setDraft((p) => ({ ...p, avatarIndex: i }));
+    const setDraftAvatar = (avatarId: string) => setDraft((prev) => ({ ...prev, avatarId }));
 
     const openAdd = () => {
         setError("");
-        setDraft(emptyEmp("draft"));
+        setEmployeeModalMode("add");
+        setDraft({
+            ...emptyEmp("draft", "", activeOrgId),
+            avatarId: avatarOptions[0]?.id ?? null,
+        });
+        setIsOpen(true);
+    };
+
+    const openEditEmployee = (employee: Employee) => {
+        setError("");
+        setEmployeeModalMode("edit");
+        setDraft({
+            ...employee,
+            orgId: employee.orgId || activeOrgId,
+            avatarId: employee.avatarId || resolveAvatarOption(employee)?.id || avatarOptions[0]?.id || null,
+        });
         setIsOpen(true);
     };
 
@@ -399,7 +491,432 @@ export default function OrgDashboardPage() {
         setIsOpen(false);
     };
 
-    const submitAdd = async () => {
+    const [statsTab, setStatsTab] = useState<StatsTab>("participants");
+    const [selectedActivityKind, setSelectedActivityKind] = useState<ActivityFilter>("all");
+    const [isActivityTypeOpen, setIsActivityTypeOpen] = useState(false);
+
+    function toStringValue(value: unknown, fallback = "") {
+        const text = String(value ?? "").trim();
+        return text || fallback;
+    }
+
+    function toNumber(value: unknown, fallback = 0) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function resolveLegacyAvatarIndex(value: unknown) {
+        const raw = String(value ?? "").trim();
+        if (!raw) return null;
+        const match = raw.match(/(\d+)/);
+        if (!match) return null;
+        const numeric = Number(match[1]);
+        if (!Number.isFinite(numeric)) return null;
+        return Math.max(0, (numeric || 1) - 1);
+    }
+
+    function resolveAvatarOption(employee: Pick<Employee, "avatarId" | "legacyAvatarIndex">) {
+        if (!avatarOptions.length) return null;
+
+        const avatarRef = String(employee.avatarId ?? "").trim();
+
+        if (avatarRef) {
+            const exact = avatarOptions.find(
+                (option) => option.id === avatarRef || option.modelUrl === avatarRef
+            );
+            if (exact) return exact;
+
+            const refIndex = resolveLegacyAvatarIndex(avatarRef);
+            if (refIndex !== null) {
+                return avatarOptions[refIndex % avatarOptions.length] ?? avatarOptions[0];
+            }
+        }
+
+        if (
+            typeof employee.legacyAvatarIndex === "number" &&
+            employee.legacyAvatarIndex >= 0
+        ) {
+            return avatarOptions[employee.legacyAvatarIndex % avatarOptions.length] ?? avatarOptions[0];
+        }
+
+        return avatarOptions[0];
+    }
+
+    function deriveActivityKind(value: unknown): Exclude<ActivityFilter, "all"> {
+        const raw = String(value ?? "").trim().toLowerCase();
+        if (raw.includes("meeting")) return "Meetings";
+        if (raw.includes("course")) return "Courses";
+        return "Challenges";
+    }
+
+    function deriveStatusTone(value: unknown): ActivityStatusTone {
+        const raw = String(value ?? "").trim().toLowerCase();
+        if (
+            raw.includes("end") ||
+            raw.includes("close") ||
+            raw.includes("complete") ||
+            raw.includes("finish")
+        ) {
+            return "ended";
+        }
+
+        if (
+            raw.includes("join") ||
+            raw.includes("open") ||
+            raw.includes("active") ||
+            raw.includes("publish") ||
+            raw.includes("public")
+        ) {
+            return "join";
+        }
+
+        return "pending";
+    }
+
+
+    function formatStatusLabel(value: unknown, fallbackTone?: ActivityStatusTone) {
+        const raw = String(value ?? "").trim();
+        if (raw) {
+            return raw
+                .replace(/[_-]+/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .split(" ")
+                .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+                .join(" ");
+        }
+
+        if (fallbackTone === "join") return "Published";
+        if (fallbackTone === "ended") return "Ended";
+        return "Pending";
+    }
+
+    function getStatusBadgeClass(statusTone: ActivityStatusTone) {
+        if (statusTone === "join") return `${styles.activityStatusBadge} ${styles.activityStatusBadgeJoin}`;
+        if (statusTone === "ended") return `${styles.activityStatusBadge} ${styles.activityStatusBadgeEnded}`;
+        return `${styles.activityStatusBadge} ${styles.activityStatusBadgePending}`;
+    }
+
+    async function loadAvatarOptions() {
+        try {
+            setLoadingAvatarOptions(true);
+            const response = await fetch("/api/options/avatars/employee", {
+                method: "GET",
+                cache: "no-store",
+                credentials: "include",
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to load employee avatars");
+            }
+
+            const options = (await response.json().catch(() => [])) as AvatarOption[];
+            const safeOptions = Array.isArray(options) ? options : [];
+            setAvatarOptions(safeOptions);
+            safeOptions.forEach((option) => {
+                if (option?.modelUrl) {
+                    useGLTF.preload(option.modelUrl);
+                }
+            });
+        } catch {
+            setAvatarOptions([]);
+        } finally {
+            setLoadingAvatarOptions(false);
+        }
+    }
+
+    async function refreshDashboard() {
+        try {
+            setPageLoading(true);
+            setPageError("");
+
+            const response = await fetch("/api/organization/dashboard", {
+                method: "GET",
+                cache: "no-store",
+                credentials: "include",
+            });
+
+            const json = await response.json().catch(() => ({}));
+
+            if (!response.ok || !json?.ok) {
+                throw new Error(json?.message || "Failed to load organization dashboard");
+            }
+
+            const data = json?.data ?? {};
+            const org = data?.org ?? {};
+            const summaryData = data?.summary ?? {};
+
+            setOrgDraft((prev) => ({
+                ...prev,
+                orgName: toStringValue(org?.orgName),
+                companySize: toStringValue(org?.companySize),
+                businessType: toStringValue(org?.businessType),
+                location: toStringValue(org?.location),
+                aboutUs: toStringValue(org?.aboutUs),
+                logoPreview: org?.logoPreview ?? null,
+                email: toStringValue(org?.email),
+                phone: toStringValue(org?.phone),
+                website: toStringValue(org?.website),
+                linkedin: toStringValue(org?.linkedin),
+                facebook: toStringValue(org?.facebook),
+                instagram: toStringValue(org?.instagram),
+                youtube: toStringValue(org?.youtube),
+                tiktok: toStringValue(org?.tiktok),
+            }));
+
+            setSummary({
+                totalActivities: toNumber(summaryData?.totalActivities, 0),
+                totalParticipants: toNumber(summaryData?.totalParticipants, 0),
+                meetings: toNumber(summaryData?.meetings, 0),
+                courses: toNumber(summaryData?.courses, 0),
+                challenges: toNumber(summaryData?.challenges, 0),
+                published: toNumber(summaryData?.published, 0),
+                draft: toNumber(summaryData?.draft, 0),
+            });
+
+            const nextActivities: OrgActivityRow[] = Array.isArray(data?.activities)
+                ? data.activities.map((item: any, index: number) => {
+                    const statusTone = deriveStatusTone(item?.statusTone || item?.status);
+                    return {
+                        id: toStringValue(item?.id, `activity-${index}`),
+                        title: toStringValue(item?.title, "Activity"),
+                        difficulty: toStringValue(item?.difficulty, "-"),
+                        category: toStringValue(
+                            item?.category,
+                            deriveActivityKind(item?.kind || item?.category)
+                        ),
+                        kind: deriveActivityKind(item?.kind || item?.category),
+                        xp: toNumber(item?.xp, 0),
+                        status: toStringValue(item?.status, "pending"),
+                        statusLabel: formatStatusLabel(item?.statusLabel || item?.status, statusTone),
+                        statusTone,
+                    };
+                })
+                : [];
+            setActivityRows(nextActivities);
+
+            // fetch participants from all activities and deduplicate by std_id
+            const activityIds = nextActivities.map((a) => a.id).filter(Boolean);
+            if (activityIds.length > 0) {
+                const allParticipantFetches = await Promise.all(
+                    activityIds.map((actId) =>
+                        fetch(`/api/organization/activity/${actId}/participants`, {
+                            cache: "no-store",
+                            credentials: "include",
+                        })
+                            .then((r) => r.json().catch(() => ({})))
+                            .then((d) => Array.isArray(d?.participants) ? d.participants : [])
+                            .catch(() => [])
+                    )
+                );
+
+                const seen = new Set<string>();
+                const deduped: (typeof PARTICIPANTS) = [];
+
+                for (const list of allParticipantFetches) {
+                    for (const person of list) {
+                        const uid = String(
+                            person?.std_id ?? person?.StdID ??
+                            person?.student?.std_id ??
+                            person?.participant_info?.participant_id ??
+                            person?.id ?? ""
+                        ).trim();
+                        if (!uid || seen.has(uid)) continue;
+                        seen.add(uid);
+
+                        const firstName = String(person?.first_name ?? person?.participant_info?.participant_name?.split(" ")[0] ?? "").trim();
+                        const lastName = String(person?.last_name ?? "").trim();
+                        const fullName = [firstName, lastName].filter(Boolean).join(" ") || String(person?.name ?? "Participant").trim();
+                        const initials = [firstName[0], lastName[0]].filter(Boolean).join("").toUpperCase() || "PT";
+                        const bio = String(
+                            person?.bio ?? person?.about ??
+                            person?.student?.bio ??
+                            person?.participant_info?.participant_faculty ?? ""
+                        ).trim();
+                        const uni = String(person?.university ?? person?.student?.university ?? person?.participant_info?.participant_university ?? "").trim();
+                        const subtitle = bio || uni || "";
+                        const avatarColors = ["#f1d6d8","#efd0bf","#c7dce7","#e5d7c8","#d7e8d3","#dcd7e8","#e8e3d7"];
+                        const avatarBg = avatarColors[deduped.length % avatarColors.length];
+
+                        const rawImg = String(
+                            person?.profile_image_url ?? person?.profileImageUrl ??
+                            person?.profile_image ?? person?.profileImage ??
+                            person?.student?.profile_image_url ?? person?.student?.profile_image ??
+                            person?.participant_info?.participant_avatar ?? ""
+                        ).trim();
+                        const profileImage = rawImg.startsWith("http") ? rawImg :
+                            rawImg && !rawImg.match(/^[0-9a-f-]{36}$/) ?
+                            `https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/${rawImg}` : "";
+
+                        deduped.push({
+                            id: uid,
+                            name: fullName,
+                            subtitle,
+                            score: toNumber(person?.score ?? person?.xp ?? person?.current_xp, 0),
+                            avatarBg,
+                            initials,
+                            level: 0, // will enrich below
+                            profileImage,
+                        });
+                    }
+                }
+
+                // enrich level + profileImage from /api/organization/student/{std_id}
+                const enrichedParticipants = await Promise.all(
+                    deduped.map(async (p) => {
+                        try {
+                            const r = await fetch(`/api/organization/student/${p.id}`, { cache: "no-store", credentials: "include" });
+                            if (r.ok) {
+                                const d = await r.json().catch(() => ({}));
+                                const lv = Number(d?.level ?? 0);
+                                const rawImg = String(d?.profile_image_url ?? d?.profileImageUrl ?? d?.profile_image ?? "").trim();
+                                const img = rawImg.startsWith("http") ? rawImg :
+                                    rawImg ? `https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/${rawImg}` : "";
+                                return {
+                                    ...p,
+                                    level: lv > 0 ? lv : p.level,
+                                    profileImage: img || p.profileImage,
+                                };
+                            }
+                        } catch {}
+                        return p;
+                    })
+                );
+                // sort by level descending
+                enrichedParticipants.sort((a, b) => b.level - a.level);
+                setParticipantRows(enrichedParticipants);
+            } else {
+                setParticipantRows([]);
+            }
+
+            const nextEmployees: Employee[] = Array.isArray(data?.employees)
+                ? data.employees.map((emp: any, index: number) => ({
+                    id: toStringValue(emp?.id ?? emp?.empId, `employee-${index}`),
+                    userId: toStringValue(emp?.userId ?? emp?.user_id),
+                    orgId: toStringValue(emp?.orgId ?? emp?.org_id ?? data?.account?.orgId),
+                    firstName: toStringValue(emp?.firstName),
+                    lastName: toStringValue(emp?.lastName),
+                    position: toStringValue(emp?.position),
+                    phone: toStringValue(emp?.phone),
+                    email: toStringValue(emp?.email).toLowerCase(),
+                    canCheckChallenge: Boolean(emp?.canCheckChallenge),
+                    avatarId: toStringValue(emp?.avatarChoice ?? emp?.avatarId) || null,
+                    legacyAvatarIndex: resolveLegacyAvatarIndex(emp?.avatarIndex),
+                }))
+                : [];
+            setEmployees(nextEmployees);
+
+            const nextParticipantBars: GraphBar[] = Array.isArray(data?.participantBars)
+                ? data.participantBars.map((item: any, index: number) => ({
+                    label: toStringValue(item?.label, `University ${index + 1}`),
+                    value: toNumber(item?.value, 0),
+                }))
+                : [];
+            setParticipantBars(nextParticipantBars);
+
+            const nextSkillBars: GraphBar[] = Array.isArray(data?.skillBars)
+                ? data.skillBars.map((item: any, index: number) => ({
+                    label: toStringValue(item?.label, `Skill ${index + 1}`),
+                    value: toNumber(item?.value, 0),
+                }))
+                : [];
+            setSkillBars(nextSkillBars);
+
+            // Building info
+            const buildingData = data?.building ?? null;
+            setBuilding(buildingData ? {
+                buildingId: toStringValue(buildingData?.buildingId),
+                buildingName: toStringValue(buildingData?.buildingName),
+                modelUrl: buildingData?.modelUrl ?? null,
+                previewUrl: buildingData?.previewUrl ?? null,
+            } : null);
+
+            const activeEmail = toStringValue(data?.account?.email).toLowerCase();
+            setActiveEmployeeEmail(activeEmail);
+            setActiveOrgId(toStringValue(data?.account?.orgId));
+        } catch (e: any) {
+            setPageError(e?.message || "Failed to load organization dashboard");
+        } finally {
+            setPageLoading(false);
+        }
+    }
+
+    const handleSaveOrg = async () => {
+        try {
+            setOrgSaving(true);
+
+            // Step 1: Upload logo to S3 if a new file was selected
+            let logoKey: string | undefined;
+            if (orgDraft.logoFile) {
+                setLogoUploading(true);
+                const formData = new FormData();
+                formData.append("file", orgDraft.logoFile);
+
+                const uploadRes = await fetch("/api/organization/logo", {
+                    method: "POST",
+                    body: formData,
+                    credentials: "include",
+                });
+
+                const uploadJson = await uploadRes.json().catch(() => ({}));
+                setLogoUploading(false);
+
+                if (!uploadRes.ok || !uploadJson?.ok || !uploadJson?.key) {
+                    throw new Error(uploadJson?.message || "Failed to upload logo");
+                }
+
+                logoKey = uploadJson.key;
+
+                // Update preview to show the S3 public URL
+                setOrgDraft((prev) => ({
+                    ...prev,
+                    logoPreview: uploadJson.url,
+                    logoFile: null,
+                }));
+            }
+
+            // Step 2: Save org info (with logo key if uploaded)
+            const response = await fetch("/api/organization", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    orgName: orgDraft.orgName,
+                    companySize: orgDraft.companySize,
+                    businessType: orgDraft.businessType,
+                    location: orgDraft.location,
+                    aboutUs: orgDraft.aboutUs,
+                    email: orgDraft.email,
+                    phone: orgDraft.phone,
+                    website: orgDraft.website,
+                    linkedin: orgDraft.linkedin,
+                    facebook: orgDraft.facebook,
+                    instagram: orgDraft.instagram,
+                    youtube: orgDraft.youtube,
+                    tiktok: orgDraft.tiktok,
+                    // ส่ง S3 key เมื่อมีการ upload ใหม่ มิฉะนั้นส่ง preview URL เดิม
+                    logo: logoKey ?? orgDraft.logoPreview ?? undefined,
+                }),
+            });
+
+            const json = await response.json().catch(() => ({}));
+
+            if (!response.ok || !json?.ok) {
+                throw new Error(json?.message || "Failed to save organization");
+            }
+
+            await refreshDashboard();
+            setIsEditOrgOpen(false);
+            setIsSavedOpen(true);
+        } catch (e: any) {
+            setLogoUploading(false);
+            alert(e?.message || "Failed to save organization");
+        } finally {
+            setOrgSaving(false);
+        }
+    };
+
+    const submitEmployee = async () => {
         setError("");
 
         if (!draft.firstName.trim() || !draft.lastName.trim()) {
@@ -413,38 +930,61 @@ export default function OrgDashboardPage() {
 
         setSaving(true);
         try {
-            const r = await fetch("/api/org/employees/invite", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: draft.email.trim().toLowerCase(),
-                    firstName: draft.firstName.trim(),
-                    lastName: draft.lastName.trim(),
-                    position: draft.position.trim(),
-                    phone: draft.phone.trim(),
-                    canCheckChallenge: draft.canCheckChallenge,
-                    avatarIndex: draft.avatarIndex,
-                    employeeSlot: employees.length + 1, // 2 หรือ 3
-                }),
-            });
+            if (employeeModalMode === "edit") {
+                if (!draft.userId.trim()) {
+                    setError("Missing employee user id.");
+                    return;
+                }
 
-            const d = await r.json().catch(() => ({}));
-            if (!r.ok || !d?.ok) {
-                setError(d?.message || "Invite failed");
-                return;
+                const r = await fetch("/api/organization/employees/save-self", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        userId: draft.userId,
+                        orgId: draft.orgId || activeOrgId,
+                        firstName: draft.firstName.trim(),
+                        lastName: draft.lastName.trim(),
+                        position: draft.position.trim(),
+                        phone: draft.phone.trim(),
+                        avatarId: draft.avatarId,
+                        canCheckChallenge: draft.canCheckChallenge,
+                        email: draft.email.trim().toLowerCase(),
+                    }),
+                });
+
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d?.ok) {
+                    setError(d?.message || "Save failed");
+                    return;
+                }
+            } else {
+                const r = await fetch("/api/organization/employees/invite", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        email: draft.email.trim().toLowerCase(),
+                        firstName: draft.firstName.trim(),
+                        lastName: draft.lastName.trim(),
+                        position: draft.position.trim(),
+                        phone: draft.phone.trim(),
+                        canCheckChallenge: draft.canCheckChallenge,
+                        avatarId: draft.avatarId,
+                    }),
+                });
+
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d?.ok) {
+                    setError(d?.message || "Invite failed");
+                    return;
+                }
             }
 
-            // อัปเดต UI (ชั่วคราว) — จริง ๆ ควร refetch จาก DB เมื่อ DB พร้อม
-            const newEmp: Employee = {
-                ...draft,
-                id: d?.empId || `e${Date.now()}`, // ถ้า API คืน id ก็ใช้
-                email: draft.email.trim().toLowerCase(),
-            };
-
-            setEmployees((prev) => [...prev, newEmp]);
+            await refreshDashboard();
             setIsOpen(false);
         } catch (e: any) {
-            setError(e?.message || "Failed to add employee");
+            setError(e?.message || (employeeModalMode === "edit" ? "Failed to update employee" : "Failed to add employee"));
         } finally {
             setSaving(false);
         }
@@ -452,168 +992,34 @@ export default function OrgDashboardPage() {
 
     const MAX_EMP = 3;
     const shownEmployees = employees.slice(0, MAX_EMP);
-    const canAddMore = shownEmployees.length < MAX_EMP;
+    // ปุ่มเพิ่มหายเมื่อครบ 3 คน
+    const canAddMore = employees.length < MAX_EMP;
 
-    const [activeEmployeeEmail, setActiveEmployeeEmail] = useState<string>("");
-
-    const [statsTab, setStatsTab] = useState<StatsTab>("participants");
-    const [selectedActivityKind, setSelectedActivityKind] = useState<ActivityFilter>("all");
-    const [isActivityTypeOpen, setIsActivityTypeOpen] = useState(false);
-
-    // const filteredOrgActivities = useMemo(() => {
-    //     // if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
-    //     // return ORG_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
-    //     if (selectedActivityKind === "all") return UPDATED_ACTIVITY_ROWS;
-    //     return UPDATED_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
-    // }, [selectedActivityKind]);
-
-    useEffect(() => {
-        (async () => {
-            const r = await fetch("/api/org/active-account");
-            const d = await r.json().catch(() => ({}));
-            if (r.ok && d?.ok) setActiveEmployeeEmail(String(d.email || "").toLowerCase());
-        })();
-    }, []);
-
-    // =======================
-    // Load and Update Data
-    // =======================
-    //---------------------------------------------------------------------------------------------------------
-    const [orgDashboard, setOrgDashboard] = useState<OrgDashboard | null>(null);
-
-    const [updatedMonthDonutLabels, setUpdatedMonthDonutLabels] = useState<any[]>([]);
-
-    const [updatedTypeDonutLabels, setUpdatedTypeDonutLabels] = useState<any[]>([]);
-
-    // ไม่ Rerender ถ้าไม่จำเป็น เพราะโหลดข้อมูลเยอะ
-    const fetchOrgDashboard = useCallback(async () => {
-        const res = await fetch("/api/org/dashboard");
-        const resJson = await res.json();
-        const data = resJson.data.orgDashboard;
-        setOrgDashboard(data);
-        return data;
-    }, [])
-
-    // Update Activity Rows
-    const updatedActivityRows = useMemo(() => {
-        function mapstatusTone(state: string) {
-            if (state === "pending") return "pending";
-            if (state === "can join") return "join";
-            if (state === "ended") return "ended";
-            return "pending";
-        }
-        return orgDashboard?.activity_info.map((activity) => ({
-            id: activity.activity_id,
-            title: activity.activity_name,
-            hours: activity.hours,
-            category: activity.activity_type,
-            kind: activity.activity_type,
-            xp: 0,
-            statusTone: mapstatusTone(activity.state),
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Filter Activity Rows
     const filteredOrgActivities = useMemo(() => {
-        return updatedActivityRows.filter((activity) => {
-            if (selectedActivityKind === "all") return true;
-            return activity.kind === selectedActivityKind;
-        });
-    }, [updatedActivityRows, selectedActivityKind]);
+        if (selectedActivityKind === "all") return activityRows;
+        return activityRows.filter((item) => item.kind === selectedActivityKind);
+    }, [activityRows, selectedActivityKind]);
 
-    // Update Participants
-    const updatedParticipants = useMemo(() => {
-        var participantCounter = 0;
-        return orgDashboard?.complete_stats_info.map((participant) => ({
-            id: participantCounter++,
-            name: participant.first_name + " " + participant.last_name,
-            subtitle: "None",
-            score: participant.xp,
-            avatarBg: "#f1d6d8",
-            initials: participant.first_name[0] + participant.last_name[0],
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Update Skill Bars
-    const updatedSkillBars = useMemo(() => {
-        return orgDashboard?.skill_stats_info.map((skill) => ({
-            label: skill.skill_name,
-            value: skill.number,
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Update University Bars
-    const updatedParticipantBars = useMemo(() => {
-        return orgDashboard?.university_stats_info.map((participant) => ({
-            label: participant.university,
-            value: participant.number,
-        })) ?? [];
-    }, [orgDashboard])
-
-    // Fetch Data
     useEffect(() => {
-        const init = async () => {
-            try {
-
-                const data = await fetchOrgDashboard();
-
-                if (data) {
-                    // 1. จัดการข้อมูลพนักงาน (ป้องกัน Error .map())
-                    const employeeList = (data.employees_info ?? []).map((employee: any) => ({
-                        id: employee.emp_id,
-                        firstName: employee.first_name,
-                        lastName: employee.last_name,
-                        position: employee.position,
-                        phone: employee.phone,
-                        email: "None", // ใน JSON ไม่มี email รายบุคคล
-                        canCheckChallenge: employee.is_reviewer, // ใช้ค่าจาก API
-                        avatarIndex: 0,
-                    }));
-                    setEmployees(employeeList);
-
-                    // 2. จัดการข้อมูล Org Draft
-                    // หมายเหตุ: contact ใน JSON เป็น stringified JSON ต้อง parse ก่อน
-                    let contactInfo = { email: "none", phone: "none" };
-                    try {
-                        if (data.contact) contactInfo = JSON.parse(data.contact);
-                    } catch (e) {
-                        console.error("Parse contact error", e);
-                    }
-
-                    setOrgDraft({
-                        orgName: data.org_name ?? "",
-                        companySize: data.size ?? "",
-                        businessType: "none",
-                        location: "none",
-                        aboutUs: data.about_org ?? "",
-                        logoFile: null,
-                        logoPreview: data.logo || null,
-                        email: contactInfo.email,
-                        phone: contactInfo.phone,
-                        website: data.website_url ?? "",
-                        linkedin: "none",
-                        facebook: "none",
-                        instagram: "none",
-                        youtube: "none",
-                        tiktok: "none",
-                    });
-
-                }
-            } catch (error) {
-                console.error("Error fetching org dashboard:", error);
-            }
-        };
-        init();
+        loadAvatarOptions();
+        refreshDashboard();
     }, []);
 
-    // const filteredOrgActivities = useMemo(() => {
-    //     // if (selectedActivityKind === "all") return ORG_ACTIVITY_ROWS;
-    //     // return ORG_ACTIVITY_ROWS.filter((item) => item.kind === selectedActivityKind);
-    //     if (selectedActivityKind === "all") return updatedActivityRows;
-    //     return updatedActivityRows.filter((item) => item.kind === selectedActivityKind);
-    // }, [selectedActivityKind]);
+    if (pageLoading) {
+        return (
+            <main className={styles.main}>
+                <div style={{ padding: 24 }}>Loading organization dashboard...</div>
+            </main>
+        );
+    }
 
-    //---------------------------------------------------------------------------------------------------------
+    if (pageError) {
+        return (
+            <main className={styles.main}>
+                <div style={{ padding: 24, color: "#b42318" }}>{pageError}</div>
+            </main>
+        );
+    }
 
     return (
 
@@ -675,22 +1081,22 @@ export default function OrgDashboardPage() {
                     <div className={styles.summaryTopBox}>
                         <div className={styles.summaryTopBoxBg} />
 
-                        <div className={styles.summaryTotalValue}>{orgDashboard?.activity_stats_info.total_activity}</div>
+                        <div className={styles.summaryTotalValue}>{summary.totalActivities}</div>
                         <div className={styles.summaryTotalLabel}>Total Activities</div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>challenge</div>
-                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_challenge}</div>
+                            <div className={styles.summaryMiniValue}>{summary.challenges}</div>
                         </div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>courses</div>
-                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_course}</div>
+                            <div className={styles.summaryMiniValue}>{summary.courses}</div>
                         </div>
 
                         <div className={styles.summaryMiniStat}>
                             <div className={styles.summaryMiniLabel}>meetings</div>
-                            <div className={styles.summaryMiniValue}>{orgDashboard?.activity_stats_info.total_meeting}</div>
+                            <div className={styles.summaryMiniValue}>{summary.meetings}</div>
                         </div>
                     </div>
 
@@ -707,7 +1113,7 @@ export default function OrgDashboardPage() {
                         </div>
 
                         <div className={styles.summaryParticipantText}>
-                            <div className={styles.summaryParticipantValue}>{orgDashboard?.activity_stats_info.total_participant}</div>
+                            <div className={styles.summaryParticipantValue}>{summary.totalParticipants}</div>
                             <div className={styles.summaryParticipantLabel}>Total Participants</div>
                         </div>
                     </div>
@@ -716,49 +1122,85 @@ export default function OrgDashboardPage() {
                 {/* Avatar box */}
                 <div className={styles.avatarBox}>
                     <div className={styles.buildingWrap}>
-                        <img
-                            className={styles.buildingImg}
-                            src="/images/buildings/building1.png"
-                            alt="Organization building"
-                            onError={(e) => {
-                                // กันกรณีไม่มีไฟล์รูปในโปรเจกต์: จะไม่พัง layout
-                                (e.currentTarget as HTMLImageElement).style.opacity = "0";
-                            }}
-                        />
+                        <div className={styles.buildingImg}>
+                            <OrgBuildingViewer modelUrl={building?.modelUrl ?? null} />
+                        </div>
+                        {building?.buildingName && (
+                            <div className={styles.buildingLabel}>
+                               {building.buildingName}
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.avatarRow}>
-                        {shownEmployees.map((emp) => {
-                            const isActive = emp.email === activeEmployeeEmail; // หรือเทียบ id/sub ก็ได้
-                            return (
-                                <button
-                                    key={emp.id}
-                                    type="button"
-                                    className={styles.avatarTile}
-                                    onClick={() => {
-                                        // setActiveEmployeeEmail(emp.email);
-                                    }}
-                                    aria-label={`${emp.firstName} ${emp.lastName}`}
-                                    title={`${emp.firstName} ${emp.lastName}`}
-                                >
-                                    <img
-                                        src={AVATARS[emp.avatarIndex] || AVATARS[0]}
-                                        alt={`${emp.firstName} avatar`}
-                                        className={`${styles.avatarThumb} ${isActive ? styles.avatarThumbActive : ""}`}
+                        {/* Employee slots — always 3 columns */}
+                        {Array.from({ length: MAX_EMP }, (_, i) => {
+                            const emp = shownEmployees[i];
+                            if (!emp) {
+                                // Slot ว่าง — กดเพื่อเพิ่มพนักงาน
+                                return (
+                                    <button
+                                        key={`empty-${i}`}
+                                        type="button"
+                                        className={styles.avatarTileEmpty}
+                                        onClick={openAdd}
+                                        aria-label="Add employee"
                                     />
-                                    <div className={styles.avatarName}>
-                                        {emp.firstName} {emp.lastName}
+                                );
+                            }
+                            const isActive = emp.email === activeEmployeeEmail;
+                            const avatarOption = resolveAvatarOption(emp);
+
+                            return (
+                                <div
+                                    key={emp.id}
+                                    className={styles.avatarTile}
+                                    title={`Edit ${emp.firstName} ${emp.lastName}`}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => openEditEmployee(emp)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            openEditEmployee(emp);
+                                        }
+                                    }}
+                                    style={{ cursor: "pointer" }}
+                                >
+                                    <div style={{ position: "relative", display: "inline-block" }}>
+                                        <div
+                                            className={`${styles.avatarThumb} ${isActive ? styles.avatarThumbActive : ""}`}
+                                            style={{ overflow: "hidden" }}
+                                        >
+                                            <EmployeeAvatarViewer modelUrl={avatarOption?.modelUrl ?? null} />
+                                        </div>
+                                        {isActive && (
+                                            <span style={{
+                                                position: "absolute", top: -4, right: -4,
+                                                background: "#10b981", borderRadius: "50%",
+                                                width: 10, height: 10,
+                                                border: "2px solid white", display: "block",
+                                            }} />
+                                        )}
+                                        {emp.canCheckChallenge && (
+                                            <span style={{
+                                                position: "absolute", bottom: -2, right: -4,
+                                                background: "#f59e0b", borderRadius: 4,
+                                                fontSize: 8, fontWeight: 700, color: "white",
+                                                padding: "1px 3px",
+                                            }}>★</span>
+                                        )}
                                     </div>
-                                </button>
+                                    <div className={styles.avatarName}>{emp.firstName}</div>
+                                    {emp.position && (
+                                        <div style={{ fontSize: 9, color: "#6b7280", marginTop: 1, textAlign: "center" }}>
+                                            {emp.position}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
 
-                        {/* ปุ่ม + แสดงเมื่อยังไม่ครบ 3 คน */}
-                        {canAddMore && (
-                            <button type="button" className={styles.addEmpBtn} onClick={openAdd} aria-label="Add employee">
-                                +
-                            </button>
-                        )}
                     </div>
                 </div>
 
@@ -769,10 +1211,10 @@ export default function OrgDashboardPage() {
                     <div className={styles.summaryOfActivitiesInner}>
                         <div className={`${styles.summaryActivityBox} ${styles.summaryActivityBoxDual}`}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityTopValue}>15</div>
+                            <div className={styles.summaryActivityTopValue}>{summary.published}</div>
                             <div className={styles.summaryActivityTopLabel}>Published</div>
                             <div className={styles.summaryActivitySplit} />
-                            <div className={styles.summaryActivityBottomValue}>2</div>
+                            <div className={styles.summaryActivityBottomValue}>{summary.draft}</div>
                             <div className={styles.summaryActivityBottomLabel}>Draft</div>
                         </div>
 
@@ -780,7 +1222,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_meeting}</div>
+                            <div className={styles.summaryActivityValue}>{summary.meetings}</div>
                             <div className={styles.summaryActivityLabel}>Meetings</div>
                         </div>
 
@@ -788,7 +1230,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_course}</div>
+                            <div className={styles.summaryActivityValue}>{summary.courses}</div>
                             <div className={styles.summaryActivityLabel}>Courses</div>
                         </div>
 
@@ -796,7 +1238,7 @@ export default function OrgDashboardPage() {
 
                         <div className={styles.summaryActivityBox}>
                             <div className={styles.summaryActivityBoxBg} />
-                            <div className={styles.summaryActivityValue}>{orgDashboard?.activity_stats_info.total_challenge}</div>
+                            <div className={styles.summaryActivityValue}>{summary.challenges}</div>
                             <div className={styles.summaryActivityLabel}>Challenges</div>
                         </div>
                     </div>
@@ -856,7 +1298,7 @@ export default function OrgDashboardPage() {
                                                     "conic-gradient(#a8dcb3 0 40%, #ffd286 40% 66%, #66bdce 66% 86%, #cdb4db 86% 100%)",
                                             }}
                                         >
-                                            <div className={styles.donutHole}>15</div>
+                                            <div className={styles.donutHole}>{summary.totalActivities}</div>
                                         </div>
 
                                         <div className={styles.donutLegendGrid}>
@@ -883,7 +1325,11 @@ export default function OrgDashboardPage() {
                                         </div>
 
                                         <div className={styles.donutLegendGridSingle}>
-                                            {TYPE_DONUT_LABELS.map((item) => (
+                                            {[
+                                                { label: "Meetings", value: summary.meetings },
+                                                { label: "Courses", value: summary.courses },
+                                                { label: "Challenges", value: summary.challenges },
+                                            ].map((item) => (
                                                 <div key={item.label} className={styles.donutLegendItemWide}>
                                                     <span className={styles.donutLegendValue}>{item.value}</span>
                                                     <span className={styles.donutLegendLabel}>{item.label}</span>
@@ -898,9 +1344,9 @@ export default function OrgDashboardPage() {
                                 <div className={styles.statisticsBarsBaseline} />
 
                                 <div className={styles.statisticsBarsRow}>
-                                    {/* {(statsTab === "participants" ? PARTICIPANT_BARS : SKILL_BARS).map((item, index) => { */}
-                                    {(statsTab === "participants" ? updatedParticipantBars : updatedSkillBars).map((item, index) => {
-                                        const max = statsTab === "participants" ? 80 : 12;
+                                    {(statsTab === "participants" ? participantBars : skillBars).map((item, index) => {
+                                        const currentBars = statsTab === "participants" ? participantBars : skillBars;
+                                        const max = Math.max(1, ...currentBars.map((bar) => bar.value || 0));
                                         const barHeight = Math.max(42, (item.value / max) * 120);
                                         return (
                                             <div key={`${item.label}-${index}`} className={styles.statisticsBarItem}>
@@ -928,16 +1374,39 @@ export default function OrgDashboardPage() {
                             <button
                                 type="button"
                                 className={styles.activityOverviewAddBtn}
-                                aria-label="Select activity type"
+                                aria-label="Create new activity"
                                 onClick={() => setIsActivityTypeOpen(true)}
                             >
-                                +
+                                <Image
+                                    src="/images/icons/button05-icon.png"
+                                    alt=""
+                                    width={50}
+                                    height={50}
+                                    className={styles.activityOverviewAddIcon}
+                                />
                             </button>
                         </div>
 
                         <div className={styles.activityOverviewScroll}>
-                            {filteredOrgActivities.map((item) => (
-                                <div key={item.id} className={styles.activityTableRow}>
+                            {filteredOrgActivities.length === 0 ? (
+                                <div className={styles.activityEmptyState}>
+                                    No activities created yet.
+                                </div>
+                            ) : filteredOrgActivities.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className={styles.activityTableRow}
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => router.push(`/organization/activities/${item.id}`)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            router.push(`/organization/activities/${item.id}`);
+                                        }
+                                    }}
+                                >
                                     <div className={styles.activityThumbWrap}>
                                         <div className={styles.activityThumbCard}>
                                             <div className={styles.activityThumbPieceTop} />
@@ -945,13 +1414,13 @@ export default function OrgDashboardPage() {
                                         </div>
                                     </div>
 
-                                    <div className={styles.activityNameCell}>{item.title}</div>
+                                    <div className={styles.activityNameCell} title={item.title}>{item.title}</div>
                                     <div className={styles.activityDivider} />
 
-                                    {/* <div className={styles.activityInfoCell}>
+                                    <div className={styles.activityInfoCell}>
                                         <div className={styles.activityInfoHead}>difficulty</div>
                                         <div className={styles.activityInfoValue}>{item.difficulty}</div>
-                                    </div> */}
+                                    </div>
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityInfoCell}>
@@ -961,20 +1430,14 @@ export default function OrgDashboardPage() {
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityInfoCellXp}>
-                                        <div className={styles.activityInfoHead}>Hours</div>
-                                        <div className={styles.activityInfoValue}>{item.hours}</div>
+                                        <div className={styles.activityInfoHead}>XP</div>
+                                        <div className={styles.activityInfoValue}>{item.xp}</div>
                                     </div>
                                     <div className={styles.activityDivider} />
 
                                     <div className={styles.activityStatusColumn}>
-                                        <div className={`${styles.activityStatusBadge} ${item.statusTone === "pending" ? styles.activityStatusBadgePending : ""}`}>
-                                            pending
-                                        </div>
-                                        <div className={`${styles.activityStatusBadge} ${item.statusTone === "join" ? styles.activityStatusBadgeJoin : ""}`}>
-                                            Can join
-                                        </div>
-                                        <div className={`${styles.activityStatusBadge} ${item.statusTone === "ended" ? styles.activityStatusBadgeEnded : ""}`}>
-                                            ended
+                                        <div className={getStatusBadgeClass(item.statusTone)}>
+                                            {item.statusLabel}
                                         </div>
                                     </div>
                                 </div>
@@ -988,8 +1451,7 @@ export default function OrgDashboardPage() {
                         <h3 className={styles.rightTitle}>Participants</h3>
 
                         <div className={styles.studentsListScroller}>
-                            {/* {PARTICIPANTS.map((person) => ( */}
-                            {updatedParticipants.map((person) => (
+                            {participantRows.map((person) => (
                                 <button
                                     key={person.id}
                                     type="button"
@@ -998,8 +1460,17 @@ export default function OrgDashboardPage() {
                                     title={person.name}
                                 >
                                     <div className={styles.studentRowCard}>
-                                        <div className={styles.studentAvatar} style={{ background: person.avatarBg }}>
-                                            <span className={styles.studentAvatarInitials}>{person.initials}</span>
+                                        <div className={styles.studentAvatar} style={{ background: person.profileImage ? "transparent" : person.avatarBg }}>
+                                            {person.profileImage ? (
+                                                <img
+                                                    src={person.profileImage}
+                                                    alt={person.name}
+                                                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                                                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                                                />
+                                            ) : (
+                                                <span className={styles.studentAvatarInitials}>{person.initials}</span>
+                                            )}
                                         </div>
 
                                         <div className={styles.studentMeta}>
@@ -1008,13 +1479,14 @@ export default function OrgDashboardPage() {
                                         </div>
 
                                         <div className={styles.studentScoreArea}>
-                                            <div className={styles.studentScore}>{person.score}</div>
-                                            <div className={styles.studentMedal} aria-hidden="true">
-                                                <span className={styles.studentMedalRibbonLeft} />
-                                                <span className={styles.studentMedalRibbonRight} />
-                                                <span className={styles.studentMedalBadge} />
-                                                <span className={styles.studentMedalCore}>★</span>
-                                            </div>
+                                            <img
+                                                src={getLevelBadgeSrc(person.level)}
+                                                alt={`Level ${person.level}`}
+                                                width={28}
+                                                height={28}
+                                                style={{ objectFit: "contain" }}
+                                            />
+                                            <div className={styles.studentScore}>Lv.{person.level}</div>
                                         </div>
                                     </div>
                                 </button>
@@ -1025,43 +1497,75 @@ export default function OrgDashboardPage() {
             </section>
 
             {isActivityTypeOpen && (
-                <div className={styles.figmaPopupOverlay} onClick={() => setIsActivityTypeOpen(false)}>
+                <div
+                    className={styles.activityCreateOverlay}
+                    onClick={() => setIsActivityTypeOpen(false)}
+                >
                     <div
-                        className={styles.activityTypePopup}
+                        className={styles.activityCreateModal}
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
                         aria-label="Select activity type"
                     >
-                        <div className={styles.activityTypePopupBg} />
-                        <div className={styles.activityTypePopupInner}>
-                            {(["Meetings", "Courses", "Challenges"] as const).map((item, index) => (
-                                <Fragment key={item}>
-                                    {index > 0 && <div className={styles.activityTypePopupDivider} />}
-                                    <button
-                                        type="button"
-                                        className={styles.activityTypePopupItem}
-                                        onClick={() => {
-                                            setSelectedActivityKind(item);
-                                            setIsActivityTypeOpen(false);
-                                        }}
-                                    >
-                                        <div className={styles.activityTypePopupItemBox} />
-                                        <div className={styles.activityTypePopupItemText}>{item}</div>
-                                    </button>
-                                </Fragment>
+                        <button
+                            type="button"
+                            className={styles.activityCreateClose}
+                            onClick={() => setIsActivityTypeOpen(false)}
+                            aria-label="Close"
+                        >
+                            ×
+                        </button>
+
+                        <div className={styles.activityCreateHeader}>
+                            <div className={styles.activityCreateTitle}>Create activity</div>
+                            <div className={styles.activityCreateSubtitle}>
+                                Choose the type of activity you want to create.
+                            </div>
+                        </div>
+
+                        <div className={styles.activityCreateGrid}>
+                            {([
+                                {
+                                    label: "Meetings",
+                                    description: "Live sessions, mentoring, interviews, or discussion-based activities.",
+                                    route: "meeting",
+                                },
+                                {
+                                    label: "Courses",
+                                    description: "Structured learning with modules, lessons, and guided progress.",
+                                    route: "course",
+                                },
+                                {
+                                    label: "Challenges",
+                                    description: "Hands-on tasks, case work, and portfolio-based submissions.",
+                                    route: "challenge",
+                                },
+                            ] as const).map((item) => (
+                                <button
+                                    key={item.label}
+                                    type="button"
+                                    className={styles.activityCreateCard}
+                                    onClick={() => {
+                                        setIsActivityTypeOpen(false);
+                                        router.push(`/organization/activities/${item.route}`);
+                                    }}
+                                >
+                                    <span className={styles.activityCreateCardAccent} />
+                                    <div className={styles.activityCreateCardTitle}>{item.label}</div>
+                                    <div className={styles.activityCreateCardText}>{item.description}</div>
+                                </button>
                             ))}
                         </div>
                     </div>
                 </div>
             )}
-
             {/* ===== Modal: Add employee ===== */}
             {isOpen && (
                 <div className={styles.modalOverlay} role="dialog" aria-modal="true">
                     <div className={styles.modal}>
                         <div className={styles.modalHeader}>
-                            <h2 className={styles.modalTitle}>Add employee</h2>
+                            <h2 className={styles.modalTitle}>{employeeModalMode === "edit" ? "Edit employee" : "Add employee"}</h2>
                             <button className={styles.modalClose} type="button" onClick={closeAdd} aria-label="Close">
                                 ✕
                             </button>
@@ -1102,8 +1606,14 @@ export default function OrgDashboardPage() {
                                 className={styles.input}
                                 placeholder="Email"
                                 value={draft.email}
-                                onChange={setDraftField("email")}
+                                onChange={employeeModalMode === "edit" ? undefined : setDraftField("email")}
+                                readOnly={employeeModalMode === "edit"}
                             />
+                            {employeeModalMode === "edit" && (
+                                <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, marginBottom: 8 }}>
+                                    Email is read-only here.
+                                </div>
+                            )}
 
                             <div className={styles.hr} />
 
@@ -1119,20 +1629,33 @@ export default function OrgDashboardPage() {
 
                             <div className={styles.avatarPickTitle}>Avatar</div>
                             <div className={styles.avatarPickRow}>
-                                {AVATARS.map((src, i) => {
-                                    const on = draft.avatarIndex === i;
-                                    return (
-                                        <button
-                                            key={src}
-                                            type="button"
-                                            className={`${styles.avatarPickBtn} ${on ? styles.avatarPickBtnOn : ""}`}
-                                            onClick={() => setDraftAvatar(i)}
-                                            aria-label={`Select avatar ${i + 1}`}
-                                        >
-                                            <img src={src} alt={`avatar ${i + 1}`} className={styles.avatarPickImg} />
-                                        </button>
-                                    );
-                                })}
+                                {loadingAvatarOptions ? (
+                                    <div style={{ fontSize: 11, color: "#6b7280" }}>Loading avatars...</div>
+                                ) : avatarOptions.length === 0 ? (
+                                    <div style={{ fontSize: 11, color: "#b42318" }}>No employee avatars</div>
+                                ) : (
+                                    avatarOptions.map((option, index) => {
+                                        const on = draft.avatarId === option.id;
+                                        return (
+                                            <button
+                                                key={option.id}
+                                                type="button"
+                                                className={`${styles.avatarPickBtn} ${on ? styles.avatarPickBtnOn : ""}`}
+                                                onClick={() => setDraftAvatar(option.id)}
+                                                aria-label={`Select avatar ${index + 1}`}
+                                                title={`Employee avatar ${index + 1}`}
+                                                style={{
+                                                    overflow: "hidden",
+                                                    padding: 0,
+                                                    position: "relative",
+                                                    display: "block",
+                                                }}
+                                            >
+                                                <EmployeeAvatarOptionPreview modelUrl={option.modelUrl} />
+                                            </button>
+                                        );
+                                    })
+                                )}
                             </div>
 
                             {error && <div className={styles.errorText}>{error}</div>}
@@ -1142,8 +1665,8 @@ export default function OrgDashboardPage() {
                             <button className={styles.secondaryBtn} type="button" onClick={closeAdd} disabled={saving}>
                                 Cancel
                             </button>
-                            <button className={styles.primaryBtn} type="button" onClick={submitAdd} disabled={saving}>
-                                {saving ? "Saving..." : "Send invite"}
+                            <button className={styles.primaryBtn} type="button" onClick={submitEmployee} disabled={saving}>
+                                {saving ? "Saving..." : employeeModalMode === "edit" ? "Save changes" : "Send invite"}
                             </button>
                         </div>
                     </div>
@@ -1205,15 +1728,18 @@ export default function OrgDashboardPage() {
                                             <div className={styles.popupLogoLabel}>Logo</div>
                                         )}
 
-                                        <label className={styles.popupLogoDrop}>
+                                        <label className={styles.popupLogoDrop} style={{ opacity: logoUploading ? 0.6 : 1 }}>
                                             <input
                                                 type="file"
                                                 accept="image/*"
                                                 className={styles.popupHiddenFile}
                                                 onChange={openLogoCrop}
+                                                disabled={logoUploading}
                                             />
                                             <div className={styles.popupLogoDropInner}>
-                                                {orgDraft.logoPreview ? (
+                                                {logoUploading ? (
+                                                    <div className={styles.popupUploadText}>Uploading...</div>
+                                                ) : orgDraft.logoPreview ? (
                                                     <img
                                                         src={orgDraft.logoPreview}
                                                         alt="Logo preview"
@@ -1224,6 +1750,11 @@ export default function OrgDashboardPage() {
                                                 )}
                                             </div>
                                         </label>
+                                        {orgDraft.logoFile && !logoUploading && (
+                                            <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                                Ready to upload
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1294,7 +1825,8 @@ export default function OrgDashboardPage() {
                             <button
                                 type="button"
                                 className={styles.popupIconButton}
-                                onClick={(e) => handleSaveOrg(e)}
+                                onClick={handleSaveOrg}
+                                disabled={orgSaving || logoUploading}
                                 aria-label="Save organization"
                             >
                                 <Image
@@ -1336,7 +1868,7 @@ export default function OrgDashboardPage() {
                     >
                         <div className={styles.savedPopupBg} />
                         <Image
-                            src="/images/icons/button01-icon.png"
+                            src="/images/icons/save-icon.png"
                             alt=""
                             width={60}
                             height={60}

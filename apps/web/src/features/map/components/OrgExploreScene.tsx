@@ -1,0 +1,500 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import * as THREE from "three";
+import OrgExploreHud from "./OrgExploreHud";
+import OrgMapCanvas, {
+  type OrgHoverPayload,
+  type OrgPickBuildingPayload,
+  type RemoteStudent,
+} from "./OrgMapCanvas";
+import {
+  BUILDING_FOCUS_DIST,
+  BUILDING_FOCUS_Y,
+  CAMERA_PITCH,
+  CAMERA_YAW_A,
+  CAMERA_YAW_B,
+  CAMERA_YAW_RANGE,
+  FLY_DURATION_MS,
+} from "../constants";
+import { angleDiff } from "../utils/three";
+import type { CamAnimState, YawAnimState } from "../types";
+import type { NavItem } from "@/lib/config/organization/routes";
+import { ORGANIZATION_SIDEBAR_ITEMS } from "@/lib/config/organization/routes";
+
+type OrgActivity = {
+  id: string;
+  title: string;
+  description?: string;
+  difficulty?: string;
+  category?: string;
+  xp_reward?: number;
+  status?: string;
+};
+
+type OrgProfileSummary = {
+  description?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  totalActivities?: number;
+  published?: number;
+  draft?: number;
+  meetings?: number;
+  courses?: number;
+  challenges?: number;
+  participants?: number;
+};
+
+type CurrentOrg = {
+  org_id: string;
+  org_name: string;
+  logo?: string;
+  building_mesh_names: string[];
+  activities: OrgActivity[];
+  profileSummary: OrgProfileSummary;
+};
+
+type OrgApiResponse = {
+  ok?: boolean;
+  data?: any;
+  org?: any;
+};
+
+type PresenceStudent = {
+  id?: string;
+  user_id?: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  position?: { x?: number; y?: number; z?: number };
+  avatar_model_url?: string | null;
+  modelUrl?: string | null;
+};
+
+// ── ค่าเริ่มต้น (ใช้ขณะโหลด ไม่ใช่ mock ถาวร) ──────────────────────────────
+const INITIAL_ORG: CurrentOrg = {
+  org_id: "",
+  org_name: "",
+  logo: undefined,
+  building_mesh_names: [],
+  activities: [],
+  profileSummary: {},
+};
+
+function normalizeActivities(input: unknown): OrgActivity[] {
+  if (!Array.isArray(input)) return [];
+
+  return input.map((item: any, index) => ({
+    id: String(item?.id ?? item?.activity_id ?? `activity-${index}`),
+    title: String(item?.title ?? item?.activity_name ?? "Untitled activity"),
+    description:
+      typeof item?.description === "string"
+        ? item.description
+        : typeof item?.activity_description === "string"
+          ? item.activity_description
+          : undefined,
+    difficulty:
+      typeof item?.difficulty === "string"
+        ? item.difficulty
+        : typeof item?.level === "string"
+          ? item.level
+          : undefined,
+    category:
+      typeof item?.category === "string"
+        ? item.category
+        : typeof item?.activity_type === "string"
+          ? item.activity_type
+          : undefined,
+    xp_reward:
+      item?.xp_reward == null && item?.xp == null
+        ? undefined
+        : Number(item?.xp_reward ?? item?.xp ?? 0),
+    status:
+      typeof item?.status === "string"
+        ? item.status
+        : typeof item?.activity_status === "string"
+          ? item.activity_status
+          : undefined,
+  }));
+}
+
+function buildProfileSummary(payload: any): OrgProfileSummary {
+  if (!payload || typeof payload !== "object") return {};
+
+  return {
+    description: typeof payload.description === "string" ? payload.description
+      : typeof payload.about === "string" ? payload.about
+      : undefined,
+    phone: typeof payload.phone === "string" && payload.phone ? payload.phone : undefined,
+    email: typeof payload.email === "string" && payload.email ? payload.email : undefined,
+    address: typeof payload.address === "string" && payload.address ? payload.address : undefined,
+    totalActivities: payload.total_activities != null ? Number(payload.total_activities)
+      : payload.totalActivities != null ? Number(payload.totalActivities)
+      : undefined,
+    published: payload.published != null ? Number(payload.published) : undefined,
+    draft: payload.draft != null ? Number(payload.draft) : undefined,
+    meetings: payload.meetings != null ? Number(payload.meetings) : undefined,
+    courses: payload.courses != null ? Number(payload.courses) : undefined,
+    challenges: payload.challenges != null ? Number(payload.challenges) : undefined,
+    participants: payload.participants != null ? Number(payload.participants)
+      : payload.total_participants != null ? Number(payload.total_participants)
+      : undefined,
+  };
+}
+
+function buildOrgFromPayload(payload: any): CurrentOrg | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  const orgName = String(
+    payload.orgName ?? payload.org_name ?? payload.organization_name ?? payload.name ?? ""
+  ).trim();
+
+  if (!orgName) return null;
+
+  // ใช้ building_name จาก DB จริง — ไม่มี fallback hardcode
+  const buildingMeshName = String(
+    payload.buildingName ?? payload.building_name ?? ""
+  ).trim();
+
+  return {
+    org_id: String(payload.orgId ?? payload.org_id ?? payload.id ?? ""),
+    org_name: orgName,
+    logo:
+      typeof payload.logoPreview === "string" && payload.logoPreview
+        ? payload.logoPreview
+        : typeof payload.logo === "string" && payload.logo
+          ? payload.logo
+          : undefined,
+    // ถ้า buildingMeshName ว่าง = org ยังไม่ได้เลือกตึก
+    building_mesh_names: buildingMeshName ? [buildingMeshName] : [],
+    activities: normalizeActivities(payload.activities ?? payload.open_activities ?? payload.activity_list),
+    profileSummary: buildProfileSummary({
+      description: payload.aboutUs ?? payload.about_org ?? payload.description,
+      phone: payload.phone,
+      email: payload.email,
+      address: payload.location ?? payload.address,
+      total_activities: payload.totalActivities ?? payload.total_activities,
+      published: payload.published,
+      draft: payload.draft,
+      meetings: payload.meetings,
+      courses: payload.courses,
+      challenges: payload.challenges,
+      participants: payload.participants ?? payload.total_participants,
+    }),
+  };
+}
+
+function buildRemoteStudentsFromPayload(payload: unknown): RemoteStudent[] {
+  if (!Array.isArray(payload)) return [];
+
+  return payload
+    .map((item: PresenceStudent, index): RemoteStudent | null => {
+      const p = item?.position;
+      if (!p || typeof p !== "object") return null;
+
+      const x = Number(p.x ?? 0);
+      const y = Number(p.y ?? 0);
+      const z = Number(p.z ?? 0);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+
+      const firstName = String(item?.first_name ?? "").trim();
+      const lastName = String(item?.last_name ?? "").trim();
+      const fullName = String(item?.name ?? "").trim();
+      const displayName = fullName || `${firstName} ${lastName}`.trim() || `Student ${index + 1}`;
+
+      return {
+        id: String(item?.id ?? item?.user_id ?? `student-${index}`),
+        name: displayName,
+        position: new THREE.Vector3(x, y, z),
+        modelUrl: item?.avatar_model_url ?? item?.modelUrl ?? "/models/boy.glb",
+      };
+    })
+    .filter((item): item is RemoteStudent => Boolean(item));
+}
+
+export default function OrgExploreScene() {
+  const router = useRouter();
+
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const camAnimRef = useRef<CamAnimState | null>(null);
+  const yawAnimRef = useRef<YawAnimState | null>(null);
+  const isAnimatingRef = useRef(false);
+
+  const [org, setOrg] = useState<CurrentOrg>(INITIAL_ORG);
+  const [remoteStudents, setRemoteStudents] = useState<RemoteStudent[]>([]);
+  const [isOwnBuildingSelected, setIsOwnBuildingSelected] = useState(false);
+  const [hoverPayload, setHoverPayload] = useState<OrgHoverPayload>(null);
+
+  // ── ตึกที่มี org อยู่ (ดึงจาก DB จริง) ──────────────────────────────────────
+  const [occupiedMeshNames, setOccupiedMeshNames] = useState<string[]>([]);
+
+  // โหลด dashboard + buildings พร้อมกัน
+  // dashboard มี activities, summary, building.buildingName ครบ
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [dashRes, buildingsRes] = await Promise.all([
+          fetch("/api/organization/dashboard", { cache: "no-store" }),
+          fetch("/api/organization/explore/buildings", { cache: "no-store" }),
+        ]);
+
+        const dashJson = await dashRes.json().catch(() => null);
+        const buildingsJson = await buildingsRes.json().catch(() => null);
+
+        // ── occupied buildings list ─────────────────────────────────────────
+        const buildings: { org_id: string; org_name: string; building_name: string }[] =
+          buildingsJson?.data?.buildings ?? buildingsJson?.buildings ?? [];
+
+        const meshNames = buildings
+          .map((b) => String(b.building_name ?? "").trim().toLowerCase())
+          .filter(Boolean);
+
+        if (!cancelled && meshNames.length) {
+          setOccupiedMeshNames(meshNames);
+        }
+
+        // ── org ของตัวเอง จาก dashboard ────────────────────────────────────
+        if (!dashRes.ok || !dashJson?.ok) return;
+
+        const d = dashJson.data;
+        // สร้าง payload รวมข้อมูลทั้งหมดจาก dashboard
+        const orgPayload = {
+          ...(d?.org ?? {}),
+          activities: d?.activities ?? [],
+          // summary fields
+          totalActivities: d?.summary?.totalActivities,
+          published:       d?.summary?.published,
+          draft:           d?.summary?.draft,
+          meetings:        d?.summary?.meetings,
+          courses:         d?.summary?.courses,
+          challenges:      d?.summary?.challenges,
+          participants:    d?.summary?.totalParticipants,
+          // building_name มาจาก building object
+          buildingName:    d?.building?.buildingName ?? "",
+        };
+
+        const nextOrg = buildOrgFromPayload(orgPayload);
+        if (!nextOrg || cancelled) return;
+
+        // fallback: ถ้า buildingName ยังว่าง ให้ cross-match จาก buildings list
+        if (!nextOrg.building_mesh_names.length) {
+          const orgId = String(d?.account?.orgId ?? d?.org?.orgId ?? d?.org?.org_id ?? "").trim();
+          const matched = buildings.find((b) => String(b.org_id ?? "").trim() === orgId);
+          if (matched?.building_name) {
+            nextOrg.building_mesh_names = [matched.building_name.toLowerCase()];
+          }
+        }
+
+        setOrg(nextOrg);
+      } catch {}
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // โหลด remote students
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch("/api/organization/explore/students", { cache: "no-store" });
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json?.ok) return;
+
+        const nextStudents = buildRemoteStudentsFromPayload(
+          json.students ?? json.data?.students ?? json.data ?? []
+        );
+
+        if (!cancelled && nextStudents.length) {
+          setRemoteStudents(nextStudents);
+        }
+      } catch {}
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const ownBuildingMeshNames = useMemo(
+    () => org.building_mesh_names.map((name) => name.toLowerCase()),
+    [org.building_mesh_names]
+  );
+
+  // รวม own building เข้าไปใน occupied ด้วยเสมอ (ถ้ามี)
+  const occupiedBuildingMeshNames = useMemo(() => {
+    const set = new Set([...occupiedMeshNames, ...ownBuildingMeshNames]);
+    return Array.from(set);
+  }, [occupiedMeshNames, ownBuildingMeshNames]);
+
+  const flyTo = useCallback((target: THREE.Vector3, dist: number) => {
+    const ctrls = controlsRef.current;
+    const cam = cameraRef.current;
+    if (!ctrls || !cam) return;
+
+    isAnimatingRef.current = true;
+
+    const off = cam.position.clone().sub(ctrls.target);
+    const curYaw = Math.atan2(off.z, off.x);
+    const dA = Math.abs(angleDiff(curYaw, CAMERA_YAW_A));
+    const dB = Math.abs(angleDiff(curYaw, CAMERA_YAW_B));
+    const yaw = dA <= dB ? CAMERA_YAW_A : CAMERA_YAW_B;
+
+    ctrls.minAzimuthAngle = yaw - CAMERA_YAW_RANGE;
+    ctrls.maxAzimuthAngle = yaw + CAMERA_YAW_RANGE;
+
+    const dir = new THREE.Vector3(
+      Math.cos(CAMERA_PITCH) * Math.cos(yaw),
+      Math.sin(CAMERA_PITCH),
+      Math.cos(CAMERA_PITCH) * Math.sin(yaw)
+    ).normalize();
+
+    camAnimRef.current = {
+      active: true,
+      t0: performance.now(),
+      duration: FLY_DURATION_MS,
+      fromPos: cam.position.clone(),
+      toPos: target.clone().add(dir.multiplyScalar(dist)),
+      fromTarget: ctrls.target.clone(),
+      toTarget: target.clone(),
+      pendingCompany: null,
+    };
+  }, []);
+
+  const toggleView = useCallback(() => {
+    const ctrls = controlsRef.current;
+    if (!ctrls) return;
+
+    isAnimatingRef.current = true;
+
+    const curYaw = ctrls.getAzimuthalAngle();
+    const dA = Math.abs(angleDiff(curYaw, CAMERA_YAW_A));
+    const dB = Math.abs(angleDiff(curYaw, CAMERA_YAW_B));
+    const nextYaw = dA <= dB ? CAMERA_YAW_B : CAMERA_YAW_A;
+
+    ctrls.minAzimuthAngle = -Infinity;
+    ctrls.maxAzimuthAngle = Infinity;
+
+    const prevEnableDamping = ctrls.enableDamping;
+    ctrls.enableDamping = false;
+
+    yawAnimRef.current = {
+      active: true,
+      t0: performance.now(),
+      duration: 380,
+      fromYaw: curYaw,
+      toYaw: nextYaw,
+      pitch: CAMERA_PITCH,
+      range: CAMERA_YAW_RANGE,
+      prevEnableDamping,
+    };
+  }, []);
+
+  const handlePickBuilding = useCallback(
+    (payload: OrgPickBuildingPayload) => {
+      if (!payload.hasOrganization || !payload.isOwnBuilding) {
+        setIsOwnBuildingSelected(false);
+        return;
+      }
+
+      const target = payload.worldPos.clone();
+      target.y += BUILDING_FOCUS_Y;
+      flyTo(target, BUILDING_FOCUS_DIST);
+      setIsOwnBuildingSelected(true);
+    },
+    [flyTo]
+  );
+
+  const handleNavItem = useCallback(
+    (item: NavItem) => {
+      if (item.enabled === false) return;
+      router.push(item.href);
+    },
+    [router]
+  );
+
+  return (
+    <div
+      style={{ height: "100vh", position: "relative", background: "#EEE7DE", overflow: "hidden" }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <OrgExploreHud
+        orgName={org.org_name}
+        orgLogoUrl={org.logo}
+        activities={org.activities}
+        profileSummary={org.profileSummary}
+        isOwnBuildingSelected={isOwnBuildingSelected}
+        onClosePanel={() => setIsOwnBuildingSelected(false)}
+        onToggleView={toggleView}
+        onNavigate={handleNavItem}
+        navItems={ORGANIZATION_SIDEBAR_ITEMS}
+      />
+
+      {hoverPayload && !hoverPayload.hasOrganization ? (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            bottom: 22,
+            transform: "translateX(-50%)",
+            zIndex: 60,
+            padding: "8px 18px",
+            borderRadius: 5,
+            background: "#FEFEFE",
+            border: "1px solid #E0D6CD",
+            boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#666",
+            pointerEvents: "none",
+          }}
+        >
+          ตึกนี้ยังไม่มี organization อยู่ในขณะนี้
+        </div>
+      ) : hoverPayload && !hoverPayload.isOwnBuilding ? (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            bottom: 22,
+            transform: "translateX(-50%)",
+            zIndex: 60,
+            padding: "8px 18px",
+            borderRadius: 5,
+            background: "#FEFEFE",
+            border: "1px solid #E0D6CD",
+            boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#666",
+            pointerEvents: "none",
+          }}
+        >
+          ไม่สามารถเปิดดูข้อมูลขององค์กรอื่นได้
+        </div>
+      ) : null}
+
+      <OrgMapCanvas
+        controlsRef={controlsRef}
+        cameraRef={cameraRef}
+        camAnimRef={camAnimRef}
+        yawAnimRef={yawAnimRef}
+        isAnimatingRef={isAnimatingRef}
+        ownBuildingMeshNames={ownBuildingMeshNames}
+        occupiedBuildingMeshNames={occupiedBuildingMeshNames}
+        orgName={org.org_name}
+        remoteStudents={remoteStudents}
+        onPickBuilding={handlePickBuilding}
+        onHoverBuilding={setHoverPayload}
+        onCameraAnimDone={() => {
+          isAnimatingRef.current = false;
+        }}
+      />
+    </div>
+  );
+}
