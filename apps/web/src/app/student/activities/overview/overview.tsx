@@ -71,7 +71,7 @@ function getActivityHref(item: ActivityItem) {
   return `${item.detailPath}?activityId=${item.id}`;
 }
 
-export default function AllActivities() {
+export default function AllActivities({ showBackButton = true }: { showBackButton?: boolean }) {
   const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -213,9 +213,11 @@ export default function AllActivities() {
           </div>
         </div>
 
-        <Link href="/student/activities" className={styles.backButton}>
-          Back
-        </Link>
+        {showBackButton && (
+          <Link href="/student/activities" className={styles.backButton}>
+            Back
+          </Link>
+        )}
       </div>
 
       <section className={styles.filterCard}>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import StudentCalendar, {
   type StudentCalendarSiteEvent,
 } from "@/components/shared/student/StudentCalendar";
+import AllActivities from "./overview/overview";
 
 type StatCard = {
   label: string;

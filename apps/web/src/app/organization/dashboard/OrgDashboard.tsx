@@ -310,58 +310,58 @@ function EmployeeAvatarOptionPreview({ modelUrl }: { modelUrl: string | null }) 
 const FALLBACK_GLB = "https://vcep-assets-dev.s3.ap-southeast-2.amazonaws.com/building-models/building-model-typeB.glb";
 
 function NormalizedBuildingInner({ url }: { url: string }) {
-  // useGLTF ต้องเรียกเสมอ (ไม่ conditional) — ใช้ fallback ถ้า url ว่าง
-  const { scene } = useGLTF(url || FALLBACK_GLB);
-  const normalized = useMemo(() => {
-    const root = scene.clone(true);
-    root.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(root);
-    const size = box.getSize(new THREE.Vector3());
-    const scale = 2.2 / Math.max(size.y, 0.0001);
-    root.scale.setScalar(scale);
-    root.updateMatrixWorld(true);
-    const scaledBox = new THREE.Box3().setFromObject(root);
-    const center = scaledBox.getCenter(new THREE.Vector3());
-    root.position.set(-center.x, -scaledBox.min.y, -center.z);
-    return root;
-  }, [scene]);
-  return <primitive object={normalized as any} />;
+    // useGLTF ต้องเรียกเสมอ (ไม่ conditional) — ใช้ fallback ถ้า url ว่าง
+    const { scene } = useGLTF(url || FALLBACK_GLB);
+    const normalized = useMemo(() => {
+        const root = scene.clone(true);
+        root.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(root);
+        const size = box.getSize(new THREE.Vector3());
+        const scale = 2.2 / Math.max(size.y, 0.0001);
+        root.scale.setScalar(scale);
+        root.updateMatrixWorld(true);
+        const scaledBox = new THREE.Box3().setFromObject(root);
+        const center = scaledBox.getCenter(new THREE.Vector3());
+        root.position.set(-center.x, -scaledBox.min.y, -center.z);
+        return root;
+    }, [scene]);
+    return <primitive object={normalized as any} />;
 }
 
 function OrgBuildingViewer({ modelUrl }: { modelUrl: string | null }) {
-  if (!modelUrl) {
+    if (!modelUrl) {
+        return (
+            <div style={{
+                width: "100%", height: "100%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "#f7f7f7",
+                color: "#9ca3af", fontSize: 12, fontWeight: 500,
+            }}>
+                No building
+            </div>
+        );
+    }
     return (
-      <div style={{
-        width: "100%", height: "100%",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#f7f7f7",
-        color: "#9ca3af", fontSize: 12, fontWeight: 500,
-      }}>
-        No building
-      </div>
+        <Canvas
+            frameloop="demand"
+            // กล้องห่างขึ้น fov เล็กลง = model ดูพอดีใน frame 220px
+            camera={{ position: [0, 1.6, 7.2] as [number, number, number], fov: 25 }}
+            gl={{ alpha: true, antialias: true }}
+            onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
+            style={{ width: "100%", height: "100%" }}
+        >
+            {/* แสงนุ่ม เหมือน card อื่น — ambient สว่าง + directional อ่อน */}
+            <ambientLight intensity={1.4} />
+            <directionalLight position={[5, 10, 6]} intensity={0.7} />
+            <directionalLight position={[-4, 4, -4]} intensity={0.25} />
+            <Suspense fallback={null}>
+                {/* ขยับ model ลงเล็กน้อย + หมุนมุมเดียวกับ fill-more-info */}
+                <group position={[0, -0.85, 0] as [number, number, number]} rotation={[-0.06, -0.5, 0] as [number, number, number]}>
+                    <NormalizedBuildingInner url={modelUrl} />
+                </group>
+            </Suspense>
+        </Canvas>
     );
-  }
-  return (
-    <Canvas
-      frameloop="demand"
-      // กล้องห่างขึ้น fov เล็กลง = model ดูพอดีใน frame 220px
-      camera={{ position: [0, 1.6, 7.2] as [number,number,number], fov: 25 }}
-      gl={{ alpha: true, antialias: true }}
-      onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
-      style={{ width: "100%", height: "100%" }}
-    >
-      {/* แสงนุ่ม เหมือน card อื่น — ambient สว่าง + directional อ่อน */}
-      <ambientLight intensity={1.4} />
-      <directionalLight position={[5, 10, 6]} intensity={0.7} />
-      <directionalLight position={[-4, 4, -4]} intensity={0.25} />
-      <Suspense fallback={null}>
-        {/* ขยับ model ลงเล็กน้อย + หมุนมุมเดียวกับ fill-more-info */}
-        <group position={[0, -0.85, 0] as [number,number,number]} rotation={[-0.06, -0.5, 0] as [number,number,number]}>
-          <NormalizedBuildingInner url={modelUrl} />
-        </group>
-      </Suspense>
-    </Canvas>
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1127,7 +1127,7 @@ export default function OrgDashboardPage() {
                         </div>
                         {building?.buildingName && (
                             <div className={styles.buildingLabel}>
-                               {building.buildingName}
+                                {building.buildingName}
                             </div>
                         )}
                     </div>

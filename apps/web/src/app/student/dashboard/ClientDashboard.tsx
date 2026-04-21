@@ -489,7 +489,7 @@ function limitAvatarOptions(options: AvatarOption[], selectedId: string | null, 
   return [...top.slice(0, limit - 1), selected];
 }
 
-function mapStudentToDashboard(api: DashboardApiResponse["data"]) {
+function mapStudentToDashboard(api: DashboardApiResponse["data"], statsData?: any) {
   const student = api?.student_info ?? {};
   const firstName = student.first_name?.trim() || "";
   const lastName = student.last_name?.trim() || "";
@@ -543,11 +543,24 @@ function mapStudentToDashboard(api: DashboardApiResponse["data"]) {
     avatarChoiceId: student.avatar_choice ?? null,
   };
 
-  const skills: Skill[] = skillsFromApi.map((name, index) => ({
-    id: `skill-${index}`,
-    name,
-    percent: toSkillPercent(name, index),
-  }));
+  let skills: Skill[] = [];
+  if (statsData?.skill_levels && statsData.skill_levels.length > 0) {
+    skills = statsData.skill_levels.map((s: any, i: number) => {
+      const skillLevel = parseInt(s.skill_level || "0", 10);
+      const pct = Math.min(100, Math.max(10, skillLevel * 15));
+      return {
+        id: s.skill_id || `s${i}`,
+        name: s.skill_name || "Unknown",
+        percent: pct,
+      };
+    });
+  } else {
+    skills = skillsFromApi.map((name, index) => ({
+      id: `skill-${index}`,
+      name,
+      percent: toSkillPercent(name, index),
+    }));
+  }
 
   const doneActivities: ActivityItem[] = Array.isArray(api?.done_activities)
     ? api!.done_activities!.map((item, index) => {
@@ -720,6 +733,8 @@ export default function ClientDashboard() {
       : 1;
 
   const [modal, setModal] = useState<ModalKind>(null);
+  const [portfolioCerts, setPortfolioCerts] = useState<Array<{ id: string; title: string; badgeLink: string }>>([]);
+  const [portfolioBadges, setPortfolioBadges] = useState<Array<{ id: string; title: string; badgeLink: string }>>([]);
 
   const [draft, setDraft] = useState({
     firstName: "",
@@ -778,9 +793,23 @@ export default function ClientDashboard() {
             credentials: "include",
             cache: "no-store",
           }).catch(() => null),
+          fetch("/api/student/activitystats", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          }).catch(() => null),
+          fetch("/api/student/portfolio", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          }).catch(() => null),
         ]);
 
         const json: DashboardApiResponse = await dashboardRes.json();
+        let statsJson: any = null;
+        if (statsRes && statsRes.ok) {
+          statsJson = await statsRes.json();
+        }
 
         if (!dashboardRes.ok || !json.ok || !json.data) {
           throw new Error(json?.message || "Failed to load dashboard");
@@ -818,6 +847,27 @@ export default function ClientDashboard() {
               name: "Current avatar",
             },
           ];
+        }
+
+        if (portfolioRes && portfolioRes.ok) {
+          try {
+            const portfolioJson = await portfolioRes.json();
+            const certs: any[] = Array.isArray(portfolioJson?.data?.certificates)
+              ? portfolioJson.data.certificates
+              : [];
+            setPortfolioCerts(
+              certs
+                .filter((c) => c.itemType !== "badge" && c.title)
+                .map((c, i) => ({ id: c.id || `cert-${i}`, title: c.title, badgeLink: c.badgeLink || "" }))
+            );
+            setPortfolioBadges(
+              certs
+                .filter((c) => c.itemType === "badge" && c.title)
+                .map((c, i) => ({ id: c.id || `badge-${i}`, title: c.title, badgeLink: c.badgeLink || "" }))
+            );
+          } catch {
+            // portfolio load failure is non-critical
+          }
         }
 
         const limitedAvatarOptions = limitAvatarOptions(avatarOptions, mapped.me.avatarChoiceId, 3);
@@ -1159,11 +1209,11 @@ export default function ClientDashboard() {
               )}
 
               {modal === "badges" && (
-                <GridModal title="Badges" count={8} onClose={() => setModal(null)} />
+                <GridModal title="Badges" items={portfolioBadges} onClose={() => setModal(null)} />
               )}
 
               {modal === "certificate" && (
-                <GridModal title="Certificate" count={6} onClose={() => setModal(null)} />
+                <GridModal title="Certificate" items={portfolioCerts} onClose={() => setModal(null)} />
               )}
             </ModalShell>
           )}
@@ -2339,14 +2389,40 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function GridModal({ title, count, onClose }: { title: string; count: number; onClose: () => void }) {
+function GridModal({
+  title,
+  items,
+  onClose,
+}: {
+  title: string;
+  items: Array<{ id: string; title: string; badgeLink: string }>;
+  onClose: () => void;
+}) {
   return (
     <>
       <div className={styles.modalTitle}>{title}</div>
       <div className={styles.modalGridBadges}>
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className={styles.modalBadgeBox} />
-        ))}
+        {items.length === 0 ? (
+          <div style={{ gridColumn: "1 / -1", padding: "16px 0", fontSize: 14, color: "#888" }}>
+            No {title.toLowerCase()} yet
+          </div>
+        ) : (
+          items.map((item) => (
+            <div key={item.id} className={styles.modalBadgeBox} title={item.title}>
+              {item.badgeLink ? (
+                <img
+                  src={item.badgeLink}
+                  alt={item.title}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }}
+                />
+              ) : (
+                <div style={{ fontSize: 11, padding: 4, wordBreak: "break-word", textAlign: "center" }}>
+                  {item.title}
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
       <div className={styles.modalActions}>
         <button className={cx(styles.modalBtn, styles.modalOk)} type="button" onClick={onClose} aria-label="Close">

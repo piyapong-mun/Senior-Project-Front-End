@@ -85,6 +85,17 @@ function pickString(...values: unknown[]) {
   return "";
 }
 
+function isValidUUID(value: unknown): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    String(value ?? "")
+  );
+}
+
+function ensureUUID(value: unknown): string {
+  const s = String(value ?? "").trim();
+  return isValidUUID(s) ? s : crypto.randomUUID();
+}
+
 function normalizeSource(value: unknown): "upload" | "platform" {
   return String(value ?? "").trim().toLowerCase() === "upload"
     ? "upload"
@@ -103,16 +114,6 @@ function normalizeDate(value: unknown) {
   return s;
 }
 
-function toYearText(value: unknown) {
-  const s = pickString(value);
-  if (!s) return "";
-  if (s.includes("T")) return s.slice(0, 4);
-  return s;
-}
-
-function getPortfolioContainer(root: any) {
-  return safeObject(root?.portfolio ?? root?.Portfolio ?? {});
-}
 
 async function fetchJson(url: string, accessToken: string) {
   const res = await fetch(url, {
@@ -257,8 +258,6 @@ async function updatePortfolioBackend(
       lastJson = { message: error?.message || "Update failed" };
     }
   }
-
-  return { ok: false, status: lastStatus, json: lastJson };
 }
 
 async function getStdId(accessToken: string, idToken: string) {
@@ -295,13 +294,8 @@ async function getStdId(accessToken: string, idToken: string) {
   return students.find((s) => s?.user_id === user.user_id)?.std_id ?? null;
 }
 
-function normalizeStudentInfo(portfolioRoot: any, dashboardRoot: any) {
-  const rootObj = safeObject(portfolioRoot);
-  const dashboardInfo = safeObject(dashboardRoot?.student_info);
-  const portfolioObj = getPortfolioContainer(rootObj);
-  const infoObj = safeObject(portfolioObj?.Info ?? portfolioObj?.info);
-  const profileObj = safeObject(rootObj?.profile ?? rootObj?.Profile);
-
+function normalizeStudentInfo(portfolioRoot: any, _dashboardRoot: any) {
+  const info = safeObject(portfolioRoot?.info ?? portfolioRoot?.Info ?? {});
   return {
     first_name: pickString(
       rootObj?.first_name,
@@ -373,187 +367,74 @@ function normalizeStudentInfo(portfolioRoot: any, dashboardRoot: any) {
 }
 
 function normalizeEducation(portfolioRoot: any) {
-  const rootObj = safeObject(portfolioRoot);
-  const portfolioObj = getPortfolioContainer(rootObj);
-
-  const list = safeArray<any>(
-    portfolioObj?.Education ??
-    portfolioObj?.education ??
-    rootObj?.education ??
-    rootObj?.Education
-  );
-
+  const list = safeArray<any>(portfolioRoot?.education ?? portfolioRoot?.Education ?? []);
   return list.map((item, index) => ({
-    id: pickString(item?.education_id, item?.id) || `education-${index}`,
-    school: pickString(
-      item?.school,
-      item?.school_name,
-      item?.educational_institution,
-      item?.institution,
-      item?.university,
-      item?.facultyschool
-    ),
-    degree: pickString(item?.degree, item?.degree_level),
+    id: `education-${index}`,
+    school: pickString(item?.institution, item?.school, item?.university, item?.facultyschool),
+    degree: pickString(item?.degreeLevel, item?.degree_level, item?.degree),
     faculty: pickString(item?.faculty),
-    fieldOfStudy: pickString(
-      item?.field_of_study,
-      item?.fieldOfStudy,
-      item?.major
-    ),
-    start_year: toYearText(item?.start_year ?? item?.start_date),
-    end_year: toYearText(item?.end_year ?? item?.end_date),
+    fieldOfStudy: pickString(item?.major, item?.field_of_study, item?.fieldOfStudy),
+    start_year: String(item?.startYear ?? item?.start_year ?? ""),
+    end_year: String(item?.endYear ?? item?.end_year ?? ""),
     gpa: pickString(item?.gpa),
   }));
 }
 
 function normalizeSkills(portfolioRoot: any) {
-  const rootObj = safeObject(portfolioRoot);
-  const portfolioObj = getPortfolioContainer(rootObj);
-
-  const list = safeArray<any>(
-    portfolioObj?.Skills ??
-    portfolioObj?.skills ??
-    rootObj?.skills ??
-    rootObj?.Skills ??
-    rootObj?.skill
-  );
-
+  const list = safeArray<any>(portfolioRoot?.skills ?? portfolioRoot?.Skills ?? []);
   return list.map((item, index) => ({
-    id: pickString(item?.skill_id, item?.id) || `skill-${index}`,
-    name: pickString(item?.skill_name, item?.name, item?.title),
-    kind: normalizeSkillKind(item?.skill_type ?? item?.kind ?? item?.type),
-    source: normalizeSource(item?.source),
-    isSelected:
-      typeof item?.isSelected === "boolean" ? item.isSelected : true,
+    id: pickString(item?.skillID, item?.skill_id) || `skill-${index}`,
+    name: pickString(item?.name, item?.Name),
+    kind: normalizeSkillKind(item?.category ?? item?.Category ?? item?.kind),
+    source: (item?.fromSystem === true || item?.FromSystem === true) ? "platform" : "upload",
+    isSelected: typeof item?.enable === "boolean" ? item.enable : (typeof item?.Enable === "boolean" ? item.Enable : true),
   }));
 }
 
 function normalizeCertificates(portfolioRoot: any) {
-  const rootObj = safeObject(portfolioRoot);
-  const portfolioObj = getPortfolioContainer(rootObj);
+  const list = safeArray<any>(portfolioRoot?.certificates ?? portfolioRoot?.Certificates ?? []);
+  console.log("certificate list", list)
+  return list.map((item, index) => {
+    const typeStr = String(item?.Type ?? "certificate").toLowerCase();
 
-  const certificates = safeArray<any>(
-    portfolioObj?.Certificates ??
-    portfolioObj?.certificates ??
-    rootObj?.certificates ??
-    rootObj?.Certificates
-  );
-
-  const badges = safeArray<any>(
-    portfolioObj?.Badges ??
-    portfolioObj?.badges ??
-    rootObj?.badges ??
-    rootObj?.Badges
-  );
-
-  const merged = [...badges, ...certificates];
-
-  return merged.map((item, index) => ({
-    id: pickString(
-      item?.cert_id,
-      item?.certificate_id,
-      item?.badge_id,
-      item?.id
-    ) || `certificate-${index}`,
-    title: pickString(
-      item?.title,
-      item?.name,
-      item?.certificate_name,
-      item?.badge_name,
-      typeof item === "string" ? item : ""
-    ),
-    date: normalizeDate(item?.date ?? item?.issue_date ?? item?.created_at),
-    source: normalizeSource(item?.source),
-    files: safeArray(item?.files),
-  }));
-}
-
-function buildPeriod(item: any) {
-  const direct = pickString(item?.period);
-  if (direct) return direct;
-
-  const start = toYearText(
-    item?.start_year ?? item?.start_at ?? item?.start_date
-  );
-  const end = toYearText(item?.end_year ?? item?.end_at ?? item?.end_date);
-
-  if (start && end) return `${start} - ${end}`;
-  return start || end || "";
+    return {
+      id: `certificate-${index}`,
+      itemType: typeStr === "badge" ? "badge" : "certificate",
+      title: pickString(item?.name, item?.Name, item?.title),
+      date: normalizeDate(item?.date ?? item?.issue_date),
+      badgeLink: pickString(item?.badgeLink, item?.badge_link),
+    };
+  });
 }
 
 function normalizeExperiences(portfolioRoot: any) {
-  const rootObj = safeObject(portfolioRoot);
-  const portfolioObj = getPortfolioContainer(rootObj);
-
-  const list = safeArray<any>(
-    portfolioObj?.Experience ??
-    portfolioObj?.experience ??
-    portfolioObj?.Experiences ??
-    portfolioObj?.experiences ??
-    rootObj?.experience ??
-    rootObj?.Experience ??
-    rootObj?.experiences ??
-    rootObj?.Experiences
-  );
-
-  return list.map((item, index) => ({
-    id: pickString(
-      item?.experience_id,
-      item?.exp_id,
-      item?.activity_id,
-      item?.id
-    ) || `experience-${index}`,
-    period: buildPeriod(item),
-    title: pickString(
-      item?.title,
-      item?.activity_name,
-      item?.name,
-      typeof item === "string" ? item : ""
-    ),
-    description: pickString(
-      item?.description,
-      item?.detail,
-      item?.activity_description
-    ),
-    source: normalizeSource(item?.source),
-    files: safeArray(item?.files),
-  }));
+  const list = safeArray<any>(portfolioRoot?.experience ?? portfolioRoot?.Experience ?? []);
+  return list.map((item, index) => {
+    const start = String(item?.StartYear ?? item?.start_year ?? "");
+    const end = String(item?.EndYear ?? item?.end_year ?? "");
+    const period = start && end ? `${start} - ${end}` : start || end || "";
+    return {
+      id: pickString(item?.activityID, item?.ActivityID) || `experience-${index}`,
+      period,
+      title: pickString(item?.topic, item?.Topic),
+      description: pickString(item?.description, item?.Description),
+      source: (item?.fromSystem === true || item?.FromSystem === true) ? "platform" : "upload",
+      files: [],
+    };
+  });
 }
 
 function buildBackendPayload(type: PortfolioType, body: any) {
   if (type === "info") {
-    const firstName = pickString(body?.first_name, body?.firstName);
-    const lastName = pickString(body?.last_name, body?.lastName);
-    const email = pickString(body?.email);
-    const phone = pickString(body?.phone);
-    const address = pickString(body?.address);
-    const aboutMe = pickString(body?.about_me, body?.aboutMe);
-    const birthDate = pickString(body?.birth_date, body?.birthDate);
-
     return {
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone,
-      address,
-      about_me: aboutMe,
-      birth_date: birthDate,
-      Info: {
-        FirstName: firstName,
-        LastName: lastName,
-        Email: email,
-        Phone: phone,
-        Address: address,
-        AboutMe: aboutMe,
-      },
-      info: {
-        FirstName: firstName,
-        LastName: lastName,
-        Email: email,
-        Phone: phone,
-        Address: address,
-        AboutMe: aboutMe,
-      },
+      first_name: pickString(body?.first_name, body?.firstName),
+      last_name: pickString(body?.last_name, body?.lastName),
+      email: pickString(body?.email),
+      phone: pickString(body?.phone),
+      address: pickString(body?.address),
+      about_me: pickString(body?.about_me, body?.aboutMe),
+      birth_date: pickString(body?.birth_date, body?.birthDate),
+      profile_image_url: pickString(body?.profile_image_url),
     };
   }
 
@@ -762,6 +643,7 @@ export async function PUT(req: Request) {
     }
 
     const stdId = await getStdId(sess.accessToken, sess.idToken);
+    console.log("stdId: ", stdId);
     if (!stdId) {
       return NextResponse.json(
         { ok: false, message: "Student not found" },

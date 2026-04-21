@@ -6,7 +6,6 @@ body {
 .panel {
   width: 100%;
   min-height: 100%;
-  padding: 18px;
   box-sizing: border-box;
 }
 
@@ -46,72 +45,57 @@ body {
 }
 
 .filterCard {
-  height: 160px;
-  position: relative;
+  height: auto;
   background: #fefefe;
   border: 1px solid #efefef;
   border-radius: 2px;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
-  padding: 0;
+  padding: 18px;
   margin-bottom: 14px;
-  overflow: hidden;
 }
 
 .filterTitle {
-  position: absolute;
-  top: 25px;
-  left: 18px;
-  margin: 0;
   font-size: 20px;
   font-weight: 500;
   line-height: 1;
   color: #000;
+  margin-bottom: 12px;
 }
 
 .filterLayout {
-  position: absolute;
-  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
 }
 
 .nameField {
-  position: absolute;
-  top: 52px;
-  left: 18px;
-  width: 518px;
+  grid-column: span 2;
   height: 34px;
 }
 
 .dateFields {
-  position: absolute;
-  top: 52px;
-  left: 594px;
-  width: 518px;
+  grid-column: span 2;
   height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
 }
 
 .organizationField {
-  position: absolute;
-  top: 100px;
-  left: 18px;
-  width: 246.8px;
   height: 34px;
+  position: relative;
 }
 
 .typeField {
-  position: absolute;
-  top: 100px;
-  left: 289px;
-  width: 246.8px;
   height: 34px;
+  position: relative;
 }
 
 .statusField {
-  position: absolute;
-  top: 100px;
-  left: 595px;
-  width: 270px;
   height: 34px;
+  position: relative;
 }
 
 .filterInput,
@@ -139,25 +123,18 @@ body {
 }
 
 .filterInputSmall {
-  width: 270px;
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 
-.dateFields .filterInputSmall:first-child {
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-
+.dateFields .filterInputSmall:first-child,
 .dateFields .filterInputSmall:last-child {
-  position: absolute;
-  left: 300px;
-  top: 0;
+  position: static;
 }
 
 .dateDash {
-  position: absolute;
-  left: 280px;
-  top: 5px;
+  flex-shrink: 0;
   font-size: 16px;
   font-weight: 500;
   color: #000;
@@ -179,10 +156,7 @@ body {
 }
 
 .searchButton {
-  position: absolute;
-  top: 100px;
-  right: 75px;
-  width: 300px;
+  width: 100%;
   height: 34px;
   border-radius: 2px;
   border: 2px solid #000;
@@ -203,6 +177,7 @@ body {
 
 .tableCard {
   padding: 10px;
+  overflow-x: auto;
 }
 
 .tableHeader,
@@ -335,62 +310,22 @@ body {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 700px) {
   .headerRow {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .filterCard {
-    height: auto;
-    padding: 18px;
-  }
-
-  .filterTitle,
-  .filterLayout,
-  .nameField,
-  .dateFields,
-  .organizationField,
-  .typeField,
-  .statusField,
-  .searchButton {
-    position: static;
-  }
-
   .filterLayout {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-top: 44px;
+    grid-template-columns: 1fr 1fr;
   }
 
   .nameField,
-  .dateFields,
-  .organizationField,
-  .typeField,
-  .statusField {
-    width: 100%;
-    height: auto;
-  }
-
   .dateFields {
-    display: grid;
-    grid-template-columns: 1fr 20px 1fr;
-    align-items: center;
-  }
-
-  .dateFields .filterInputSmall:first-child,
-  .dateFields .filterInputSmall:last-child,
-  .dateDash {
-    position: static;
-  }
-
-  .dateFields .filterInputSmall {
-    width: 100%;
+    grid-column: span 2;
   }
 
   .searchButton {
-    width: 100%;
-    right: auto;
+    grid-column: span 2;
   }
 }

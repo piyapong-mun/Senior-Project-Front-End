@@ -448,6 +448,14 @@
   color: #000;
 }
 
+.blockSubTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin: 6px 0 2px 0;
+  padding-left: 4px;
+}
+
 .blockBody {
   background: #fefefe;
   border: 1px solid #efefef;
